@@ -169,19 +169,15 @@ y_tf_train = tf.constant( np.repeat(y, [60, 60], axis=0) , dtype = tf.float32 )
 
 y_tf_validation = tf.constant( np.repeat(y, [20, 20], axis=0) , dtype = tf.float32 )
 
-
 # %%
 # Provided solution
-solutionModel = Sequential()
-
-# Adding layers to the model
-solutionModel.add(Dense(units = 2 , activation = 'softmax', input_shape = (64*64,)))#kernel_regularizer = regularizers.l1(0.0025)))
-
-sgd = keras.optimizers.SGD(learning_rate=0.1, momentum=0.9, nesterov=True)
-solutionModel.compile(loss = 'categorical_crossentropy', optimizer = 'sgd', metrics = ['accuracy'])
-
-# training the model
-solutionModel.fit(X_tf_train, y_tf_train, epochs=250)
+# solutionModel = Sequential()
+# # Adding layers to the model
+# solutionModel.add(Dense(units = 2 , activation = 'softmax', input_shape = (64*64,)))#kernel_regularizer = regularizers.l1(0.0025)))
+# sgd = keras.optimizers.SGD(learning_rate=0.1, momentum=0.9, nesterov=True)
+# solutionModel.compile(loss = 'categorical_crossentropy', optimizer = 'sgd', metrics = ['accuracy'])
+# # training the model
+# solutionModel.fit(X_tf_train, y_tf_train, epochs=250)
 
 # Initialize NN model instance
 DNNclassifier_model = keras.Sequential()
@@ -190,7 +186,8 @@ DNNclassifier_model = keras.Sequential()
 # Specify architecture by adding layers and setting hyperparameters (type of activate, number of nodes)
 # Input Layer I0
 input_size = np.shape(X_tf_train)[1]
-DNNclassifier_model.add(layers.Dense(units = 2, input_shape=(input_size,), activation='softmax'))
+DNNclassifier_model.add(layers.InputLayer(input_size,))
+DNNclassifier_model.add(layers.Dense(2, activation='softmax'))
 
 # Hidden Layer H1
 #DNNclassifier_model.add(layers.Dense(4, activation='softmax'))
@@ -223,7 +220,7 @@ DNNclassifier_model.compile(loss='categorical_crossentropy', optimizer='sgd', me
 # Train model using Keras optimizer
 # NOTE: This is not stritly necessary. The model may be optimized by using other libraries depending
 # on which solvers are available and their performance (suggestion by Davide)
-DNNclassifier_model.fit(X_tf_train, y_tf_train, epochs=150)
+DNNclassifier_model.fit(X_tf_train, y_tf_train, epochs=200)
 
 # Compute accuracy metrics on validation dataset
 loss_and_metrics = DNNclassifier_model.evaluate(X_tf_validation, y_tf_validation)
