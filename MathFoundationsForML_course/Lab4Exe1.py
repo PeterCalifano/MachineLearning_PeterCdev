@@ -35,7 +35,6 @@ from keras import regularizers
 from keras.utils import to_categorical
 
 
-
 # %%
 # Read dataset
 rcParams.update({'font.size': 18})
