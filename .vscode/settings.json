@@ -1,0 +1,7 @@
+{
+    "files.autoSave": "onFocusChange",
+    "python.analysis.typeCheckingMode": "basic",
+    "python.defaultInterpreterPath": ".venvML/bin/python3",
+    "python.terminal.activateEnvInCurrentTerminal": true,
+    "python.terminal.activateEnvironment": true
+}

@@ -36,12 +36,14 @@ from keras.utils import to_categorical
 
 
 # %%
+datafilepath
+
 # Read dataset
 rcParams.update({'font.size': 18})
 plt.rcParams['figure.figsize'] = [9, 6]
 
-dogdata_mat = io.loadmat(os.path.join('dogData.mat'))
-catdata_mat = io.loadmat(os.path.join('catData.mat'))
+dogdata_mat = io.loadmat(os.path.join(datafilepath, 'dogData.mat'))
+catdata_mat = io.loadmat(os.path.join(datafilepath, 'catData.mat'))
 
 # Extract data from mat file 
 dog = dogdata_mat['dog']

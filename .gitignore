@@ -1,2 +1,4 @@
+/.venvPyTorchML
+/.venvTensorFlowML
 /.venvML
-/.vscode
+.vscode/tasks.json
