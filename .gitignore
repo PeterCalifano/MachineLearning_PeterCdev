@@ -2,3 +2,4 @@
 /.venvTensorFlowML
 /.venvML
 .vscode/tasks.json
+datasets/*
