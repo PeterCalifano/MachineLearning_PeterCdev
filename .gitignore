@@ -1,5 +1,6 @@
 /.venvPyTorchML
 /.venvTensorFlowML
+/.venvTF_GPU
 /.venvML
 .vscode/tasks.json
 datasets/*

@@ -13,10 +13,23 @@ print("TensorFlow version:", tf.__version__)
 mnist = tf.keras.datasets.mnist
 (x_train, y_train), (x_test, y_test) = mnist.load_data()
 
-print('Input X train shape:', x_train.shape)
+# From (2): add new dimension to the problem --> perform batch training
+x_train = x_train[..., tf.newaxis].astype("float32")
+x_test = x_test[..., tf.newaxis].astype("float32")
+
+# From (2): create a dataset of mini-batches and performing shuffling
+train_ds = tf.data.Dataset.from_tensor_slices(
+    (x_train, y_train)).shuffle(10000).batch(32)
+test_ds = tf.data.Dataset.from_tensor_slices((x_test, y_test)).batch(32)
+
+
+
+print('Input X train shape:', x_train.shape) 
+# Note the shape required by Tensorflow: [Nsamples, sampleDim1, sampleDim2] --> matches input layer shape
+# Flatten layer automatically flatten the input data into a 1D vector for convenience
 print('Labels Y train shape:', y_train.shape)
 
-# Normalize data to [0,1] (type is uint8)
+# Normalize input features data to [0,1] (type is uint8)
 x_train, x_test = x_train / 255.0, x_test / 255.0
 
 # Define model architecture
@@ -46,3 +59,15 @@ MNIST_classifier.compile(optimizer='adam',
 
 # Execute training using model.fit function
 MNIST_classifier.fit(x_train, y_train, epochs=5)
+
+# Evaluate the model using evaluate method on validation dataset
+MNIST_classifier.evaluate(x_test,  y_test, verbose=2)
+
+# Optionally define a wrapper for the model including the softmax function (not trained)
+MNIST_ProbabilityClassifier = tf.keras.Sequential([
+  MNIST_classifier,
+  tf.keras.layers.Softmax()
+])
+
+# Evaluate the probabilistic classifier with random inputs(not with evaluate)
+MNIST_ProbabilityClassifier(x_test[:5])
