@@ -16,14 +16,19 @@ print("TensorFlow version:", tf.__version__)
 mnist = tf.keras.datasets.mnist
 (x_train, y_train), (x_test, y_test) = mnist.load_data()
 
-# Add new dimension to the problem --> perform batch training
+# Add new dimension to arrary:
+# Required because 2D convolutional layers in Tensorflow takes a 3D input: [height, width, channels]
+# A grayscale image has 1 channel only, while astype converts the input to float32
 x_train = x_train[..., tf.newaxis].astype("float32")
 x_test = x_test[..., tf.newaxis].astype("float32")
 
 # Create a dataset of mini-batches and performing shuffling
+# EXPLANATION: this line creates a dataset object where each input sample is paired with the referene label.
+# shuffle(M) method shuffles the data mixing all the pairs using a buffer of M elements --> M determines the randomness
+# batch(N) splits the dataset into batches of N elements for batch training
 train_ds = tf.data.Dataset.from_tensor_slices((x_train, y_train)).shuffle(10000).batch(32)
 # Shuffle test data as well
-test_ds = tf.data.Dataset.from_tensor_slices((x_test, y_test)).batch(32)
+test_ds = tf.data.Dataset.from_tensor_slices((x_test, y_test)).batch(32) # This is not shuffled
 
 print('Shape of train_ds:', train_ds)
 print('Shape of test_ds:', test_ds)
