@@ -1,7 +1,6 @@
 # Script implementing tutorials in TensorFlow documentation to show the basics.
 # Created by PeterC - 29-04-2024
 # 1) https://www.tensorflow.org/tutorials/quickstart/beginner --> MNIST classified
-# 2) https://www.tensorflow.org/tutorials/quickstart/advanced
 
 # Import modules
 import tensorflow as tf
@@ -12,16 +11,6 @@ print("TensorFlow version:", tf.__version__)
 # Load MNIST dataset
 mnist = tf.keras.datasets.mnist
 (x_train, y_train), (x_test, y_test) = mnist.load_data()
-
-# From (2): add new dimension to the problem --> perform batch training
-x_train = x_train[..., tf.newaxis].astype("float32")
-x_test = x_test[..., tf.newaxis].astype("float32")
-
-# From (2): create a dataset of mini-batches and performing shuffling
-train_ds = tf.data.Dataset.from_tensor_slices(
-    (x_train, y_train)).shuffle(10000).batch(32)
-test_ds = tf.data.Dataset.from_tensor_slices((x_test, y_test)).batch(32)
-
 
 
 print('Input X train shape:', x_train.shape) 
