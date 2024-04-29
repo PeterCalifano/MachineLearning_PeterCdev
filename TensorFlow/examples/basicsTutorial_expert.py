@@ -25,7 +25,7 @@ x_test = x_test[..., tf.newaxis].astype("float32")
 # Create a dataset of mini-batches and performing shuffling
 # EXPLANATION: this line creates a dataset object where each input sample is paired with the referene label.
 # shuffle(M) method shuffles the data mixing all the pairs using a buffer of M elements --> M determines the randomness
-# batch(N) splits the dataset into batches of N elements for batch training
+# batch(N) splits the dataset into batches of N elements for batch training (see below that X and Y train_ds and test_ds are composed of 32 samples)
 train_ds = tf.data.Dataset.from_tensor_slices((x_train, y_train)).shuffle(10000).batch(32)
 # Shuffle test data as well
 test_ds = tf.data.Dataset.from_tensor_slices((x_test, y_test)).batch(32) # This is not shuffled
@@ -45,8 +45,9 @@ x_train, x_test = x_train / 255.0, x_test / 255.0
 class MyModel(Model):
   def __init__(self):
     super().__init__()
-    self.conv1 = Conv2D(32, 3, activation='relu')
-    self.flatten = Flatten()
+    self.conv1 = Conv2D(32, 3, activation='relu') # Defines a 3D convolution layer. 
+    # Conv2D details: 1st input: number of kernels (i.e. of convolutional filters); 2nd input: size of the kernel
+    self.flatten = Flatten() # Flatten convolution output of convolution (3D array) as 1D vector
     self.d1 = Dense(128, activation='relu')
     self.d2 = Dense(10)
 
@@ -114,6 +115,7 @@ for epoch in range(EPOCHS):
   test_accuracy.reset_state()
 
 # Perform batch training for all the available (input, output) pairs
+# Note that images and labels have a size of 32 samples
   for images, labels in train_ds:
     train_step(images, labels)
 
