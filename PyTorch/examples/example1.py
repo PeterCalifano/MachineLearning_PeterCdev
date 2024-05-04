@@ -11,7 +11,7 @@ import torch # Pytorch
 # moving from the Input Layers to the Output Layers through the Inner (Hidden, read-only) Layers, is elementary and small. However, as the 
 # number of neurons and parameters is increased, the number of operations grows exponentially. A GPU is ideal to execute a very large number
 # of elementary operations in parallel, whereas CPUs do not. 
-
+# %%
 # Define basic classes of Pytorch (tensors, namely multi-dimensional arrays)
 xtensor = torch.Tensor([2, 1])
 ytensor = torch.Tensor([3, 5, 7, 6])

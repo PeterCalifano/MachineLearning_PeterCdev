@@ -9,7 +9,7 @@ from keras.initializers import Initializer
 from sklearn.cluster import KMeans
 
 class RBF_Layer2(layers.Layer):
-    def _init_(self, units, init_beta=1.0, initializer=None): # Method to instantiation the layer object
+    def _init_(self, units, init_beta=1.0, initializer=None): # Method for instantiation the layer object
         super(RBF_Layer2, self)._init_()
         self.units = units
         self.init_beta = init_beta

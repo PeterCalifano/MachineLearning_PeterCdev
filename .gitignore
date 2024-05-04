@@ -4,3 +4,5 @@
 /.venvML
 .vscode/tasks.json
 datasets/*
+PyTorch/tutorials
+data/*

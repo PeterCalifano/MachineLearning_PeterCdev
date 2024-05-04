@@ -8,7 +8,7 @@ from tensorflow import keras
 import numpy as np
 print("TensorFlow version:", tf.__version__)
 
-# Load MNIST dataset
+# %% Load MNIST dataset
 mnist = tf.keras.datasets.mnist
 (x_train, y_train), (x_test, y_test) = mnist.load_data()
 
@@ -21,7 +21,7 @@ print('Labels Y train shape:', y_train.shape)
 # Normalize input features data to [0,1] (type is uint8)
 x_train, x_test = x_train / 255.0, x_test / 255.0
 
-# Define model architecture
+# %% Define model architecture
 sizeH1 = 128 # Number of neurons in 1st hidden layer
 
 MNIST_classifier = keras.models.Sequential([
@@ -41,7 +41,7 @@ print('Prediction example (softmax):',tf.nn.softmax(prediction).numpy())
 # Define loss function for training (Sparse categorial Cross Entropy is good for classification)
 loss_fn = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
 
-# Compile model setting optimizer, loss function and metric
+# %% Compile model setting optimizer, loss function and metric
 MNIST_classifier.compile(optimizer='adam',
                         loss=loss_fn,
                         metrics=['accuracy'])
