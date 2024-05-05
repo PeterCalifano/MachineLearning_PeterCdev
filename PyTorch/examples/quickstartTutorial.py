@@ -8,6 +8,7 @@ from torch.utils.data import DataLoader # Utils for dataset management, storing 
 from torchvision import datasets # Import vision default datasets from torchvision
 from torchvision.transforms import ToTensor # Utils
 import datetime
+import numpy as np
 
 # %% DATASET MANAGEMENT
 # Full list of datasets in torchvision: https://pytorch.org/vision/stable/datasets.html
@@ -56,7 +57,7 @@ print(f"Using {device} device")
 # Define class inheriting from nn.Module parent class
 mnistPix = 28
 inputSize = mnistPix # Input size for input layer
-layersSize = [512, 512, 10] # List of output sizes for each layer
+layersSize = [1024, 1024, 10] # List of output sizes for each layer
 
 # TO VERIFY: can I do a NN auto constructor in PyTorch? --> definition of layer types + input size + output sizes for each layer?
 
@@ -101,10 +102,12 @@ optimizer = torch.optim.SGD(model.parameters(), lr=learnRate, momentum=0)
 def trainModel(dataloader:DataLoader, model:nn.Module, lossFcn, optimizer):
     size=len(dataloader.dataset) # Get size of dataloader dataset object
     model.train() # Set model instance in training mode ("informing" backend that the training is going to start)
+    totalLoss = 0.0
+
     for batch, (X, Y) in enumerate(dataloader): # Recall that enumerate gives directly both ID and value in iterable object
 
         X, Y = X.to(device), Y.to(device) # Define input, label pairs for target device
-
+        
         # Perform FORWARD PASS
         predVal = model(X) # Evaluate model at input
         loss = lossFcn(predVal, Y) # Evaluate loss function to get loss value (this returns loss function instance, not a value)
@@ -115,9 +118,11 @@ def trainModel(dataloader:DataLoader, model:nn.Module, lossFcn, optimizer):
         optimizer.zero_grad() # Reset gradients for next iteration
 
         if batch % 100 == 0: # Print loss value every 100 steps
-            loss, currentStep = loss.item(), (batch + 1) * len(X)
-            print(f"loss: {loss:>7f}  [{currentStep:>5d}/{size:>5d}]")
-
+            lossvalue, currentStep = loss.item(), (batch + 1) * len(X)
+            print(f"loss: {lossvalue:>7f}  [{currentStep:>5d}/{size:>5d}]")
+    
+        totalLoss += loss.item()
+    return totalLoss 
 # %% MODEL VALIDATION
 
 def validateModel(dataloader:DataLoader, model:nn.Module, lossFcn):
@@ -141,16 +146,20 @@ def validateModel(dataloader:DataLoader, model:nn.Module, lossFcn):
     testLoss/=numberOfBatches # Compute batch size normalized loss value
     correctOuputs /= size # Compute percentage of correct classifications over batch size
     print(f"Test Error: \n Accuracy: {(100*correctOuputs):>0.1f}%, Avg loss: {testLoss:>8f} \n")
+    return testLoss, correctOuputs
 
 # %% PERFORM TRAINING EPOCHS
-epochNum = 50
+epochNum = 500
+trainLoss_list = np.zeros([epochNum, 1])
+testLoss_list = np.zeros([epochNum, 1])
+correctOuputs_list = np.zeros([epochNum, 1])
 
 for epochID in range(epochNum):
     print(f"Epoch {epochID}\n-------------------------------")
     # Do training over all batches
-    trainModel(training_dataset, model, loss_fn, optimizer) 
+    trainLoss_list[epochID] = trainModel(training_dataset, model, loss_fn, optimizer) 
     # Do validation over all batches
-    validateModel(test_dataset, model, loss_fn) 
+    testLoss_list[epochID], correctOuputs_list[epochID] = validateModel(test_dataset, model, loss_fn) 
 
 # %% OPTIONAL: MODEL STATE SAVING
 def saveModelState(model:nn.Module):
@@ -164,6 +173,8 @@ def saveModelState(model:nn.Module):
     filename = "testModels/trainedModel_" + formattedTimestamp
     print("Saving PyTorch Model State to", filename)
     torch.save(model.state_dict(), filename) # Save model as internal torch representation
+
+saveModelState(model)
 
 # %% OPTIONAL: MODEL LOADING
 # model = NeuralNet().to(device) # Define empty model instance
