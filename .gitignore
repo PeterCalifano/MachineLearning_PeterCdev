@@ -7,3 +7,4 @@ datasets/*
 PyTorch/tutorials
 data/*
 testModels
+PyTorch/__pycache__

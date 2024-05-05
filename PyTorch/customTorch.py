@@ -13,9 +13,9 @@ import datetime
 # class FDNNbuilder:
 #     def __init__():
 
-# Function to get device if not passed to trainModel and validateModel()
+# %% Function to get device if not passed to trainModel and validateModel()
 def getDevice():
-    device = ("cuda"
+    device = ("cuda:0"
               if torch.cuda.is_available()
               else "mps"
               if torch.backends.mps.is_available()
@@ -23,7 +23,7 @@ def getDevice():
     print(f"Using {device} device")
     return device
 
-# Training function over entire dataset (single epoch)
+# %% Function to perform one step of training of a model using dataset and specified loss function - 04-05-2024
 def trainModel(dataloader:DataLoader, model:nn.Module, lossFcn, optimizer, device=getDevice()):
     size=len(dataloader.dataset) # Get size of dataloader dataset object
     model.train() # Set model instance in training mode ("informing" backend that the training is going to start)
@@ -44,6 +44,7 @@ def trainModel(dataloader:DataLoader, model:nn.Module, lossFcn, optimizer, devic
             loss, currentStep = loss.item(), (batch + 1) * len(X)
             print(f"loss: {loss:>7f}  [{currentStep:>5d}/{size:>5d}]")
 
+# %% Function to validate model using dataset and specified loss function - 04-05-2024
 def validateModel(dataloader:DataLoader, model:nn.Module, lossFcn, device=getDevice()):
     size = len(dataloader.dataset) 
     numberOfBatches = len(dataloader)
@@ -65,3 +66,16 @@ def validateModel(dataloader:DataLoader, model:nn.Module, lossFcn, device=getDev
     testLoss/=numberOfBatches # Compute batch size normalized loss value
     correctOuputs /= size # Compute percentage of correct classifications over batch size
     print(f"Test Error: \n Accuracy: {(100*correctOuputs):>0.1f}%, Avg loss: {testLoss:>8f} \n")
+
+# %% Function to save model state - 04-05-2024
+def SaveModelState(model:nn.Module, modelName:str="trainedModel"):
+    import os.path
+    if not(os.path.isdir('./testModels')):
+        os.mkdir('testModels')
+
+    currentTime = datetime.datetime.now()
+    formattedTimestamp = currentTime.strftime('%d-%m-%Y_%H-%M') # Format time stamp as day, month, year, hour and minute
+
+    filename = "testModels/" + modelName + "_" + formattedTimestamp
+    print("Saving PyTorch Model State to", filename)
+    torch.save(model.state_dict(), filename) # Save model as internal torch representation
