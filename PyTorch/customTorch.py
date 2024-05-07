@@ -72,6 +72,17 @@ def SaveModelState(model:nn.Module, modelName:str="trainedModel"):
     import os.path
     if not(os.path.isdir('./testModels')):
         os.mkdir('testModels')
+        if not(os.path.isfile('.gitignore')):
+            # Write gitignore in the current folder if it does not exist
+            gitignoreFile = open('.gitignore', 'w')
+            gitignoreFile.write("\ntestModels/*")
+            gitignoreFile.close()
+        else:
+            # Append to gitignore if it exists
+            gitignoreFile = open('.gitignore', 'a')
+            gitignoreFile.write("\ntestModels/*")
+            gitignoreFile.close()
+        
 
     currentTime = datetime.datetime.now()
     formattedTimestamp = currentTime.strftime('%d-%m-%Y_%H-%M') # Format time stamp as day, month, year, hour and minute
