@@ -9,3 +9,5 @@ data/*
 testModels
 PyTorch/__pycache__
 LDC
+norse_scripts/MNIST
+norse_scripts/runs
