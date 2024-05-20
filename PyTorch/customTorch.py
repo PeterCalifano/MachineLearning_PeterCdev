@@ -90,3 +90,13 @@ def SaveModelState(model:nn.Module, modelName:str="trainedModel"):
     filename = "testModels/" + modelName + "_" + formattedTimestamp
     print("Saving PyTorch Model State to", filename)
     torch.save(model.state_dict(), filename) # Save model as internal torch representation
+
+
+# TODO:
+#def LoadModelState():
+
+#def ConfigTensorboardSession():
+
+#def ControlArgsParser():
+
+#def 

@@ -8,6 +8,7 @@ PyTorch/tutorials
 data/*
 testModels
 PyTorch/__pycache__
-LDC
+LDC_PeterCdev/
 norse_scripts/MNIST
 norse_scripts/runs
+*.pth
