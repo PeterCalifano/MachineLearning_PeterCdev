@@ -14,3 +14,5 @@ import datetime
 import numpy as np
 
 from torch.utils.tensorboard import SummaryWriter # Key class to use tensorboard with PyTorch. VSCode will automatically ask if you want to load tensorboard in the current session.
+import torch.optim as optim
+import torch.nn.functional as F # Module to apply activation functions in forward pass instead of defining them in the model class

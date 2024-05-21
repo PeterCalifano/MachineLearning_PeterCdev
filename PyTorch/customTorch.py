@@ -9,6 +9,8 @@ from torchvision import datasets # Import vision default datasets from torchvisi
 from torchvision.transforms import ToTensor # Utils
 import datetime
 
+import torch.optim as optim
+import torch.nn.functional as F # Module to apply activation functions in forward pass instead of defining them in the model class
 
 # class FDNNbuilder:
 #     def __init__():

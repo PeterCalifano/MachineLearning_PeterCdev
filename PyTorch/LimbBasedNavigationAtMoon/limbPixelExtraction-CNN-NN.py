@@ -28,6 +28,8 @@ import datetime
 import numpy as np
 
 from torch.utils.tensorboard import SummaryWriter 
+import torch.optim as optim
+import torch.nn.functional as F # Module to apply activation functions in forward pass instead of defining them in the model class
 
 # Example code:
 class MyModel(nn.Module):
