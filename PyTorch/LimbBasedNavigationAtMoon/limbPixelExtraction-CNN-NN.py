@@ -32,6 +32,8 @@ import torch.optim as optim
 import torch.nn.functional as F # Module to apply activation functions in forward pass instead of defining them in the model class
 
 # Example code:
+# Note that X given as input to the model is just one, but managed internaly to the class, thus splitting the input as appropriate and only used in the desired layers.
+
 class MyModel(nn.Module):
     def __init__(self):
         super(MyModel, self).__init__()
@@ -41,9 +43,8 @@ class MyModel(nn.Module):
         
     def forward(self, x):
         # Use first part of x
-        x1 = F.relu(self.fc1(x[:, :8]))
-        # Concatenate the result of the first part with the second part of x
-        x = torch.cat((x1, x[:, 8:]), dim=1)
+        x1 = F.relu(self.fc1(x[:, :8])) # First part of input vector X used as input the the first layer
+        x = torch.cat((x1, x[:, 8:]), dim=1)  # Concatenate the result of the first part with the second part of x, which is not processed by the former layer
         x = F.relu(self.fc2(x))
         x = self.fc3(x)
         return x
