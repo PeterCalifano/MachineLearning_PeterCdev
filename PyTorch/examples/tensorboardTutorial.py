@@ -34,3 +34,8 @@ writer.flush()
 # Once events are logged in a folder. Tensorboard must be enabled and pointed to the directory where the events are located:
 # In command line: tensorboard --logdir=<log_dir> where events have been saved. By default this will open a localhost server at post 6006: http://localhost:6006/
 # But VScode provides visualization integrated in the application.
+
+# Some details from the Tensorflow getting started: 
+# 1) Scalars and Time series show how the loss and the metrics change over time
+# 2) Graph section permits the visualization of the network architecture to verify its consistency.
+# 3) Histograms and Distributions show the distribution of a Tensor over time. This can be useful to visualize weights and biases and verify that they are changing in an expected way.

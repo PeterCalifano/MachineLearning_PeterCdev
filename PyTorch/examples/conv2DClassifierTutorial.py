@@ -13,6 +13,12 @@ import sys
 sys.path.insert(0, "/home/peterc/devDir/MachineLearning_PeterCdev/PyTorch")
 import customTorch
 
+from torch.utils.tensorboard import SummaryWriter
+
+# Create tensorboard writer
+logDir = './tensorboardTest/'
+tensorboardWriter = SummaryWriter(log_dir=logDir, flush_secs=120) # flush_secs determines the refresh rate
+
 # %% PREPARE AND VISUALIZE DATASET 
 # Defines a transformation as composition of a sequence of transformations
 transformObj = transforms.Compose([transforms.ToTensor(),
@@ -115,7 +121,9 @@ for epoch in range(numOfEpochs):
         if ID % 2000 == 1999:    # print every 2000 mini-batches
             print(f'[{epoch + 1}, {ID + 1:5d}] loss: {currentLoss / 2000:.3f}')
             currentLoss = 0.0
-
+        tensorboardWriter.add_scalar('Loss function', currentLoss, epoch)
+        tensorboardWriter.flush()
+        
 print("TRAINING LOOP: COMPLETED")
 # Save model 
 customTorch.SaveModelState(ConvNN, "exampleCNNclassifier")
