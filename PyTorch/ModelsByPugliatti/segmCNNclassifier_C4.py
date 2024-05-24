@@ -16,6 +16,11 @@ numOfOutputChannels = [16, 32, 64, 128, 256] # Number of output channels resulti
 kernelSize = 3
 poolingSize = 2
 
+linearLayerInputSizes = [256*16, 256]
+linearLayerOutputSizes = [256, 128]
+outputLayerSize = 7
+
+
 class Conv2dEncoderForUnet(nn.Module):
     def __init__(self, numOfInputChannels, numOfOutputChannels, kernelSize=3, poolingSize=2) -> None:
         super().__init__()
