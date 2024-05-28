@@ -4,6 +4,8 @@
 # Import modules
 import torch
 from torch import nn
+from torch.utils.data import Dataset
+from torchvision.transforms import ToTensor
 from torch.utils.data import DataLoader # Utils for dataset management, storing pairs of (sample, label)
 from torchvision import datasets # Import vision default datasets from torchvision
 from torchvision.transforms import ToTensor # Utils
@@ -94,11 +96,58 @@ def SaveModelState(model:nn.Module, modelName:str="trainedModel"):
     torch.save(model.state_dict(), filename) # Save model as internal torch representation
 
 
-# TODO:
-#def LoadModelState():
+def LoadModelState(model:nn.Module, modelName:str="trainedModel", filepath:str="testModels/"):
 
+    # Contatenate file path
+    modelPath = filepath + modelName + ".pth"
+    # Load model from file
+    model.load_state_dict(torch.load(modelPath))
+    # Evaluate model to set (weights, biases)
+    model.eval()
+
+
+# Base class for Supervised learning datasets
+# Reference for implementation of virtual methods: https://stackoverflow.com/questions/4714136/how-to-implement-virtual-methods-in-python
+from abc import abstractmethod
+from abc import ABCMeta
+
+class GenericSupervisedDataset(Dataset):
+    __metaclass__ = ABCMeta
+
+    def __init__(self, inputDataPath:str, labelsDataPath:str, transform=None, target_transform=None):
+        # Store input and labels sources
+        self.labelsDir = labelsDataPath
+        self.inputDir = inputDataPath
+
+        # Initialize transform objects
+        self.transform = transform
+        self.target_transform = target_transform
+
+    def __len__(self):
+        return len(self.img_labels)
+
+    @abstractmethod
+    def __getLabelsData__(self):
+        raise NotImplementedError()
+        # Get and store labels vector
+        self.labels # "Read file" of some kind goes here. Best current option: write to JSON
+
+    @abstractmethod
+    def __getitem__(self, index):
+        raise NotImplementedError()
+        return inputVec, label
+
+
+class MoonLimbPixCorrector_Dataset(GenericSupervisedDataset):
+    
+    def __getLabelsData__(self):
+        return super().__getLabelsData__()
+    
+    def __getitem__(self, index):
+        return super().__getitem__(index)
+
+
+# TODO
 #def ConfigTensorboardSession():
-
 #def ControlArgsParser():
 
-#def 
