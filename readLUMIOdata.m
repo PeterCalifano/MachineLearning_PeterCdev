@@ -3,6 +3,7 @@ clear;
 close all;
 
 %% LUMIO kernels and data loading script
+RUN_RENDERING = false;
 
 % programmatic_run = 1;
 % addNoiseToImage = 0; % if 0 (adviced) will consider the same images for each Monte Carlo sample
@@ -106,6 +107,8 @@ for idT = 1:size(xAxisCam_IN, 2)
 end
 
 
+if RUN_RENDERING == true
+
 %% Rendering
 i_drCam
 i_drTargetBody
@@ -197,8 +200,7 @@ imgSource = '/home/peterc/devDir/nav-backend/customExamples/matlab/CORTO_OUTPUT/
 fileName = 'ItokawaRender_23052024';
 imageSeq2Video(imgSource, fileName);
 
-
-return
+end
 
 %% Test: labels generations
 imgID = 1;
@@ -219,6 +221,7 @@ testImg = imread(fullfile(imageFolder, imgName));
 
 dShapeMatrix_TF = 1/R_Moon^2 .* eye(3);
 dBodyPosVec_CAM = -dDCM_fromINtoCAM(:,:,idT)*xCamPosFromBody_IN(:,idT);
+xCamPosFromBody_TF = dDCM_fromINtoCAM(:,:,idT) * transpose(dDCM_fromTFtoCAM(:,:,idT)) * xCamPosFromBody_IN(:,idT);
 
 dKcam = zeros(3);
 focalLength = 127; % [mm]
@@ -248,57 +251,94 @@ dKcam(2,3) = 1024/2;
 % A_circle = inv(P*(A_sphere\P'));
 % A_circle = A_circle./A_circle(3, 3)
 
-
-
-
-
-tightConeLocusImageMatrix = ComputeTightConeLocusInImg(dKcam, dShapeMatrix_TF,...
+tightConeLocusImageMatrix_PixCoords = ComputeTightConeLocusInImg(dKcam, dShapeMatrix_TF,...
     dDCM_fromTFtoCAM(:,:,idT), dBodyPosVec_CAM);
 
+tightConeLocusImageMatrix_PixCoords = tightConeLocusImageMatrix_PixCoords./tightConeLocusImageMatrix_PixCoords(3,3);
+
+
+dHomogShapeMatrix_TF = diag([1, 1, 1, -R_Moon^2]);
+
+[o_dConicInPixelCoord] = computeConic_directMethod(dKcam, ...
+    dHomogShapeMatrix_TF, dDCM_fromTFtoCAM(:,:,idT),  dBodyPosVec_CAM);
+
+diagEllipseMatrixInImgPix = eig(tightConeLocusImageMatrix_PixCoords);
+
+% ACHTUNG: ellipse matrix is NOT positive definite... why?
 
 
 %% ELLIPSE PLOT (by GPT4o)
 % Extract coefficients from the matrix (from GPT)
-A = tightConeLocusImageMatrix(1,1); % A must be > 0
-B = 2 * tightConeLocusImageMatrix(1,2);
-C = tightConeLocusImageMatrix(2,2); % C must be > 0
-D = 2 * tightConeLocusImageMatrix(1,3);
-E = 2 * tightConeLocusImageMatrix(2,3);
-F = tightConeLocusImageMatrix(3,3);
+A = tightConeLocusImageMatrix_PixCoords(1,1); % A must be > 0
+B = 2 * tightConeLocusImageMatrix_PixCoords(1,2);
+C = tightConeLocusImageMatrix_PixCoords(2,2); % C must be > 0
+D = 2 * tightConeLocusImageMatrix_PixCoords(1,3);
+E = 2 * tightConeLocusImageMatrix_PixCoords(2,3);
+F = tightConeLocusImageMatrix_PixCoords(3,3);
+
+% A = o_dConicInPixelCoord(1,1); % A must be > 0
+% B = 2 * o_dConicInPixelCoord(1,2);
+% C = o_dConicInPixelCoord(2,2); % C must be > 0
+% D = 2 * o_dConicInPixelCoord(1,3);
+% E = 2 * o_dConicInPixelCoord(2,3);
+% F = o_dConicInPixelCoord(3,3);
 
 % Calculate the center of the ellipse
-delta = B^2 - 4*A*C;
-x0 = (2*C*D - B*E) / delta;
-y0 = (2*A*E - B*D) / delta;
+% delta = B^2 - 4*A*C;
+% x0 = (2*C*D - B*E) / delta; % Should be around image centre if Moon is near boresight
+% y0 = (2*A*E - B*D) / delta;
 
 % Calculate the angle of rotation
-theta = 0.5 * atan2(B, A - C);
+% theta = 0.5 * atan2(B, A - C);
 
 % Calculate the semi-major and semi-minor axes
-up = 2*(A*E^2 + C*D^2 + F*B^2 - B*D*E - A*C*F);
-down1 = (B^2 - 4*A*C) * ((C - A) + sqrt((A - C)^2 + B^2));
-down2 = (B^2 - 4*A*C) * ((A - C) + sqrt((A - C)^2 + B^2));
-a = sqrt(up / down1);
-b = sqrt(up / down2);
+% up = 2*(A*E^2 + C*D^2 + F*B^2 - B*D*E - A*C*F);
+% down1 = (B^2 - 4*A*C) * ((C - A) + sqrt((A - C)^2 + B^2));
+% down2 = (B^2 - 4*A*C) * ((A - C) + sqrt((A - C)^2 + B^2));
+% a = sqrt(up / down1);
+% b = sqrt(up / down2);
 
 % Parametric equation of the ellipse
-t = linspace(0, 2*pi, 100);
-X = x0 + a*cos(t)*cos(theta) - b*sin(t)*sin(theta);
-Y = y0 + a*cos(t)*sin(theta) + b*sin(t)*cos(theta);
+% t = linspace(0, 2*pi, 100);
+% X = x0 + a*cos(t)*cos(theta) - b*sin(t)*sin(theta);
+% Y = y0 + a*cos(t)*sin(theta) + b*sin(t)*cos(theta);
 
 % Plot the ellipse
-figure(1);
-clf
-imshow(testImg);
-hold on
-scatter(X, Y, 2, 'g','filled');
-% set(gca,'YDir','normal') %gca stand for get current axes
-axis equal;
+% figure(1);
+% clf
+% imshow(testImg);
+% hold on
+% scatter(X, Y, 2, 'g','filled');
+% % set(gca,'YDir','normal') %gca stand for get current axes
+% axis equal;
 % xlabel('x');
 % ylabel('y');
 % title('Ellipse Plot');
 % grid on;
 
+
+% Visualize error function from ellipse equation
+errFcn = @(u, v, invConicLocus) ([u, v, 1] * invConicLocus * [u; v; 1])^2;
+axisGrid = 0:1:1024;
+[Xgrid, Ygrid] = meshgrid(axisGrid);
+
+% errEval = errFcn(Xgrid, Ygrid, inv(tightConeLocusImageMatrix_PixCoords));
+errEval = zeros(size(Xgrid));
+% invConicLocus = inv(tightConeLocusImageMatrix_PixCoords);
+
+for idX = 1:length(axisGrid)
+    for idY = 1:length(axisGrid)
+        errEval(idX, idY) = errFcn(Xgrid(idX, idY), Ygrid(idX, idY), tightConeLocusImageMatrix_PixCoords);
+    end
+end
+
+NumOfLevels = 1000;
+figure;
+contour3(Xgrid, Ygrid, errEval, NumOfLevels); % OK
+xlabel('X image axis')
+ylabel('Y image axis')
+zlabel('Z Error value')
+DefaultPlotOpts(); 
 
 
 %% LOCAL FUNCTION
@@ -316,26 +356,41 @@ tightConeLocusImageMatrix = transpose(invKcam) *( (dShapeMatrix_CAM * dBodyPosVe
 end
 
 % Function to define LUMIO Attitude by Paolo
-function [A_BN, A_BN_hat] = AttitudeDefinition(rSCJ2000, rMJ2000, rSJ2000, sigmaAtt, randVec)
+% function [A_BN, A_BN_hat] = AttitudeDefinition(rSCJ2000, rMJ2000, rSJ2000, sigmaAtt, randVec)
+% 
+% 
+% rSCIn = rSCJ2000;
+% rMIn = rMJ2000;
+% rSIn = rSJ2000;
+% mDirIn = -(rSCIn-rMIn)/norm(rSCIn-rMIn);
+% sDirIn = -(rSCIn-rSIn)/norm(rSCIn-rSIn);
+% 
+% 
+% zb = mDirIn;
+% yb = cross(zb, sDirIn)/norm(cross(zb, sDirIn));
+% xb = cross(yb, zb);
+% 
+% 
+% A_BN = [xb'; yb'; zb'];
+% 
+% 
+% eulErr = sigmaAtt.*randVec; %Attitude knowledge error - Euler angles
+% Ae = eul2rotm(eulErr')';
+% A_BN_hat = Ae*A_BN; %Estimated attitude
+% 
+% end
 
+function [o_dConicInPixelCoord] = computeConic_directMethod(i_dKcam, ...
+    i_dHomogShapeMat_TF, i_dDCM_fromTFtoCAM, i_dxBodyFromCAM_CAM)
 
-rSCIn = rSCJ2000;
-rMIn = rMJ2000;
-rSIn = rSJ2000;
-mDirIn = -(rSCIn-rMIn)/norm(rSCIn-rMIn);
-sDirIn = -(rSCIn-rSIn)/norm(rSCIn-rSIn);
+% Camera matrix
+P_fromTFtoPix = i_dKcam*[i_dDCM_fromTFtoCAM, i_dxBodyFromCAM_CAM];
 
+% i_dShapeMat_CAM = i_dDCM_fromTFtoCAM * i_dHomogShapeMat_TF * i_dDCM_fromTFtoCAM';
 
-zb = mDirIn;
-yb = cross(zb, sDirIn)/norm(cross(zb, sDirIn));
-xb = cross(yb, zb);
+% Compute circle on the image by proejctin the sphere
+o_dConicInPixelCoord = inv(P_fromTFtoPix*(i_dHomogShapeMat_TF\P_fromTFtoPix'));
 
-
-A_BN = [xb'; yb'; zb'];
-
-
-eulErr = sigmaAtt.*randVec; %Attitude knowledge error - Euler angles
-Ae = eul2rotm(eulErr')';
-A_BN_hat = Ae*A_BN; %Estimated attitude
+o_dConicInPixelCoord = o_dConicInPixelCoord./o_dConicInPixelCoord(3, 3);
 
 end
