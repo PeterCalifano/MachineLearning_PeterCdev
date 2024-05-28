@@ -111,9 +111,7 @@ def LoadModelState(model:nn.Module, modelName:str="trainedModel", filepath:str="
 from abc import abstractmethod
 from abc import ABCMeta
 
-class GenericSupervisedDataset(Dataset):
-    __metaclass__ = ABCMeta
-
+class GenericSupervisedDataset(Dataset, metaclass=ABCMeta):
     def __init__(self, inputDataPath:str, labelsDataPath:str, transform=None, target_transform=None):
         # Store input and labels sources
         self.labelsDir = labelsDataPath
@@ -139,7 +137,7 @@ class GenericSupervisedDataset(Dataset):
 
 
 class MoonLimbPixCorrector_Dataset(GenericSupervisedDataset):
-    
+
     def __getLabelsData__(self):
         return super().__getLabelsData__()
     
