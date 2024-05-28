@@ -13,3 +13,5 @@ norse_scripts/MNIST
 norse_scripts/runs
 *.pth
 testModels/*
+modelZoo
+*.asv
