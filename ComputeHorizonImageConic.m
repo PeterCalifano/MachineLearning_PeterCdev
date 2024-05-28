@@ -118,6 +118,8 @@ o_dlimbPixCoords(1, :) = ellipseCy + semiMajorAx*cos(pixAnglesToGet)*sinMajorAxF
         tightConeLocusImageMatrix = transpose(invKcam) *( (dShapeMatrix_CAM * i_dBodyPosVec_CAM) * (i_dBodyPosVec_CAM' * dShapeMatrix_CAM) ...
             - (i_dBodyPosVec_CAM' * dShapeMatrix_CAM * i_dBodyPosVec_CAM - 1.0) * dShapeMatrix_CAM) * invKcam;
 
+        tightConeLocusImageMatrix(abs(tightConeLocusImageMatrix) < eps) = 0;
+
     end
 
 end

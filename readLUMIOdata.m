@@ -203,10 +203,12 @@ imageSeq2Video(imgSource, fileName);
 end
 
 %% Test: labels generations
+ERROR_VISUAL_CHECK = false;
+
 imgID = 1;
 imgDirStruct = getDirStruct(imageFolder);
 
-idT = 2; % Due to loss of data in transferring images
+idT = 1; % Due to loss of data in transferring images
 imgName = imgDirStruct(imgID).name;
 testImg = imread(fullfile(imageFolder, imgName));
 
@@ -268,6 +270,7 @@ diagEllipseMatrixInImgPix = eig(tightConeLocusImageMatrix_PixCoords);
 
 
 %% ELLIPSE PLOT (by GPT4o)
+
 % Extract coefficients from the matrix (from GPT)
 A = tightConeLocusImageMatrix_PixCoords(1,1); % A must be > 0
 B = 2 * tightConeLocusImageMatrix_PixCoords(1,2);
@@ -276,6 +279,40 @@ D = 2 * tightConeLocusImageMatrix_PixCoords(1,3);
 E = 2 * tightConeLocusImageMatrix_PixCoords(2,3);
 F = tightConeLocusImageMatrix_PixCoords(3,3);
 
+if B == 0
+
+    % Calculate the center of the ellipse
+    x0 = -D / (2*A);
+    y0 = -E / (2*C);
+
+    numerator = 2 * (A*E^2 + C*D^2 - 4*A*C*F);
+    denom1 = (B^2 - 4*A*C) * (A + C + abs(A - C));
+    denom2 = (B^2 - 4*A*C) * (A + C - abs(A - C));
+
+    a = sqrt(-numerator / denom1);
+    b = sqrt(-numerator / denom2);
+    
+    theta = 0;
+
+elseif B > 0
+
+    % Calculate the center of the ellipse
+    delta = B^2 - 4*A*C;
+    x0 = (2*C*D - B*E) / delta; % Should be around image centre if Moon is near boresight
+    y0 = (2*A*E - B*D) / delta;
+
+    % Calculate the angle of rotation
+    theta = 0.5 * atan2(B, A - C);
+
+    % Calculate the semi-major and semi-minor axes
+    up = 2*(A*E^2 + C*D^2 + F*B^2 - B*D*E - A*C*F);
+    down1 = (B^2 - 4*A*C) * ((C - A) + sqrt((A - C)^2 + B^2));
+    down2 = (B^2 - 4*A*C) * ((A - C) + sqrt((A - C)^2 + B^2));
+    a = sqrt(up / down1);
+    b = sqrt(up / down2);
+
+end
+
 % A = o_dConicInPixelCoord(1,1); % A must be > 0
 % B = 2 * o_dConicInPixelCoord(1,2);
 % C = o_dConicInPixelCoord(2,2); % C must be > 0
@@ -283,63 +320,48 @@ F = tightConeLocusImageMatrix_PixCoords(3,3);
 % E = 2 * o_dConicInPixelCoord(2,3);
 % F = o_dConicInPixelCoord(3,3);
 
-% Calculate the center of the ellipse
-% delta = B^2 - 4*A*C;
-% x0 = (2*C*D - B*E) / delta; % Should be around image centre if Moon is near boresight
-% y0 = (2*A*E - B*D) / delta;
-
-% Calculate the angle of rotation
-% theta = 0.5 * atan2(B, A - C);
-
-% Calculate the semi-major and semi-minor axes
-% up = 2*(A*E^2 + C*D^2 + F*B^2 - B*D*E - A*C*F);
-% down1 = (B^2 - 4*A*C) * ((C - A) + sqrt((A - C)^2 + B^2));
-% down2 = (B^2 - 4*A*C) * ((A - C) + sqrt((A - C)^2 + B^2));
-% a = sqrt(up / down1);
-% b = sqrt(up / down2);
-
 % Parametric equation of the ellipse
-% t = linspace(0, 2*pi, 100);
-% X = x0 + a*cos(t)*cos(theta) - b*sin(t)*sin(theta);
-% Y = y0 + a*cos(t)*sin(theta) + b*sin(t)*cos(theta);
+t = linspace(0, 2*pi, 500);
+X = x0 + a*cos(t)*cos(theta) - b*sin(t)*sin(theta);
+Y = y0 + a*cos(t)*sin(theta) + b*sin(t)*cos(theta);
 
 % Plot the ellipse
-% figure(1);
-% clf
-% imshow(testImg);
-% hold on
-% scatter(X, Y, 2, 'g','filled');
-% % set(gca,'YDir','normal') %gca stand for get current axes
+figure(1);
+clf
+imshow(testImg);
+hold on
+scatter(x0, y0, 8, 'g')
+scatter(X, Y, 5, 'r','filled');
 % axis equal;
-% xlabel('x');
-% ylabel('y');
-% title('Ellipse Plot');
-% grid on;
+xlabel('x');
+ylabel('y');
+title('Ellipse Plot');
+grid on;
 
+if ERROR_VISUAL_CHECK == true
+    % Visualize error function from ellipse equation
+    errFcn = @(u, v, invConicLocus) ([u, v, 1] * invConicLocus * [u; v; 1])^2;
+    axisGrid = 0:1:1024;
+    [Xgrid, Ygrid] = meshgrid(axisGrid);
 
-% Visualize error function from ellipse equation
-errFcn = @(u, v, invConicLocus) ([u, v, 1] * invConicLocus * [u; v; 1])^2;
-axisGrid = 0:1:1024;
-[Xgrid, Ygrid] = meshgrid(axisGrid);
+    % errEval = errFcn(Xgrid, Ygrid, inv(tightConeLocusImageMatrix_PixCoords));
+    errEval = zeros(size(Xgrid));
+    % invConicLocus = inv(tightConeLocusImageMatrix_PixCoords);
 
-% errEval = errFcn(Xgrid, Ygrid, inv(tightConeLocusImageMatrix_PixCoords));
-errEval = zeros(size(Xgrid));
-% invConicLocus = inv(tightConeLocusImageMatrix_PixCoords);
-
-for idX = 1:length(axisGrid)
-    for idY = 1:length(axisGrid)
-        errEval(idX, idY) = errFcn(Xgrid(idX, idY), Ygrid(idX, idY), tightConeLocusImageMatrix_PixCoords);
+    for idX = 1:length(axisGrid)
+        for idY = 1:length(axisGrid)
+            errEval(idX, idY) = errFcn(Xgrid(idX, idY), Ygrid(idX, idY), tightConeLocusImageMatrix_PixCoords);
+        end
     end
+
+    NumOfLevels = 1000;
+    figure;
+    contour3(Xgrid, Ygrid, errEval, NumOfLevels); % OK
+    xlabel('X image axis')
+    ylabel('Y image axis')
+    zlabel('Z Error value')
+    DefaultPlotOpts();
 end
-
-NumOfLevels = 1000;
-figure;
-contour3(Xgrid, Ygrid, errEval, NumOfLevels); % OK
-xlabel('X image axis')
-ylabel('Y image axis')
-zlabel('Z Error value')
-DefaultPlotOpts(); 
-
 
 %% LOCAL FUNCTION
 function tightConeLocusImageMatrix = ComputeTightConeLocusInImg(dKcam, dShapeMatrix_TF, dDCM_fromTFtoCAM, dBodyPosVec_CAM)
@@ -352,6 +374,8 @@ invKcam = eye(3)/dKcam;
 
 tightConeLocusImageMatrix = transpose(invKcam) *( (dShapeMatrix_CAM * dBodyPosVec_CAM) * (dBodyPosVec_CAM' * dShapeMatrix_CAM) ...
                         - (dBodyPosVec_CAM' * dShapeMatrix_CAM * dBodyPosVec_CAM - 1.0) * dShapeMatrix_CAM) * invKcam;
+
+tightConeLocusImageMatrix(abs(tightConeLocusImageMatrix) < eps) = 0;
 
 end
 
