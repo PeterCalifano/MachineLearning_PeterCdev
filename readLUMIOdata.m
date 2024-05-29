@@ -156,7 +156,7 @@ ReferenceData.dqSVRPplus_fromTBtoIN = o_dqSVRPplus_fromTBtoIN';
 ReferenceData.dSunDir_IN = (i_drSun./vecnorm(i_drSun', 2, 2)')'; % [deg]
 
 % Visual check before executing sequence of renderings
-i_dRbody = 1780;
+i_dRbody = 1737.4;
 
 [o_dSunPhaseAngle] = plot3DtrajectoryAndBoresight(drStateCam_IN, ...
     o_dqSVRPplus_fromCAMtoIN, i_drSun, i_dRbody);
@@ -257,6 +257,13 @@ tightConeLocusImageMatrix_PixCoords = ComputeTightConeLocusInImg(dKcam, dShapeMa
     dDCM_fromTFtoCAM(:,:,idT), dBodyPosVec_CAM);
 
 tightConeLocusImageMatrix_PixCoords = tightConeLocusImageMatrix_PixCoords./tightConeLocusImageMatrix_PixCoords(3,3);
+
+[o_dtightConeLocusImageMatrix, o_strConicData, o_dlimbPixCoords] = ComputeHorizonImageConic(dKcam, ...
+    dShapeMatrix_TF, ...
+    dDCM_fromTFtoCAM(:,:,idT), ...
+    dBodyPosVec_CAM, ...
+    [0, pi/8, pi/4, pi/2, pi], ...
+    0);
 
 
 dHomogShapeMatrix_TF = diag([1, 1, 1, -R_Moon^2]);
