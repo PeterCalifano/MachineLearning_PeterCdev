@@ -58,6 +58,7 @@ if nargout > 1
     E = 2 * o_dtightConeLocusImageMatrix(2,3);
     F = o_dtightConeLocusImageMatrix(3,3);
 
+    
     assert(A>=0, "A coefficient must be >= 0")
     assert(C>=0, "C coefficient must be >= 0")
 
@@ -72,9 +73,15 @@ if nargout > 1
         denom1 = (B^2 - 4*A*C) * (A + C + abs(A - C));
         denom2 = (B^2 - 4*A*C) * (A + C - abs(A - C));
 
-        semiMajorAx = sqrt(-numerator / denom1);
-        semiMinorAx = sqrt(-numerator / denom2);
-
+        if (-numerator / denom1) > 0
+            semiMajorAx = sqrt(-numerator / denom1);
+            semiMinorAx = sqrt(-numerator / denom2);
+        else
+            radius = sqrt(ellipseCx^2 + ellipseCy^2 - F / A);
+            semiMajorAx = radius;
+            semiMinorAx = radius;
+        end
+        
         majorAxisAngleFromX = 0;
 
     elseif B > 0
