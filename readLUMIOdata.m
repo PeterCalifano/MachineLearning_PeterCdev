@@ -87,10 +87,10 @@ R_Moon = 1737.4; % [km]
 dDCM_Moon_fromTBtoIN = cspice_pxform(MoonFixedFrame, GlobalFrame, etVec);
 
 % Position of spacecraft relative to Moon centred frame
-xCamPosFromBody_IN = xTrueTrajIn(1:3,:) - MoonTrajIn(1:3,:); 
+xCamPosFromBody_IN = xTrueTrajIn(1:3,:) - MoonTrajIn(1:3,:);
 
-% Position of the spacecraft relative to Sun 
-xCamPosFromSun_IN = xTrueTrajIn(1:3,:) - SunTrajIn(1:3,:); 
+% Position of the spacecraft relative to Sun
+xCamPosFromSun_IN = xTrueTrajIn(1:3,:) - SunTrajIn(1:3,:);
 
 % Construct LUMIO attitude matrices and relative attitude matrix (MoonSpacecraft)
 % Per lumio, z verso la luna e y perpendicolare al sole
@@ -106,99 +106,99 @@ for idT = 1:size(xAxisCam_IN, 2)
     dDCM_fromTFtoCAM(:,:, idT) = dDCM_fromINtoCAM(:,:,idT) * transpose(dDCM_Moon_fromTBtoIN(:,:,idT));
 end
 
+i_dRbody = 1737.4;
 
 if RUN_RENDERING == true
 
-%% Rendering
-i_drCam
-i_drTargetBody
-i_drSun
-o_dqSVRPminus_fromInvCAMtoIN
-o_dqSVRPplus_fromINtoTBbl
+    %% Rendering
+    % i_drCam
+    % i_drTargetBody
+    % i_drSun
+    % o_dqSVRPminus_fromInvCAMtoIN
+    % o_dqSVRPplus_fromINtoTBbl
 
-%% Camera definition
-CameraData.fov = 6; % [deg]
-CameraData.resx = 1024;
-CameraData.resy = 1024;
+    %% Camera definition
+    CameraData.fov = 6; % [deg]
+    CameraData.resx = 1024;
+    CameraData.resy = 1024;
 
-%% Blender Options definition
-BlenderOpts.encoding = 8;
-BlenderOpts.rendSamples = 128;
-BlenderOpts.scene_viewSamples = 64;
-BlenderOpts.scattering = 0;
+    %% Blender Options definition
+    BlenderOpts.encoding = 8;
+    BlenderOpts.rendSamples = 128;
+    BlenderOpts.scene_viewSamples = 64;
+    BlenderOpts.scattering = 0;
 
-%% Scenario data definition
-SceneData.scenarioName = "S6_Moon";
-SceneData.rStateCam    = i_drCam'; % In TF Blender frame
-SceneData.rTargetBody  = i_drTargetBody; % In TF Blender frame
-SceneData.rSun         = i_drSun'; % In TF frame
-% SceneData.qFromINtoCAM = o_dqSVRPminus_fromInvCAMtoIN; % Defined left handed
-% SceneData.qFromINtoTF  = o_dqSVRPplus_fromINtoTB'; % Left handed given as Right Handed "inverted"
+    %% Scenario data definition
+    SceneData.scenarioName = "S6_Moon";
+    SceneData.rStateCam    = i_drCam'; % In TF Blender frame
+    SceneData.rTargetBody  = i_drTargetBody; % In TF Blender frame
+    SceneData.rSun         = i_drSun'; % In TF frame
+    % SceneData.qFromINtoCAM = o_dqSVRPminus_fromInvCAMtoIN; % Defined left handed
+    % SceneData.qFromINtoTF  = o_dqSVRPplus_fromINtoTB'; % Left handed given as Right Handed "inverted"
 
-SceneData.qFromINtoCAM = o_dqSVRPminus_fromInvCAMtoIN'; % Defined left handed
-SceneData.qFromINtoTF  = o_dqSVRPplus_fromINtoTBbl'; % Left handed given as Right Handed "inverted"
+    SceneData.qFromINtoCAM = o_dqSVRPminus_fromInvCAMtoIN'; % Defined left handed
+    SceneData.qFromINtoTF  = o_dqSVRPplus_fromINtoTBbl'; % Left handed given as Right Handed "inverted"
 
-i_bVERBOSE_MODE = true;
-i_bCALL_BLENDER = true;
-i_bRUN_IN_BACKGROUND = true;
+    i_bVERBOSE_MODE = true;
+    i_bCALL_BLENDER = true;
+    i_bRUN_IN_BACKGROUND = true;
 
-% o_strConfigJSON NOT ASSIGNED INSIDE!
-% Allocate dimensional data as Reference: [km]
-% MoonDiamInBlender = 3474.84; % [km]
+    % o_strConfigJSON NOT ASSIGNED INSIDE!
+    % Allocate dimensional data as Reference: [km]
+    % MoonDiamInBlender = 3474.84; % [km]
 
-drStateCam_IN = scaleBU2m * i_drCam;
+    drStateCam_IN = scaleBU2m * i_drCam;
 
-ReferenceData.drStateCam_IN = drStateCam_IN'; % [km]
-ReferenceData.dqSVRPplus_fromCAMtoIN = o_dqSVRPplus_fromCAMtoIN'; % Not in Blender convention (inverted Z)
-ReferenceData.dqSVRPplus_fromTBtoIN = o_dqSVRPplus_fromTBtoIN';
-% ReferenceData.dAzCAM_TF = AZ_Scatter; % [deg]
-% ReferenceData.dElCAM_TF = EL_Scatter; % [deg]
-ReferenceData.dSunDir_IN = (i_drSun./vecnorm(i_drSun', 2, 2)')'; % [deg]
+    ReferenceData.drStateCam_IN = drStateCam_IN'; % [km]
+    ReferenceData.dqSVRPplus_fromCAMtoIN = o_dqSVRPplus_fromCAMtoIN'; % Not in Blender convention (inverted Z)
+    ReferenceData.dqSVRPplus_fromTBtoIN = o_dqSVRPplus_fromTBtoIN';
+    % ReferenceData.dAzCAM_TF = AZ_Scatter; % [deg]
+    % ReferenceData.dElCAM_TF = EL_Scatter; % [deg]
+    ReferenceData.dSunDir_IN = (i_drSun./vecnorm(i_drSun', 2, 2)')'; % [deg]
 
-% Visual check before executing sequence of renderings
-i_dRbody = 1737.4;
+    % Visual check before executing sequence of renderings
 
-[o_dSunPhaseAngle] = plot3DtrajectoryAndBoresight(drStateCam_IN, ...
-    o_dqSVRPplus_fromCAMtoIN, i_drSun, i_dRbody);
+    [o_dSunPhaseAngle] = plot3DtrajectoryAndBoresight(drStateCam_IN, ...
+        o_dqSVRPplus_fromCAMtoIN, i_drSun, i_dRbody);
 
-% Call to Blender API
-i_cPath2BlenderExe = '';
+    % Call to Blender API
+    i_cPath2BlenderExe = '';
 
-if strcmpi(computer, 'PCWIN64')
-    i_cPath2CORTO = 'C:\devDir\corto_PeterCdev';
-else
-    i_cPath2CORTO = '/home/peterc/devDir/corto_PeterCdev';
-end
-
-input('----- PRESS ENTER TO START RENDERING -----')
-[o_strConfigJSON, o_ui8ImgSequence, o_cOutputPath] = MATLAB_BlenderCORTO_API( ...
-    i_ui16Nposes,  ...
-    SceneData, ...
-    CameraData, ...
-    BlenderOpts, ...
-    ReferenceData, ...
-    i_bCALL_BLENDER, ...
-    i_cPath2CORTO, ...
-    i_cPath2BlenderExe, ...
-    i_bRUN_IN_BACKGROUND, ...
-    i_bVERBOSE_MODE);
-
-if bSHOW_IMAGE_SEQUENCE == true
-    % Check images
-    figure;
-    for id = 1:i_ui16Nimages
-        imshow(o_ui8ImgSequence(:, :, id))
-        pause(0.001)
+    if strcmpi(computer, 'PCWIN64')
+        i_cPath2CORTO = 'C:\devDir\corto_PeterCdev';
+    else
+        i_cPath2CORTO = '/home/peterc/devDir/corto_PeterCdev';
     end
-end
 
-%% Generate video from image sequence
-% folderPath = fullfile(o_cOutputPath);
+    input('----- PRESS ENTER TO START RENDERING -----')
+    [o_strConfigJSON, o_ui8ImgSequence, o_cOutputPath] = MATLAB_BlenderCORTO_API( ...
+        i_ui16Nposes,  ...
+        SceneData, ...
+        CameraData, ...
+        BlenderOpts, ...
+        ReferenceData, ...
+        i_bCALL_BLENDER, ...
+        i_cPath2CORTO, ...
+        i_cPath2BlenderExe, ...
+        i_bRUN_IN_BACKGROUND, ...
+        i_bVERBOSE_MODE);
 
-imgSource = '/home/peterc/devDir/nav-backend/customExamples/matlab/CORTO_OUTPUT/S2_Itokawa_2024_05_23_19_09_09/img';
+    if bSHOW_IMAGE_SEQUENCE == true
+        % Check images
+        figure;
+        for id = 1:i_ui16Nimages
+            imshow(o_ui8ImgSequence(:, :, id))
+            pause(0.001)
+        end
+    end
 
-fileName = 'ItokawaRender_23052024';
-imageSeq2Video(imgSource, fileName);
+    %% Generate video from image sequence
+    % folderPath = fullfile(o_cOutputPath);
+
+    imgSource = '/home/peterc/devDir/nav-backend/customExamples/matlab/CORTO_OUTPUT/S2_Itokawa_2024_05_23_19_09_09/img';
+
+    fileName = 'ItokawaRender_23052024';
+    imageSeq2Video(imgSource, fileName);
 
 end
 
@@ -216,7 +216,7 @@ testImg = imread(fullfile(imageFolder, imgName));
 % imshow(testImg);
 
 % Compute Tightly Bouding Cone (Apparent Horizon) matrix representation in Image plane
-% ComputeTightConeLocusInImg = @(dShapeMatrix_CAM, dBodyPosVec_CAM) ... 
+% ComputeTightConeLocusInImg = @(dShapeMatrix_CAM, dBodyPosVec_CAM) ...
 %                         dShapeMatrix_CAM * dBodyPosVec_CAM * dBodyPosVec_CAM' * dShapeMatrix_CAM ...
 %                         - (dBodyPosVec_CAM' * dShapeMatrix_CAM * dBodyPosVec_CAM - 1.0) * dShapeMatrix_CAM;
 
@@ -233,8 +233,16 @@ dKcam(1,1) = focalLength/pixelSize;
 dKcam(2,2) = dKcam(1,1);
 dKcam(3,3) = 1;
 dKcam(1,3) = 1024/2;
-dKcam(2,3) = 1024/2; 
+dKcam(2,3) = 1024/2;
 
+drangeCameraToBody = norm(xCamPosFromBody_IN(:,idT));
+
+anglesRange = 0:0.1:2*pi;
+displDirection = [cos(anglesRange); sin(anglesRange)];
+dTargetPixAvgRadius = i_dRbody/drangeCameraToBody  * dKcam(1,1);
+
+o_dSimExtractedLimbPixels(1:2, idW) = o_strConicData.dEllipseCentre + dTargetPixAvgRadius * displDirection;
+saveStr.ui16coarseLimbPixels(:, idW) = uint16(mvnrnd(o_dSimExtractedLimbPixels(:, idW), sigmaPix));
 
 % CODE FROM PAOLO:
 % sx = 13.3e-3;
@@ -242,14 +250,14 @@ dKcam(2,3) = 1024/2;
 % f = 127;
 % cx =512+0.5;
 % cy =512+0.5;
-% 
+%
 % Ktrue = [(f/sx) 0 cx; 0 (f/sy) cy; 0 0 1];
 
 
 % Camera matrix
 % P = K_c*[rotSC, tSC];
- 
-% Compute circle on the image by proejctin the sphere 
+
+% Compute circle on the image by proejctin the sphere
 % A_circle = inv(P*(A_sphere\P'));
 % A_circle = A_circle./A_circle(3, 3)
 
@@ -298,7 +306,7 @@ if B == 0
 
     a = sqrt(-numerator / denom1);
     b = sqrt(-numerator / denom2);
-    
+
     theta = 0;
 
 elseif B > 0
@@ -372,7 +380,7 @@ end
 
 %% LOCAL FUNCTION
 function tightConeLocusImageMatrix = ComputeTightConeLocusInImg(dKcam, dShapeMatrix_TF, dDCM_fromTFtoCAM, dBodyPosVec_CAM)
-% ComputeTightConeLocusInImg = @(dShapeMatrix_CAM, dBodyPosVec_CAM) ... 
+% ComputeTightConeLocusInImg = @(dShapeMatrix_CAM, dBodyPosVec_CAM) ...
 %                         dShapeMatrix_CAM * dBodyPosVec_CAM * dBodyPosVec_CAM' * dShapeMatrix_CAM ...
 %                         - (dBodyPosVec_CAM' * dShapeMatrix_CAM * dBodyPosVec_CAM - 1.0) * dShapeMatrix_CAM;
 
@@ -380,7 +388,7 @@ dShapeMatrix_CAM = dDCM_fromTFtoCAM * dShapeMatrix_TF * dDCM_fromTFtoCAM';
 invKcam = eye(3)/dKcam;
 
 tightConeLocusImageMatrix = transpose(invKcam) *( (dShapeMatrix_CAM * dBodyPosVec_CAM) * (dBodyPosVec_CAM' * dShapeMatrix_CAM) ...
-                        - (dBodyPosVec_CAM' * dShapeMatrix_CAM * dBodyPosVec_CAM - 1.0) * dShapeMatrix_CAM) * invKcam;
+    - (dBodyPosVec_CAM' * dShapeMatrix_CAM * dBodyPosVec_CAM - 1.0) * dShapeMatrix_CAM) * invKcam;
 
 tightConeLocusImageMatrix(abs(tightConeLocusImageMatrix) < eps) = 0;
 
@@ -388,27 +396,27 @@ end
 
 % Function to define LUMIO Attitude by Paolo
 % function [A_BN, A_BN_hat] = AttitudeDefinition(rSCJ2000, rMJ2000, rSJ2000, sigmaAtt, randVec)
-% 
-% 
+%
+%
 % rSCIn = rSCJ2000;
 % rMIn = rMJ2000;
 % rSIn = rSJ2000;
 % mDirIn = -(rSCIn-rMIn)/norm(rSCIn-rMIn);
 % sDirIn = -(rSCIn-rSIn)/norm(rSCIn-rSIn);
-% 
-% 
+%
+%
 % zb = mDirIn;
 % yb = cross(zb, sDirIn)/norm(cross(zb, sDirIn));
 % xb = cross(yb, zb);
-% 
-% 
+%
+%
 % A_BN = [xb'; yb'; zb'];
-% 
-% 
+%
+%
 % eulErr = sigmaAtt.*randVec; %Attitude knowledge error - Euler angles
 % Ae = eul2rotm(eulErr')';
 % A_BN_hat = Ae*A_BN; %Estimated attitude
-% 
+%
 % end
 
 function [o_dConicInPixelCoord] = computeConic_directMethod(i_dKcam, ...
