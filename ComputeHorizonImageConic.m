@@ -73,15 +73,15 @@ if nargout > 1
         denom1 = (B^2 - 4*A*C) * (A + C + abs(A - C));
         denom2 = (B^2 - 4*A*C) * (A + C - abs(A - C));
 
-        if (-numerator / denom1) > 0
-            semiMajorAx = sqrt(-numerator / denom1);
-            semiMinorAx = sqrt(-numerator / denom2);
-        else
-            radius = sqrt(ellipseCx^2 + ellipseCy^2 - F / A);
-            semiMajorAx = radius;
-            semiMinorAx = radius;
-        end
-        
+        % if (-numerator / denom1) > 0
+        %     semiMajorAx = sqrt(-numerator / denom1);
+        %     semiMinorAx = sqrt(-numerator / denom2);
+        % else
+        radius = sqrt(ellipseCx^2 + ellipseCy^2 - F / A);
+        semiMajorAx = radius;
+        semiMinorAx = radius;
+        % end
+
         majorAxisAngleFromX = 0;
 
     elseif B > 0
