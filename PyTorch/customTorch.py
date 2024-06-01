@@ -18,7 +18,7 @@ import torch.nn.functional as F # Module to apply activation functions in forwar
 #     def __init__():
 
 # %% Function to get device if not passed to trainModel and validateModel()
-def getDevice():
+def GetDevice():
     device = ("cuda:0"
               if torch.cuda.is_available()
               else "mps"
@@ -28,7 +28,7 @@ def getDevice():
     return device
 
 # %% Function to perform one step of training of a model using dataset and specified loss function - 04-05-2024
-def trainModel(dataloader:DataLoader, model:nn.Module, lossFcn, optimizer, device=getDevice()):
+def TrainModel(dataloader:DataLoader, model:nn.Module, lossFcn, optimizer, device=GetDevice()):
     size=len(dataloader.dataset) # Get size of dataloader dataset object
     model.train() # Set model instance in training mode ("informing" backend that the training is going to start)
     for batch, (X, Y) in enumerate(dataloader): # Recall that enumerate gives directly both ID and value in iterable object
@@ -49,7 +49,7 @@ def trainModel(dataloader:DataLoader, model:nn.Module, lossFcn, optimizer, devic
             print(f"loss: {loss:>7f}  [{currentStep:>5d}/{size:>5d}]")
 
 # %% Function to validate model using dataset and specified loss function - 04-05-2024
-def validateModel(dataloader:DataLoader, model:nn.Module, lossFcn, device=getDevice()):
+def ValidateModel(dataloader:DataLoader, model:nn.Module, lossFcn, device=GetDevice()):
     size = len(dataloader.dataset) 
     numberOfBatches = len(dataloader)
     model.eval() # Set the model in evaluation mode
@@ -71,8 +71,33 @@ def validateModel(dataloader:DataLoader, model:nn.Module, lossFcn, device=getDev
     correctOuputs /= size # Compute percentage of correct classifications over batch size
     print(f"Test Error: \n Accuracy: {(100*correctOuputs):>0.1f}%, Avg loss: {testLoss:>8f} \n")
 
+
+# %% Class to define a custom loss function for training, validation and testing - 01-06-2024
+# NOTE: Function EvalLossFcn must be implemented using Torch operations to work!
+
+class CustomLossFcn(nn.Module):
+    # Class constructor
+    def __init__(self, EvalLossFcn:function) -> None:
+        super(CustomLossFcn, self).__init__() # Call constructor of nn.Module
+        if len(EvalLossFcn) >= 2:
+            self.LossFcnObj = EvalLossFcn
+        else: 
+            raise ValueError('Custom EvalLossFcn must take at least two inputs: inputVector, labelVector')    
+
+    # Forward Pass evaluation method using defined EvalLossFcn
+    def forward(self, inputVector, labelVector, params=None):
+        lossBatch = self.LossFcnObj(inputVector, labelVector, params)
+        return lossBatch.mean()
+   
+# %% Custom loss function for Moon Limb pixel extraction CNN enhancer - 01-06-2024
+def MoonLimbPixConvEnhancer_LossFcn(inputVector, labelVector, params=None):
+    lossValue = x.transpose() * A * x # TO IMPLEMENT
+    return lossValue
+
+
+
 # %% Function to save model state - 04-05-2024
-def SaveModelState(model:nn.Module, modelName:str="trainedModel"):
+def SaveModelState(model:nn.Module, modelName:str="trainedModel") -> None:
     import os.path
     if not(os.path.isdir('./testModels')):
         os.mkdir('testModels')
@@ -95,24 +120,35 @@ def SaveModelState(model:nn.Module, modelName:str="trainedModel"):
     print("Saving PyTorch Model State to", filename)
     torch.save(model.state_dict(), filename) # Save model as internal torch representation
 
-
-def LoadModelState(model:nn.Module, modelName:str="trainedModel", filepath:str="testModels/"):
-
+# %% Function to load model state - 04-05-2024 
+def LoadModelState(model:nn.Module, modelName:str="trainedModel", filepath:str="testModels/") -> nn.Module:
     # Contatenate file path
     modelPath = filepath + modelName + ".pth"
     # Load model from file
     model.load_state_dict(torch.load(modelPath))
     # Evaluate model to set (weights, biases)
     model.eval()
+    return model
+
+# %% Function to save Dataset object - 01-06-2024
+def SaveTorchDataset(datasetObj:Dataset, datasetFilePath:str) -> None:
+    torch.save(datasetObj, datasetFilePath + ".pt")
+
+# %% Function to load Dataset object - 01-06-2024
+def LoadTorchDataset(datasetFilePath:str) -> Dataset:
+    return torch.load(datasetFilePath + ".pt")
 
 
+# %% Generic Dataset class for Supervised learning - 30-05-2024
 # Base class for Supervised learning datasets
 # Reference for implementation of virtual methods: https://stackoverflow.com/questions/4714136/how-to-implement-virtual-methods-in-python
 from abc import abstractmethod
 from abc import ABCMeta
 
+
 class GenericSupervisedDataset(Dataset, metaclass=ABCMeta):
-    def __init__(self, inputDataPath:str, labelsDataPath:str, transform=None, target_transform=None):
+    def __init__(self, inputDataPath:str='inputData/', labelsDataPath:str='labelsData/', 
+                 datasetType:str='train', transform=None, target_transform=None):
         # Store input and labels sources
         self.labelsDir = labelsDataPath
         self.inputDir = inputDataPath
@@ -121,21 +157,24 @@ class GenericSupervisedDataset(Dataset, metaclass=ABCMeta):
         self.transform = transform
         self.target_transform = target_transform
 
+        # Set the dataset type (train, test, validation)
+        self.datasetType = datasetType
+
     def __len__(self):
-        return len(self.img_labels)
+        return len() # TODO
 
     @abstractmethod
     def __getLabelsData__(self):
         raise NotImplementedError()
         # Get and store labels vector
-        self.labels # "Read file" of some kind goes here. Best current option: write to JSON
+        self.labels # TODO: "Read file" of some kind goes here. Best current option: write to JSON 
 
     @abstractmethod
     def __getitem__(self, index):
         raise NotImplementedError()
         return inputVec, label
 
-
+# %% Custom Dataset class for Moon Limb pixel extraction CNN enhancer - 01-06-2024
 class MoonLimbPixCorrector_Dataset(GenericSupervisedDataset):
 
     def __getLabelsData__(self):
