@@ -86,7 +86,7 @@ class Conv2dNet(nn.Module):
 # NOTE: Number of input channels is 3 --> RGB; number of output channels is a hyperparameter that defines how many kernels (i.e. convolutions) 
 # the layer applies to the input channels 
 
-device = customTorch.getDevice()
+device = customTorch.GetDevice()
 ConvNN = Conv2dNet(12, 3, 5).to(device)
 
 # %% TRAINING STEP
