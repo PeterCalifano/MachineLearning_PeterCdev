@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader # Utils for dataset management, storing 
 from torchvision import datasets # Import vision default datasets from torchvision
 from torchvision.transforms import ToTensor # Utils
 import datetime
-
+import numpy as np
 import torch.optim as optim
 import torch.nn.functional as F # Module to apply activation functions in forward pass instead of defining them in the model class
 
@@ -85,13 +85,21 @@ class CustomLossFcn(nn.Module):
             raise ValueError('Custom EvalLossFcn must take at least two inputs: inputVector, labelVector')    
 
     # Forward Pass evaluation method using defined EvalLossFcn
-    def forward(self, inputVector, labelVector, params=None):
-        lossBatch = self.LossFcnObj(inputVector, labelVector, params)
+    def forward(self, predictVector, labelVector, params=None):
+        lossBatch = self.LossFcnObj(predictVector, labelVector, params)
         return lossBatch.mean()
    
 # %% Custom loss function for Moon Limb pixel extraction CNN enhancer - 01-06-2024
-def MoonLimbPixConvEnhancer_LossFcn(inputVector, labelVector, params=None):
-    lossValue = x.transpose() * A * x # TO IMPLEMENT
+def MoonLimbPixConvEnhancer_LossFcn(predictCorrection, labelVector, params:list=None):
+    # alfa*||xCorrT * ConicMatr* xCorr||^2 + (1-alfa)*MSE(label, prediction)
+    # Get parameters and labels for computation of the loss
+    coeff = 0.5
+    LimbConicMatrixImg = np.reshape(labelVector, 3, 3)
+    # Evaluate loss
+    conicLoss = torch.matmul(predictCorrection.T, torch.matmul(LimbConicMatrixImg, predictCorrection)) # Weighting violation of Horizon conic equation
+    L2regLoss = torch.norm(predictCorrection)**2 # Weighting the norm of the correction to keep it as small as possible
+
+    lossValue = coeff * torch.norm(conicLoss)**2 + (1-coeff) * L2regLoss
     return lossValue
 
 
