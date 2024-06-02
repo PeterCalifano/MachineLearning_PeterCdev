@@ -6,6 +6,7 @@ import customTorch
 import datetime
 from torch import nn
 
+from torch.utils.data import Dataset
 from torch.utils.data import DataLoader # Utils for dataset management, storing pairs of (sample, label)
 from torchvision import datasets # Import vision default datasets from torchvision
 from torchvision.transforms import ToTensor # Utils

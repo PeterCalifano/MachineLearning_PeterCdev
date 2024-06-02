@@ -28,6 +28,7 @@ def GetDevice():
     return device
 
 # %% Function to perform one step of training of a model using dataset and specified loss function - 04-05-2024
+# TO REWORK (make it more general)
 def TrainModel(dataloader:DataLoader, model:nn.Module, lossFcn, optimizer, device=GetDevice()):
     size=len(dataloader.dataset) # Get size of dataloader dataset object
     model.train() # Set model instance in training mode ("informing" backend that the training is going to start)
@@ -49,6 +50,7 @@ def TrainModel(dataloader:DataLoader, model:nn.Module, lossFcn, optimizer, devic
             print(f"loss: {loss:>7f}  [{currentStep:>5d}/{size:>5d}]")
 
 # %% Function to validate model using dataset and specified loss function - 04-05-2024
+# TO REWORK (make it more general)
 def ValidateModel(dataloader:DataLoader, model:nn.Module, lossFcn, device=GetDevice()):
     size = len(dataloader.dataset) 
     numberOfBatches = len(dataloader)
@@ -101,7 +103,6 @@ def MoonLimbPixConvEnhancer_LossFcn(predictCorrection, labelVector, params:list=
 
     lossValue = coeff * torch.norm(conicLoss)**2 + (1-coeff) * L2regLoss
     return lossValue
-
 
 
 # %% Function to save model state - 04-05-2024
