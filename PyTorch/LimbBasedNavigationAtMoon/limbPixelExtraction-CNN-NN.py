@@ -31,6 +31,7 @@ from torch.utils.tensorboard import SummaryWriter
 import torch.optim as optim
 import torch.nn.functional as F # Module to apply activation functions in forward pass instead of defining them in the model class
 
+
 # Example code:
 # Note that X given as input to the model is just one, but managed internaly to the class, thus splitting the input as appropriate and only used in the desired layers.
 
