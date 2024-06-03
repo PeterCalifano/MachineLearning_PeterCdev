@@ -37,6 +37,13 @@ import torch.nn.functional as torchFunc # Module to apply activation functions i
 # Alternatively, forward() method can accept multiple inputs based on the definition.
 
 # DEVNOTE: check which modifications are needed for training in mini-batches
+# According to GPT4o, the changes required fro the training in batches are not many. Simply build the dataset accordingly, so that Torch is aware of the split:
+# Exameple: the forward() method takes two input vectors: forward(self, main_inputs, additional_inputs)
+# main_inputs = torch.randn(1000, 784)  # Main input (e.g., image features)
+# additional_inputs = torch.randn(1000, 10)  # Additional input (e.g., metadata)
+# labels = torch.randint(0, 10, (1000,))
+# dataset = TensorDataset(main_inputs, additional_inputs, labels)
+
 class HorizonExtractionEnhancerCNN(nn.Module):
     def __init__(self, outChannelsSizes, kernelSize=3, poolingSize=2, alphaDropCoeff=0.1, alphaLeaky=0.01, patchSize=7) -> None:
         super().__init__()
