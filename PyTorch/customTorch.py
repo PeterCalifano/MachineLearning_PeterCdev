@@ -29,8 +29,10 @@ def GetDevice():
 
 # %% Function to perform one step of training of a model using dataset and specified loss function - 04-05-2024
 # TO REWORK (make it more general)
-def TrainModel(dataloader:DataLoader, model:nn.Module, lossFcn, optimizer, device=GetDevice()):
+def TrainModel(dataloader:DataLoader, model:nn.Module, lossFcn:nn.Module, optimizer, device=GetDevice()):
+
     size=len(dataloader.dataset) # Get size of dataloader dataset object
+
     model.train() # Set model instance in training mode ("informing" backend that the training is going to start)
     for batch, (X, Y) in enumerate(dataloader): # Recall that enumerate gives directly both ID and value in iterable object
 
@@ -49,29 +51,46 @@ def TrainModel(dataloader:DataLoader, model:nn.Module, lossFcn, optimizer, devic
             loss, currentStep = loss.item(), (batch + 1) * len(X)
             print(f"loss: {loss:>7f}  [{currentStep:>5d}/{size:>5d}]")
 
+        # TODO: add command for Tensorboard here
+
 # %% Function to validate model using dataset and specified loss function - 04-05-2024
 # TO REWORK (make it more general)
-def ValidateModel(dataloader:DataLoader, model:nn.Module, lossFcn, device=GetDevice()):
+def ValidateModel(dataloader:DataLoader, model:nn.Module, lossFcn:nn.Module, device=GetDevice(), taskType:str='classification'):
     size = len(dataloader.dataset) 
     numberOfBatches = len(dataloader)
     model.eval() # Set the model in evaluation mode
     testLoss, correctOuputs = 0, 0 # Accumulation variables
 
     with torch.no_grad(): # Tell torch that gradients are not required
+  
         for X,Y in dataloader:
 
             X, Y = X.to(device), Y.to(device) # Define input, label pairs for target device
             # Perform FORWARD PASS
             predVal = model(X) # Evaluate model at input
             testLoss += lossFcn(predVal, Y).item() # Evaluate loss function and accumulate
-            # Determine if prediction is correct and accumulate
-            # Explanation: get largest output logit (the predicted class) and compare to Y. 
-            # Then convert to float and sum over the batch axis, which is not necessary if size is single prediction
-            correctOuputs += (predVal.argmax(1) == Y).type(torch.float).sum().item() 
 
-    testLoss/=numberOfBatches # Compute batch size normalized loss value
-    correctOuputs /= size # Compute percentage of correct classifications over batch size
+            # TODO: MODIFY BASED ON PROBLEM TYPE
+            if taskType.lower() == 'classification': 
+                # Determine if prediction is correct and accumulate
+                # Explanation: get largest output logit (the predicted class) and compare to Y. 
+                # Then convert to float and sum over the batch axis, which is not necessary if size is single prediction
+                correctOuputs += (predVal.argmax(1) == Y).type(torch.float).sum().item() 
+
+            elif taskType.lower() == 'regression':
+                print('TODO')
+
+
+    if taskType.lower() == 'classification': 
+        # TODO: MODIFY BASED ON PROBLEM TYPE
+        testLoss/=numberOfBatches # Compute batch size normalized loss value
+        correctOuputs /= size # Compute percentage of correct classifications over batch size
+
+    elif taskType.lower() == 'regression':
+        print('TODO')
+
     print(f"Test Error: \n Accuracy: {(100*correctOuputs):>0.1f}%, Avg loss: {testLoss:>8f} \n")
+    # TODO: add command for Tensorboard here
 
 
 # %% Class to define a custom loss function for training, validation and testing - 01-06-2024
