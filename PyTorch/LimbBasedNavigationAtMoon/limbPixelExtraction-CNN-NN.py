@@ -51,6 +51,7 @@ class HorizonExtractionEnhancerCNN(nn.Module):
         # Model parameters
         self.outChannelsSizes = outChannelsSizes
         self.patchSize = patchSize
+        self.imagePixSize = self.patchSize**2
         self.numOfConvLayers = 2
         self.LinearInputFeaturesSize = (patchSize - self.numOfConvLayers * np.floor(kernelSize/2.0)) * self.outChannelsSizes[-1] # Number of features arriving as input to FC layer
         self.LinearInputSkipSize = 8
@@ -80,11 +81,12 @@ class HorizonExtractionEnhancerCNN(nn.Module):
         # Output layer
         self.DenseOutput = nn.Linear(self.outChannelsSizes[3], 2, bias=True)
 
-    def forward(self, img2Dinput, contextualInfoInput):
+    def forward(self, inputSample):
         
-        # Extract image from inputSample
-        #imgInput = inputSample[0:imagePixSize-1] # First portion of the input vector
-        #contextualInfoInput = inputSample[imagePixSize:]
+        # Extract image and contextual information from inputSample
+    
+        img2Dinput = inputSample[0:self.imagePixSize-1] # First portion of the input vector
+        contextualInfoInput = inputSample[self.imagePixSize:]
 
         # Convolutional layers
         # L1 (Input)
