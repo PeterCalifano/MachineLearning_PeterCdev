@@ -344,9 +344,9 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
         trainingDataset   = dataloaderIndex['TrainingDataLoader']
         validationDataset = dataloaderIndex['ValidationDataLoader']
 
-        if not(trainingDataset is DataLoader):
+        if not(isinstance(trainingDataset, DataLoader)):
             raise TypeError('Training dataloader is not of type "DataLoader". Check configuration.')
-        if not(validationDataset is DataLoader):
+        if not(isinstance(validationDataset, DataLoader)):
             raise TypeError('Validation dataloader is not of type "DataLoader". Check configuration.')
             
     else:
