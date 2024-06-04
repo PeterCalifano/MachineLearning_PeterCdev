@@ -236,17 +236,49 @@ class GenericSupervisedDataset(Dataset, metaclass=ABCMeta):
         return inputVec, label
 
 # %% Custom Dataset class for Moon Limb pixel extraction CNN enhancer - 01-06-2024
-class MoonLimbPixCorrector_Dataset(GenericSupervisedDataset):
+class MoonLimbPixCorrector_Dataset():
 
-    def __getLabelsData__(self):
-        return super().__getLabelsData__()
+    def __init__(self, dataDict:dict, datasetType:str='train', transform=None, target_transform=None):
+            
+            # Store input and labels sources
+            
+            # Initialize transform objects
+            self.transform = transform
+            self.target_transform = target_transform
+
+            # Set the dataset type (train, test, validation)
+            self.datasetType = datasetType
+
+    def __len__(self):
+        return len() # TODO
+
     
+    def __getLabelsData__(self):
+        self.labels
+
     def __getitem__(self, index):
-        return super().__getitem__(index)
 
 
-# TODO
-#def ControlArgsParser():
+        return inputVec, label
+    
+    # Function to validate path (check it is not completely black or white)
+    def IsPatchValid(patchFlatten, lowerIntensityThr=5):
+        
+        # Count how many pixels are below threshold
+        howManyBelowThreshold = np.sum(patchFlatten <= lowerIntensityThr)
+        howManyPixels = len(patchFlatten)
+        width = np.sqrt(howManyPixels)
+
+        lowerThreshold = width/2
+        upperThreshold = howManyPixels - lowerThreshold
+
+        if howManyBelowThreshold <  lowerThreshold or howManyBelowThreshold > upperThreshold:
+            return False
+        else:
+            return True
+    
+
+
 
 # %% TENSORBOARD functions - 04-06-2024
 # Function to check if Tensorboard is running

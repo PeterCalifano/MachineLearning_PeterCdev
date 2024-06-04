@@ -14,7 +14,6 @@ import matplotlib as mpl
 import customTorch
 
 
-
 def parse_args():
     """Parse command line arguments."""
     parser = argparse.ArgumentParser(description='Dataset preparation pipeline.')

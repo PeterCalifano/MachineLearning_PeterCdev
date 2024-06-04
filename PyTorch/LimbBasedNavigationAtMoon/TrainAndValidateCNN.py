@@ -4,6 +4,7 @@
 # Import modules
 import customTorch # Custom torch tools
 import limbPixelExtraction_CNN_NN
+import datasetPreparation
 
 import torch
 import datetime
@@ -53,19 +54,42 @@ def main():
     #    transform=ToTensor(),
     #) 
 
-    trainingData = Dataset()
-    testData     = Dataset()
+    # Extract data from JSON
+    #trainingDataPath = ''
+    #validationDataPath = ''
+    #trainingDataDict = datasetPreparation.LoadJSONdata(dataPath)
+    #validationDataDict = datasetPreparation.LoadJSONdata(dataPath)
 
+    # Construct Dataset objects
+    #trainingData    = MoonLimbPixCorrector_Dataset(trainingDataDict)
+    #validationData  = MoonLimbPixCorrector_Dataset(validationDataDict)
+
+    # TEMPORARY: load single dataset and split
+    # Create the dataset
+    dataPath = ''
+    dataDict = datasetPreparation.LoadJSONdata(dataPath)
+
+    dataset = customTorch.CustomImageDataset(dataDict)
+
+    # Define the split ratio
+    TRAINING_PERC = 0.8
+
+    trainingSize = int(TRAINING_PERC * len(dataset))  
+    validationSize = len(dataset) - trainingSize 
+
+    # Split the dataset
+    trainingData, validationData = torch.random_split(dataset, [trainingSize, validationSize])
+
+    # Define dataloaders objects
     batch_size = 64 # Defines batch size in dataset
-
     trainingDataset   = DataLoader(trainingData, batch_size, shuffle=True)
-    validationDataset = DataLoader(testData, batch_size, shuffle=True) 
+    validationDataset = DataLoader(validationData, batch_size, shuffle=True) 
 
     dataloaderIndex = {'TrainingDataLoader' : trainingDataset, 'ValidationDataLoader': validationDataset}
 
     # LOSS FUNCTION DEFINITION
-    #loss_fn = nn.CrossEntropyLoss() 
-    lossFcn = 0
+    # Custom EvalLoss function: MoonLimbPixConvEnhancer_LossFcn(predictCorrection, labelVector, params:list=None)
+    lossFcn = customTorch.CustomLossFcn(customTorch.MoonLimbPixConvEnhancer_LossFcn)
 
     # Define optimizer object specifying model instance parameters and optimizer parameters
     if optimizerID == 0:
