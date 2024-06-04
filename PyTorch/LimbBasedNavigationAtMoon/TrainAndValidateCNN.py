@@ -2,6 +2,10 @@
 # Reference works:
 
 # Import modules
+import sys, os
+# Append paths of custom modules
+sys.path.append(os.path.join('/home/peterc/devDir/MachineLearning_PeterCdev/PyTorch'))
+
 import customTorch # Custom torch tools
 import limbPixelExtraction_CNN_NN
 import datasetPreparation
@@ -18,7 +22,6 @@ from torchvision.transforms import ToTensor # Utils
 
 import datetime
 import numpy as np
-import os
 
 from torch.utils.tensorboard import SummaryWriter # Key class to use tensorboard with PyTorch. VSCode will automatically ask if you want to load tensorboard in the current session.
 import torch.optim as optim
@@ -68,33 +71,30 @@ def main():
 
     ######## TEMPORARY CODE: load single dataset and split ########
     # Create the dataset
-    dataPath = '/home/peterc/devDir/MATLABcodes/syntheticRenderings/Datapairs'
-    dirPath, dirNames = os.walk(dataPath)
+    dataPath = os.path.join('/home/peterc/devDir/MATLABcodes/syntheticRenderings/Datapairs')
+    dirNamesRoot = os.listdir(dataPath)
 
     # Select one of the available datapairs folders (each corresponding to a labels generation pipeline output)
     datapairsID = 0
-    dataDirPath = dirPath + dirNames[datapairsID]
-    dirPath, dirNames, filenames = os.walk(dataDirPath)
+    dataDirPath = os.path.join(dataPath, dirNamesRoot[datapairsID])
+    dataFilenames = os.listdir(dataDirPath)
 
-    nImages = len(filenames)
+    nImages = len(dataFilenames)
 
     # DEBUG
     print('Found images:', nImages)
-    print(filenames)
+    print(dataFilenames)
 
     # Get nPatches from the first datapairs files
     dataFileID = 0
-    dataFilePath = dirPath + filenames[dataFileID]
-    tmpdataDict = datasetPreparation.LoadJSONdata(dataFilePath)
-    tmpdataKeys = tmpdataDict.keys()
+    dataFilePath = os.path.join(dataDirPath, dataFilenames[dataFileID])
+    tmpdataDict, tmpdataKeys = datasetPreparation.LoadJSONdata(dataFilePath)
 
     # DEBUG
     print(tmpdataKeys)
 
-    nPatches = len(tmpdataDict['ui16coarseLimbPixels'])
+    nPatches = len(tmpdataDict['ui16coarseLimbPixels'][0])
     nSamples = nPatches * nImages
-
-    return 0
 
     # NOTE: each datapair corresponds to an image (i.e. nPatches samples)
     # Initialize dataset building variables
@@ -103,7 +103,7 @@ def main():
     inputDataArray  = np.zeros((57, nSamples))
     labelsDataArray = np.zeros((6, nSamples))
 
-    for dataPair in filenames:
+    for dataPair in dataFilenames:
         # Data dict for ith image
         tmpdataDict = datasetPreparation.LoadJSONdata(dataPath)
 

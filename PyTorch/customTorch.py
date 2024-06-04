@@ -125,7 +125,7 @@ def ValidateModel(dataloader:DataLoader, model:nn.Module, lossFcn:nn.Module, dev
 
 class CustomLossFcn(nn.Module):
     # Class constructor
-    def __init__(self, EvalLossFcn:function) -> None:
+    def __init__(self, EvalLossFcn:callable) -> None:
         super(CustomLossFcn, self).__init__() # Call constructor of nn.Module
         if len(EvalLossFcn) >= 2:
             self.LossFcnObj = EvalLossFcn

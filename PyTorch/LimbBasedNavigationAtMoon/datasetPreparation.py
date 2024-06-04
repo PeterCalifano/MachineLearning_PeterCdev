@@ -36,13 +36,13 @@ def parse_args():
     return parser.parse_args()
 
 
-def LoadJSONdata(dataPath):
+def LoadJSONdata(dataFilePath):
 
-    if not os.path.isdir(dataPath):
+    if not (os.path.isfile(dataFilePath)):
         raise FileExistsError('Data file not found. Check specified dataPath.')
     
     print('Data file FOUND, loading...')
-    with open(dataPath, 'r') as json_file:
+    with open(dataFilePath, 'r') as json_file:
         try:
             dataJSONdict = json.load(json_file) # Load JSON as dict
         except Exception as exceptInstance:
