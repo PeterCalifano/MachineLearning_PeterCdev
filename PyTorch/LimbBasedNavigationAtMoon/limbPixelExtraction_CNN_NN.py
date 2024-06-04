@@ -45,7 +45,7 @@ import torch.nn.functional as torchFunc # Module to apply activation functions i
 # dataset = TensorDataset(main_inputs, additional_inputs, labels)
 
 class HorizonExtractionEnhancerCNN(nn.Module):
-    def __init__(self, outChannelsSizes, kernelSize=3, poolingSize=2, alphaDropCoeff=0.1, alphaLeaky=0.01, patchSize=7) -> None:
+    def __init__(self, outChannelsSizes:list, kernelSize=3, poolingSize=2, alphaDropCoeff=0.1, alphaLeaky=0.01, patchSize=7) -> None:
         super().__init__()
 
         # Model parameters

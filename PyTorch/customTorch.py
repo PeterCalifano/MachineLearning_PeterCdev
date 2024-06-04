@@ -153,26 +153,32 @@ def MoonLimbPixConvEnhancer_LossFcn(predictCorrection, labelVector, params:list=
 
 # %% Function to save model state - 04-05-2024
 def SaveModelState(model:nn.Module, modelName:str="trainedModel") -> None:
-    import os.path
-    if not(os.path.isdir('./testModels')):
-        os.mkdir('testModels')
-        if not(os.path.isfile('.gitignore')):
-            # Write gitignore in the current folder if it does not exist
-            gitignoreFile = open('.gitignore', 'w')
-            gitignoreFile.write("\ntestModels/*")
-            gitignoreFile.close()
-        else:
-            # Append to gitignore if it exists
-            gitignoreFile = open('.gitignore', 'a')
-            gitignoreFile.write("\ntestModels/*")
-            gitignoreFile.close()
-        
+    if 'os.path' not in sys.modules:
+        import os.path
 
+    if modelName == 'trainedModel': 
+        if not(os.path.isdir('./testModels')):
+            os.mkdir('testModels')
+            if not(os.path.isfile('.gitignore')):
+                # Write gitignore in the current folder if it does not exist
+                gitignoreFile = open('.gitignore', 'w')
+                gitignoreFile.write("\ntestModels/*")
+                gitignoreFile.close()
+            else:
+                # Append to gitignore if it exists
+                gitignoreFile = open('.gitignore', 'a')
+                gitignoreFile.write("\ntestModels/*")
+                gitignoreFile.close()
+        filename = "testModels/" + modelName
+    else:
+        filename = modelName
+    
+    # Attach timetag to model checkpoint
     currentTime = datetime.datetime.now()
     formattedTimestamp = currentTime.strftime('%d-%m-%Y_%H-%M') # Format time stamp as day, month, year, hour and minute
 
-    filename = "testModels/" + modelName + "_" + formattedTimestamp
-    print("Saving PyTorch Model State to", filename)
+    filename =  filename + "_" + formattedTimestamp
+    print("Saving PyTorch Model State to:", filename)
     torch.save(model.state_dict(), filename) # Save model as internal torch representation
 
 # %% Function to load model state - 04-05-2024 
@@ -275,13 +281,28 @@ def ConfigTensorboardSession(logDir:str='./tensorboardLogs') -> SummaryWriter:
     return tensorBoardWriter
 
 # %% TRAINING and VALIDATION template function
-def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Module, options:dict={'taskType': 'classification', 'device': GetDevice(), 'epochs': 10, 'batchSize':64}):
+def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Module, optimizer, options:dict={'taskType': 'classification', 
+                                                                                                              'device': GetDevice(), 
+                                                                                                              'epochs': 10, 
+                                                                                                              'Tensorboard':True,
+                                                                                                              'saveCheckpoints':True,
+                                                                                                              'checkpointsDir:': './checkpoints',
+                                                                                                              'modelName': 'trainedModel',
+                                                                                                              'loadCheckpoint': False}):
 
     # Setup options from input dictionary
-    taskType = options['classification']
-    device = options['device']
-    numOfEpochs = options['epochs']
-    batchSize = options['batchSize']
+    taskType          = options['classification']
+    device            = options['device']
+    numOfEpochs       = options['epochs']
+    enableTensorBoard = options['Tensorboard']
+    enableSave        = options['saveCheckpoints']
+    checkpointDir     = options['checkpointsDir']
+    modelName         = options['modelName']
+    
+    ##### DEVNOTE #####
+    if options['loadCheckpoint'] == True:
+        raise NotImplementedError('Current version does not support loading model checkpoints yet!')
+    ###################
 
     # Get Torch dataloaders
     if ('TrainingDataLoader' in dataloaderIndex.keys() and 'ValidationDataLoader' in dataloaderIndex.keys()):
@@ -303,8 +324,41 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
     else:
         tensorBoardWriter = ConfigTensorboardSession()
 
-    # Training and validation loop
+    # Move model to device if possible (check memory)
+    try:
+        print('Moving model to selected device:', device)
+        model = model.to(device) # Create instance of model using device 
+    except Exception as exception:
+        # Add check on error and error handling if memory insufficient for training on GPU:
+        print('Attempt to load model in', device, 'failed due to error: ', repr(exception))
 
+
+    # Training and validation loop
+    input('-------- PRESS ENTER TO START TRAINING LOOP --------')
+    trainLossHistory = []
+    validationLossHistory = []
+
+    for epochID in range(numOfEpochs):
+
+        print(f"Epoch {epochID}\n-------------------------------")
+        # Do training over all batches
+        trainLossHistory[epochID] = TrainModel(trainingDataset, model, lossFcn, optimizer, device, taskType) 
+
+        # Do validation over all batches
+        validationLossHistory[epochID] = ValidateModel(validationDataset, lossFcn, device, taskType) 
+
+        # Update Tensorboard if enabled
+        if enableTensorBoard:       
+            tensorBoardWriter.add_scalar("Loss/train", trainLossHistory[epochID], epochID)
+            tensorBoardWriter.add_scalar("Loss/validation", validationLossHistory[epochID], epochID)
+            tensorBoardWriter.flush() 
+        
+        if enableSave:
+            modelSaveName = checkpointDir + modelName + '_' + epochID
+            SaveModelState(model, modelSaveName)
+        
+
+    return model, trainLossHistory, validationLossHistory
 
 # %% MAIN 
 def main():
