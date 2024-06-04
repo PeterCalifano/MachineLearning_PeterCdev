@@ -118,7 +118,7 @@ def main():
         ui16coarseLimbPixels = np.array(tmpdataDict['ui16coarseLimbPixels'])
         ui8flattenedWindows  = np.array(tmpdataDict['ui8flattenedWindows'])
 
-        for sampleID, patchCentre in enumerate(ui16coarseLimbPixels):
+        for sampleID in range(ui16coarseLimbPixels.shape[1]):
             # Get flattened patch
             flattenedWindow = ui8flattenedWindows[:, sampleID]
 
@@ -126,13 +126,15 @@ def main():
             pathIsValid = True # TODO
 
             if pathIsValid:
-                saveID += 1
                 inputDataArray[0:49, saveID]  = flattenedWindow
                 inputDataArray[49, saveID]    = dRmoonDEM
                 inputDataArray[50:52, saveID] = dSunDir_PixCoords
                 inputDataArray[52:55, saveID] = (Rotation.from_matrix(np.array(dAttDCM_fromTFtoCAM))).as_mrp() # Convert Attitude matrix to MRP parameters
                 inputDataArray[55:, saveID] = dPosCam_TF
                 labelsDataArray[:, saveID] = np.ravel(dLimbConic_PixCoords)
+
+                saveID += 1
+
 
     # Shrink dataset remove entries which have not been filled due to invalid path
     print('Number of removed invalid patches:', nSamples - saveID + 1)
