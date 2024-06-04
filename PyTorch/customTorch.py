@@ -11,6 +11,11 @@ from torchvision import datasets # Import vision default datasets from torchvisi
 from torchvision.transforms import ToTensor # Utils
 import datetime
 import numpy as np
+import sys
+import subprocess
+import psutil
+
+from torch.utils.tensorboard import SummaryWriter # Key class to use tensorboard with PyTorch. VSCode will automatically ask if you want to load tensorboard in the current session.
 import torch.optim as optim
 import torch.nn.functional as F # Module to apply activation functions in forward pass instead of defining them in the model class
 
@@ -28,49 +33,64 @@ def GetDevice():
     return device
 
 # %% Function to perform one step of training of a model using dataset and specified loss function - 04-05-2024
-# TO REWORK (make it more general)
-def TrainModel(dataloader:DataLoader, model:nn.Module, lossFcn:nn.Module, optimizer, device=GetDevice()):
+# Updated by PC 04-06-2024
+
+def TrainModel(dataloader:DataLoader, model:nn.Module, lossFcn:nn.Module, optimizer, device=GetDevice(), taskType:str='classification'):
 
     size=len(dataloader.dataset) # Get size of dataloader dataset object
-
     model.train() # Set model instance in training mode ("informing" backend that the training is going to start)
-    for batch, (X, Y) in enumerate(dataloader): # Recall that enumerate gives directly both ID and value in iterable object
 
+    for batchCounter, (X, Y) in enumerate(dataloader): # Recall that enumerate gives directly both ID and value in iterable object
+
+        # Get input and labels and move to target device memory
         X, Y = X.to(device), Y.to(device) # Define input, label pairs for target device
 
-        # Perform FORWARD PASS
+        # Perform FORWARD PASS to get predictions
         predVal = model(X) # Evaluate model at input
-        loss = lossFcn(predVal, Y) # Evaluate loss function to get loss value (this returns loss function instance, not a value)
+        trainLoss = lossFcn(predVal, Y) # Evaluate loss function to get loss value (this returns loss function instance, not a value)
 
-        # Perform BACKWARD PASS
-        loss.backward() # Compute gradients
-        optimizer.step() # Apply gradients from the loss
+        # Perform BACKWARD PASS to update parameters
+        trainLoss.backward()  # Compute gradients
+        optimizer.step()      # Apply gradients from the loss
         optimizer.zero_grad() # Reset gradients for next iteration
 
-        if batch % 100 == 0: # Print loss value every 100 steps
-            loss, currentStep = loss.item(), (batch + 1) * len(X)
-            print(f"loss: {loss:>7f}  [{currentStep:>5d}/{size:>5d}]")
+        if batchCounter % 100 == 0: # Print loss value every 100 steps
+            trainLoss, currentStep = trainLoss.item(), (batchCounter + 1) * len(X)
+            print(f"Training loss value: {trainLoss:>7f}  [{currentStep:>5d}/{size:>5d}]")
 
-        # TODO: add command for Tensorboard here
-
+    return trainLoss
+    
 # %% Function to validate model using dataset and specified loss function - 04-05-2024
-# TO REWORK (make it more general)
+# Updated by PC 04-06-2024
+
 def ValidateModel(dataloader:DataLoader, model:nn.Module, lossFcn:nn.Module, device=GetDevice(), taskType:str='classification'):
+    # Auxiliary variables
     size = len(dataloader.dataset) 
     numberOfBatches = len(dataloader)
+
     model.eval() # Set the model in evaluation mode
-    testLoss, correctOuputs = 0, 0 # Accumulation variables
+    validationLoss = 0 # Accumulation variables
+
+    # Initialize variables based on task type
+    if taskType.lower() == 'classification': 
+        correctOuputs = 0
+
+    elif taskType.lower() == 'regression':
+        avgRelAccuracy = 0.0
+        avgAbsAccuracy = 0.0
+
+    elif taskType.lower() == 'custom':
+        print('TODO')
 
     with torch.no_grad(): # Tell torch that gradients are not required
-  
         for X,Y in dataloader:
+            # Get input and labels and move to target device memory
+            X, Y = X.to(device), Y.to(device)  
 
-            X, Y = X.to(device), Y.to(device) # Define input, label pairs for target device
             # Perform FORWARD PASS
             predVal = model(X) # Evaluate model at input
-            testLoss += lossFcn(predVal, Y).item() # Evaluate loss function and accumulate
+            validationLoss += lossFcn(predVal, Y).item() # Evaluate loss function and accumulate
 
-            # TODO: MODIFY BASED ON PROBLEM TYPE
             if taskType.lower() == 'classification': 
                 # Determine if prediction is correct and accumulate
                 # Explanation: get largest output logit (the predicted class) and compare to Y. 
@@ -80,16 +100,23 @@ def ValidateModel(dataloader:DataLoader, model:nn.Module, lossFcn:nn.Module, dev
             elif taskType.lower() == 'regression':
                 print('TODO')
 
+            elif taskType.lower() == 'custom':
+                print('TODO')
+
 
     if taskType.lower() == 'classification': 
-        # TODO: MODIFY BASED ON PROBLEM TYPE
-        testLoss/=numberOfBatches # Compute batch size normalized loss value
+        validationLoss /= numberOfBatches # Compute batch size normalized loss value
         correctOuputs /= size # Compute percentage of correct classifications over batch size
+        print(f"Validation (Classification): \n Accuracy: {(100*correctOuputs):>0.1f}%, Avg loss: {validationLoss:>8f} \n")
 
     elif taskType.lower() == 'regression':
         print('TODO')
+        print(f"Validation (Regression): \n Avg absolute accuracy: {avgAbsAccuracy:>0.1f}, Avg relative accuracy: {(100*avgRelAccuracy):>0.1f}%, Avg loss: {validationLoss:>8f} \n")
 
-    print(f"Test Error: \n Accuracy: {(100*correctOuputs):>0.1f}%, Avg loss: {testLoss:>8f} \n")
+    elif taskType.lower() == 'custom':
+        print('TODO')
+
+    return validationLoss
     # TODO: add command for Tensorboard here
 
 
@@ -213,6 +240,57 @@ class MoonLimbPixCorrector_Dataset(GenericSupervisedDataset):
 
 
 # TODO
-#def ConfigTensorboardSession():
 #def ControlArgsParser():
 
+# %% TENSORBOARD functions - 04-06-2024
+# Function to check if Tensorboard is running
+def IsTensorboardRunning() -> bool:
+    """Check if TensorBoard is already running"""
+    for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
+        if 'tensorboard' in proc.info['cmdline']:
+            #return proc.info['pid']
+            return True
+    return False
+
+# Function to start TensorBoard process
+def StartTensorboard(logDir:str) -> None:
+    if not(IsTensorboardRunning):
+        try:
+            subprocess.Popen(['tensorboard', '--logdir', logDir, '--host', '0.0.0.0', '--port', '6006'])
+            print('Tensorboard session successfully started.')
+        except:
+            RuntimeWarning('Tensorboard start-up failed. Continuing without opening session.')
+    else:
+        print('Tensorboard seems to be running in this session!')
+
+# Function to initialize Tensorboard session and writer
+def ConfigTensorboardSession(logDir:str='./tensorboardLogs') -> SummaryWriter:
+    
+    StartTensorboard(logDir) 
+    # Define writer # By default, this will write in a folder names "runs" in the directory of the main script. Else change providing path as first input.
+    tensorBoardWriter = SummaryWriter(log_dir=logDir, comment='', purge_step=None, max_queue=10, flush_secs=120, filename_suffix='') 
+
+    # Return initialized writer
+    return tensorBoardWriter
+
+# %% TRAINING and VALIDATION template function
+def TrainAndValidateModel(dataloader:DataLoader, model:nn.Module, lossFcn: nn.Module):
+
+    # Setup options
+    taskType = 'classification'
+    device = GetDevice()
+
+    # Configure Tensorboard
+    logDirectory = './tensorBoardLogs'
+    tensorBoardWriter = ConfigTensorboardSession(logDirectory)
+
+    
+    # Training and validation loop
+
+
+# %% MAIN 
+def main():
+    print('In this script, main does actually nothing ^_^.')
+    
+if __name__== '__main__':
+    main()
