@@ -89,5 +89,6 @@ def main():
     '''
     (trainedModel, trainingLosses, validationLosses) = customTorch.TrainAndValidateModel(dataloaderIndex, modelCNN_NN, lossFcn, optimizer, options)
 
+
 if __name__ == '__main__':
     main()
