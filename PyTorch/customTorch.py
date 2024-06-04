@@ -14,6 +14,7 @@ import numpy as np
 import sys
 import subprocess
 import psutil
+import inspect
 
 from torch.utils.tensorboard import SummaryWriter # Key class to use tensorboard with PyTorch. VSCode will automatically ask if you want to load tensorboard in the current session.
 import torch.optim as optim
@@ -127,7 +128,7 @@ class CustomLossFcn(nn.Module):
     # Class constructor
     def __init__(self, EvalLossFcn:callable) -> None:
         super(CustomLossFcn, self).__init__() # Call constructor of nn.Module
-        if len(EvalLossFcn) >= 2:
+        if len((inspect.signature(EvalLossFcn)).parameters) >= 2:
             self.LossFcnObj = EvalLossFcn
         else: 
             raise ValueError('Custom EvalLossFcn must take at least two inputs: inputVector, labelVector')    
@@ -320,12 +321,12 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
                                                                                                               'epochs': 10, 
                                                                                                               'Tensorboard':True,
                                                                                                               'saveCheckpoints':True,
-                                                                                                              'checkpointsDir:': './checkpoints',
+                                                                                                              'checkpointsDir': './checkpoints',
                                                                                                               'modelName': 'trainedModel',
                                                                                                               'loadCheckpoint': False}):
 
     # Setup options from input dictionary
-    taskType          = options['classification']
+    taskType          = options['taskType']
     device            = options['device']
     numOfEpochs       = options['epochs']
     enableTensorBoard = options['Tensorboard']

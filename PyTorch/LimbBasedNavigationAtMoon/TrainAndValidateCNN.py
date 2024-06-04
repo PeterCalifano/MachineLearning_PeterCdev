@@ -29,7 +29,7 @@ import torch.optim as optim
 def main():
 
     # SETTINGS and PARAMETERS 
-    outChannelsSizes = []
+    outChannelsSizes = [16, 32, 50, 25]
     learnRate = 1E-3
     momentumValue = 0.001
 
@@ -40,7 +40,7 @@ def main():
                'epochs': 10, 
                'Tensorboard':True,
                'saveCheckpoints':True,
-               'checkpointsDir:': './checkpoints',
+               'checkpointsDir': './checkpoints',
                'modelName': 'trainedModel',
                'loadCheckpoint': False}
 
@@ -137,7 +137,7 @@ def main():
 
 
     # Shrink dataset remove entries which have not been filled due to invalid path
-    print('Number of removed invalid patches:', nSamples - saveID + 1)
+    print('Number of removed invalid patches:', nSamples - saveID)
     inputDataArray = inputDataArray[:, 0:saveID]           
     labelsDataArray = labelsDataArray[:, 0:saveID]
 
@@ -168,14 +168,15 @@ def main():
     # Custom EvalLoss function: MoonLimbPixConvEnhancer_LossFcn(predictCorrection, labelVector, params:list=None)
     lossFcn = customTorch.CustomLossFcn(customTorch.MoonLimbPixConvEnhancer_LossFcn)
 
+    # MODEL DEFINITION
+    modelCNN_NN = limbPixelExtraction_CNN_NN.HorizonExtractionEnhancerCNN(outChannelsSizes)
+
     # Define optimizer object specifying model instance parameters and optimizer parameters
     if optimizerID == 0:
         optimizer = torch.optim.SGD(modelCNN_NN.parameters(), lr=learnRate, momentum=momentumValue) 
     elif optimizerID == 1:
         optimizer = torch.optim.Adam(modelCNN_NN.parameters(), lr=learnRate)
 
-    # MODEL DEFINITION
-    modelCNN_NN = customTorch.HorizonExtractionEnhancerCNN(outChannelsSizes)
 
     # TRAIN and VALIDATE MODEL
     '''
@@ -184,7 +185,7 @@ def main():
                                                                                                               'epochs': 10, 
                                                                                                               'Tensorboard':True,
                                                                                                               'saveCheckpoints':True,
-                                                                                                              'checkpointsDir:': './checkpoints',
+                                                                                                              'checkpointsDir': './checkpoints',
                                                                                                               'modelName': 'trainedModel',
                                                                                                               'loadCheckpoint': False}):
     '''

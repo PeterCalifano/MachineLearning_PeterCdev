@@ -70,10 +70,10 @@ class HorizonExtractionEnhancerCNN(nn.Module):
         # Fully Connected predictor
         # NOTE: Add batch normalization here
         self.FlattenL3 = nn.Flatten()
-        self.batchNormL3 = nn.BatchNorm1d(self.LinearInputSize, eps=1E-5, momentum=0.1, affine=True) # affine=True set gamma and beta parameters as learnable
+        self.batchNormL3 = nn.BatchNorm1d(int(self.LinearInputSize), eps=1E-5, momentum=0.1, affine=True) # affine=True set gamma and beta parameters as learnable
 
         self.dropoutL4 = nn.Dropout2d(alphaDropCoeff)
-        self.DenseL4 = nn.Linear(self.LinearInputSize, self.outChannelsSizes[2], bias=True)
+        self.DenseL4 = nn.Linear(int(self.LinearInputSize), self.outChannelsSizes[2], bias=True)
 
         self.dropoutL5 = nn.Dropout1d(alphaDropCoeff)
         self.DenseL5 = nn.Linear(self.outChannelsSizes[2], self.outChannelsSizes[3], bias=True)
