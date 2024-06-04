@@ -265,7 +265,8 @@ def StartTensorboard(logDir:str) -> None:
 
 # Function to initialize Tensorboard session and writer
 def ConfigTensorboardSession(logDir:str='./tensorboardLogs') -> SummaryWriter:
-    
+
+    print('Tensorboard logging directory:', logDir)
     StartTensorboard(logDir) 
     # Define writer # By default, this will write in a folder names "runs" in the directory of the main script. Else change providing path as first input.
     tensorBoardWriter = SummaryWriter(log_dir=logDir, comment='', purge_step=None, max_queue=10, flush_secs=120, filename_suffix='') 
@@ -274,17 +275,34 @@ def ConfigTensorboardSession(logDir:str='./tensorboardLogs') -> SummaryWriter:
     return tensorBoardWriter
 
 # %% TRAINING and VALIDATION template function
-def TrainAndValidateModel(dataloader:DataLoader, model:nn.Module, lossFcn: nn.Module):
+def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Module, options:dict={'taskType': 'classification', 'device': GetDevice(), 'epochs': 10, 'batchSize':64}):
 
-    # Setup options
-    taskType = 'classification'
-    device = GetDevice()
+    # Setup options from input dictionary
+    taskType = options['classification']
+    device = options['device']
+    numOfEpochs = options['epochs']
+    batchSize = options['batchSize']
+
+    # Get Torch dataloaders
+    if ('TrainingDataLoader' in dataloaderIndex.keys() and 'ValidationDataLoader' in dataloaderIndex.keys()):
+        trainingDataset   = dataloaderIndex['TrainingDataLoader']
+        validationDataset = dataloaderIndex['ValidationDataLoader']
+
+        if not(trainingDataset is DataLoader):
+            raise TypeError('Training dataloader is not of type "DataLoader". Check configuration.')
+        if not(validationDataset is DataLoader):
+            raise TypeError('Validation dataloader is not of type "DataLoader". Check configuration.')
+            
+    else:
+        raise IndexError('Configuration error: either TrainingDataLoader or ValidationDataLoader is not a key of dataloaderIndex')
 
     # Configure Tensorboard
-    logDirectory = './tensorBoardLogs'
-    tensorBoardWriter = ConfigTensorboardSession(logDirectory)
+    if 'logDirectory' in options.keys():
+        logDirectory = options['logDirectory']
+        tensorBoardWriter = ConfigTensorboardSession(logDirectory)
+    else:
+        tensorBoardWriter = ConfigTensorboardSession()
 
-    
     # Training and validation loop
 
 
