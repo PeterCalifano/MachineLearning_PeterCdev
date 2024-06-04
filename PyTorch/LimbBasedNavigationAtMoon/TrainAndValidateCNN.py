@@ -9,6 +9,7 @@ import datasetPreparation
 import torch
 import datetime
 from torch import nn
+from scipy.spatial.transform import Rotation
 
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader # Utils for dataset management, storing pairs of (sample, label)
@@ -17,6 +18,7 @@ from torchvision.transforms import ToTensor # Utils
 
 import datetime
 import numpy as np
+import os
 
 from torch.utils.tensorboard import SummaryWriter # Key class to use tensorboard with PyTorch. VSCode will automatically ask if you want to load tensorboard in the current session.
 import torch.optim as optim
@@ -64,12 +66,87 @@ def main():
     #trainingData    = MoonLimbPixCorrector_Dataset(trainingDataDict)
     #validationData  = MoonLimbPixCorrector_Dataset(validationDataDict)
 
-    # TEMPORARY: load single dataset and split
+    ######## TEMPORARY CODE: load single dataset and split ########
     # Create the dataset
-    dataPath = ''
-    dataDict = datasetPreparation.LoadJSONdata(dataPath)
+    dataPath = '/home/peterc/devDir/MATLABcodes/syntheticRenderings/Datapairs'
+    dirPath, dirNames = os.walk(dataPath)
 
-    dataset = customTorch.CustomImageDataset(dataDict)
+    # Select one of the available datapairs folders (each corresponding to a labels generation pipeline output)
+    datapairsID = 0
+    dataDirPath = dirPath + dirNames[datapairsID]
+    dirPath, dirNames, filenames = os.walk(dataDirPath)
+
+    nImages = len(filenames)
+
+    # DEBUG
+    print('Found images:', nImages)
+    print(filenames)
+
+    # Get nPatches from the first datapairs files
+    dataFileID = 0
+    dataFilePath = dirPath + filenames[dataFileID]
+    tmpdataDict = datasetPreparation.LoadJSONdata(dataFilePath)
+    tmpdataKeys = tmpdataDict.keys()
+
+    # DEBUG
+    print(tmpdataKeys)
+
+    nPatches = len(tmpdataDict['ui16coarseLimbPixels'])
+    nSamples = nPatches * nImages
+
+    return 0
+
+    # NOTE: each datapair corresponds to an image (i.e. nPatches samples)
+    # Initialize dataset building variables
+    saveID = 0
+    
+    inputDataArray  = np.zeros((57, nSamples))
+    labelsDataArray = np.zeros((6, nSamples))
+
+    for dataPair in filenames:
+        # Data dict for ith image
+        tmpdataDict = datasetPreparation.LoadJSONdata(dataPath)
+
+        metadataDict = tmpdataDict['metadata']
+
+        dPosCam_TF           = np.array(metadataDict['dPosCam_TF'])
+        dAttDCM_fromTFtoCAM  = np.array(metadataDict['dAttDCM_fromTFtoCAM'])
+        dSunDir_PixCoords    = np.array(metadataDict['dSunDir_PixCoords'])
+        dLimbConic_PixCoords = np.array(metadataDict['dLimbConic_PixCoords'])
+        dRmoonDEM = np.array(metadataDict['dRmoonDEM'])
+
+        ui16coarseLimbPixels = np.array(tmpdataDict['ui16coarseLimbPixels'])
+        ui8flattenedWindows  = np.array(tmpdataDict['ui8flattenedWindows'])
+
+        for sampleID, patchCentre in enumerate(ui16coarseLimbPixels):
+            # Get flattened patch
+            flattenedWindow = ui8flattenedWindows[sampleID]
+
+            # Validate patch
+            pathIsValid = True # TODO
+
+            if pathIsValid:
+                saveID += 1
+                inputDataArray[0:48, saveID]  = flattenedWindow
+                inputDataArray[49, saveID]    = dRmoonDEM
+                inputDataArray[50:51, saveID] = dSunDir_PixCoords
+                inputDataArray[52:54, saveID] = Rotation(np.array(dAttDCM_fromTFtoCAM)).as_mrp() # Convert Attitude matrix to MRP parameters
+                inputDataArray[55:57, saveID] = dPosCam_TF
+                labelsDataArray[:, saveID] = np.flatten(dLimbConic_PixCoords)
+
+    # Shrink dataset remove entries which have not been filled due to invalid path
+    print('Number of removed invalid patches:', nSamples - saveID + 1)
+    inputDataArray = inputDataArray[:, 0:saveID]           
+    labelsDataArray = labelsDataArray[:, 0:saveID]
+
+    ################################################################################################
+    return 0
+
+    dataDict['labelsDataArray'] = labelsDataArray 
+    dataDict['inputDataArray']  = inputDataArray  
+    
+    # INITIALIZE DATASET OBJECT
+    dataset = customTorch.MoonLimbPixCorrector_Dataset(dataDict)
 
     # Define the split ratio
     TRAINING_PERC = 0.8

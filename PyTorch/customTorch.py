@@ -236,12 +236,14 @@ class GenericSupervisedDataset(Dataset, metaclass=ABCMeta):
         return inputVec, label
 
 # %% Custom Dataset class for Moon Limb pixel extraction CNN enhancer - 01-06-2024
+# First prototype completed by PC - 04-06-2024
 class MoonLimbPixCorrector_Dataset():
 
     def __init__(self, dataDict:dict, datasetType:str='train', transform=None, target_transform=None):
-            
             # Store input and labels sources
-            
+            self.labelsDataArray = dataDict['labelsDataArray']
+            self.inputDataArray = dataDict['inputDataArray']
+
             # Initialize transform objects
             self.transform = transform
             self.target_transform = target_transform
@@ -250,14 +252,14 @@ class MoonLimbPixCorrector_Dataset():
             self.datasetType = datasetType
 
     def __len__(self):
-        return len() # TODO
+        return np.shape(self.labelsDataArray)[1]
 
-    
-    def __getLabelsData__(self):
-        self.labels
+    # def __getLabelsData__(self):
+    #     self.labelsDataArray
 
     def __getitem__(self, index):
-
+        label   = self.labelsDataArray[:, index]
+        inputVec = self.inputDataArray[:, index]
 
         return inputVec, label
     
