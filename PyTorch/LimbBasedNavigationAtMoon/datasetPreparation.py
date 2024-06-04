@@ -53,8 +53,9 @@ def LoadJSONdata(dataFilePath):
         # Get JSONdict data keys
         dataKeys = dataJSONdict.keys()
         # Print JSON structure
-        print('Loaded JSON file structure:')
-        print(json.dumps(dataJSONdict, indent=2, default=str))
+        
+        #print('Loaded JSON file structure:')
+        #print(json.dumps(dataJSONdict, indent=2, default=str))
 
     elif isinstance(dataJSONdict, list):
         raise Exception('Decoded JSON as list not yet handled by this implementation. If JSON comes from MATLAB jsonencode(), make sure you are providing a struct() as input and not a cell.')

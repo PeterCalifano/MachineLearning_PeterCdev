@@ -100,12 +100,12 @@ def main():
     # Initialize dataset building variables
     saveID = 0
     
-    inputDataArray  = np.zeros((57, nSamples))
-    labelsDataArray = np.zeros((6, nSamples))
+    inputDataArray  = np.zeros((58, nSamples))
+    labelsDataArray = np.zeros((9, nSamples))
 
     for dataPair in dataFilenames:
         # Data dict for ith image
-        tmpdataDict = datasetPreparation.LoadJSONdata(dataPath)
+        tmpdataDict, tmpdataKeys = datasetPreparation.LoadJSONdata(os.path.join(dataDirPath, dataPair))
 
         metadataDict = tmpdataDict['metadata']
 
@@ -113,26 +113,26 @@ def main():
         dAttDCM_fromTFtoCAM  = np.array(metadataDict['dAttDCM_fromTFtoCAM'])
         dSunDir_PixCoords    = np.array(metadataDict['dSunDir_PixCoords'])
         dLimbConic_PixCoords = np.array(metadataDict['dLimbConic_PixCoords'])
-        dRmoonDEM = np.array(metadataDict['dRmoonDEM'])
+        dRmoonDEM            = np.array(metadataDict['dRmoonDEM'])
 
         ui16coarseLimbPixels = np.array(tmpdataDict['ui16coarseLimbPixels'])
         ui8flattenedWindows  = np.array(tmpdataDict['ui8flattenedWindows'])
 
         for sampleID, patchCentre in enumerate(ui16coarseLimbPixels):
             # Get flattened patch
-            flattenedWindow = ui8flattenedWindows[sampleID]
+            flattenedWindow = ui8flattenedWindows[:, sampleID]
 
             # Validate patch
             pathIsValid = True # TODO
 
             if pathIsValid:
                 saveID += 1
-                inputDataArray[0:48, saveID]  = flattenedWindow
+                inputDataArray[0:49, saveID]  = flattenedWindow
                 inputDataArray[49, saveID]    = dRmoonDEM
-                inputDataArray[50:51, saveID] = dSunDir_PixCoords
-                inputDataArray[52:54, saveID] = Rotation(np.array(dAttDCM_fromTFtoCAM)).as_mrp() # Convert Attitude matrix to MRP parameters
-                inputDataArray[55:57, saveID] = dPosCam_TF
-                labelsDataArray[:, saveID] = np.flatten(dLimbConic_PixCoords)
+                inputDataArray[50:52, saveID] = dSunDir_PixCoords
+                inputDataArray[52:55, saveID] = (Rotation.from_matrix(np.array(dAttDCM_fromTFtoCAM))).as_mrp() # Convert Attitude matrix to MRP parameters
+                inputDataArray[55:, saveID] = dPosCam_TF
+                labelsDataArray[:, saveID] = np.ravel(dLimbConic_PixCoords)
 
     # Shrink dataset remove entries which have not been filled due to invalid path
     print('Number of removed invalid patches:', nSamples - saveID + 1)
@@ -140,10 +140,8 @@ def main():
     labelsDataArray = labelsDataArray[:, 0:saveID]
 
     ################################################################################################
-    return 0
 
-    dataDict['labelsDataArray'] = labelsDataArray 
-    dataDict['inputDataArray']  = inputDataArray  
+    dataDict = {'labelsDataArray': labelsDataArray, 'inputDataArray': inputDataArray}
     
     # INITIALIZE DATASET OBJECT
     dataset = customTorch.MoonLimbPixCorrector_Dataset(dataDict)
@@ -155,7 +153,7 @@ def main():
     validationSize = len(dataset) - trainingSize 
 
     # Split the dataset
-    trainingData, validationData = torch.random_split(dataset, [trainingSize, validationSize])
+    trainingData, validationData = torch.utils.data.random_split(dataset, [trainingSize, validationSize])
 
     # Define dataloaders objects
     batch_size = 64 # Defines batch size in dataset
