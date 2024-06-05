@@ -42,7 +42,8 @@ def main():
                'saveCheckpoints':True,
                'checkpointsDir': './checkpoints',
                'modelName': 'trainedModel',
-               'loadCheckpoint': False}
+               'loadCheckpoint': False,
+               'lossLogName': 'Loss_MoonHorizonExtraction'}
 
     # DATASET LOADING
     # TODO: add datasets

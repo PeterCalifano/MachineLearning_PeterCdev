@@ -323,7 +323,8 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
                                                                                                               'saveCheckpoints':True,
                                                                                                               'checkpointsDir': './checkpoints',
                                                                                                               'modelName': 'trainedModel',
-                                                                                                              'loadCheckpoint': False}):
+                                                                                                              'loadCheckpoint': False,
+                                                                                                              'lossLogName': 'Loss-value'}):
 
     # Setup options from input dictionary
     taskType          = options['taskType']
@@ -333,7 +334,8 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
     enableSave        = options['saveCheckpoints']
     checkpointDir     = options['checkpointsDir']
     modelName         = options['modelName']
-    
+    lossLogName       = options['lossLogName']
+
     ##### DEVNOTE #####
     if options['loadCheckpoint'] == True:
         raise NotImplementedError('Current version does not support loading model checkpoints yet!')
@@ -384,8 +386,8 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
 
         # Update Tensorboard if enabled
         if enableTensorBoard:       
-            tensorBoardWriter.add_scalar("Loss/train", trainLossHistory[epochID], epochID)
-            tensorBoardWriter.add_scalar("Loss/validation", validationLossHistory[epochID], epochID)
+            tensorBoardWriter.add_scalar(lossLogName + "/train", trainLossHistory[epochID], epochID)
+            tensorBoardWriter.add_scalar(lossLogName + "/validation", validationLossHistory[epochID], epochID)
             tensorBoardWriter.flush() 
         
         if enableSave:
