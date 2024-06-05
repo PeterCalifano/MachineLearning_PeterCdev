@@ -29,19 +29,19 @@ import torch.optim as optim
 def main():
 
     # SETTINGS and PARAMETERS 
-    outChannelsSizes = [64, 32, 75, 15]
+    outChannelsSizes = [48, 32, 75, 15]
     kernelSizes = [3, 1]
-    learnRate = 1E-5
+    learnRate = 2E-5
     momentumValue = 0.001
 
     optimizerID = 1
 
     options = {'taskType': 'regression', 
                'device': customTorch.GetDevice(), 
-               'epochs': 100, 
+               'epochs': 150, 
                'Tensorboard':True,
                'saveCheckpoints':True,
-               'checkpointsDir': './checkpoints/HorizonPixCorrector_CNN',
+               'checkpointsDir': './checkpoints/HorizonPixCorrector_CNN_run2',
                'modelName': 'trainedModel',
                'loadCheckpoint': False,
                'lossLogName': 'Loss_MoonHorizonExtraction',
