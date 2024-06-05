@@ -15,3 +15,4 @@ norse_scripts/runs
 testModels/*
 modelZoo
 *.asv
+checkpoints/*

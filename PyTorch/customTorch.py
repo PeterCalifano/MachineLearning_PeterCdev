@@ -405,7 +405,7 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
 
     for epochID in range(numOfEpochs):
 
-        print(f"  Training Epoch: {epochID} of {numOfEpochs}\n-------------------------------")
+        print(f"  Training Epoch: {epochID+1} of {numOfEpochs}\n-------------------------------")
         # Do training over all batches
         trainLossHistory[epochID] = TrainModel(trainingDataset, model, lossFcn, optimizer, device, taskType) 
         # Do validation over all batches

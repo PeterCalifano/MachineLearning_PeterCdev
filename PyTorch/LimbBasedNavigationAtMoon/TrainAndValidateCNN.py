@@ -29,7 +29,7 @@ import torch.optim as optim
 def main():
 
     # SETTINGS and PARAMETERS 
-    outChannelsSizes = [32, 32, 75, 15]
+    outChannelsSizes = [64, 32, 75, 15]
     kernelSizes = [3, 1]
     learnRate = 1E-5
     momentumValue = 0.001

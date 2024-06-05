@@ -71,7 +71,7 @@ class HorizonExtractionEnhancerCNN(nn.Module):
         # Fully Connected predictor
         # NOTE: Add batch normalization here
         self.FlattenL3 = nn.Flatten()
-        self.batchNormL3 = nn.BatchNorm1d(int(self.LinearInputSize), eps=1E-5, momentum=0.1, affine=True) # affine=True set gamma and beta parameters as learnable
+        #self.batchNormL3 = nn.BatchNorm1d(int(self.LinearInputSize), eps=1E-5, momentum=0.1, affine=True) # affine=True set gamma and beta parameters as learnable
         #self.batchNormL3 = nn.BatchNorm1d(41, eps=1E-5, momentum=0.1, affine=True) # affine=True set gamma and beta parameters as learnable
 
         self.dropoutL4 = nn.Dropout2d(alphaDropCoeff)
@@ -105,7 +105,7 @@ class HorizonExtractionEnhancerCNN(nn.Module):
         val = torch.cat((val, contextualInfoInput), dim=1)
 
         # L4 
-        val = self.batchNormL3(val)
+        #val = self.batchNormL3(val)
         val = self.dropoutL4(val)
         val = torchFunc.leaky_relu(self.DenseL4(val), self.alphaLeaky)
         # L5
