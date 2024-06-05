@@ -197,7 +197,7 @@ def SaveModelState(model:nn.Module, modelName:str="trainedModel") -> None:
 # %% Function to load model state - 04-05-2024 
 def LoadModelState(model:nn.Module, modelName:str="trainedModel", filepath:str="testModels/") -> nn.Module:
     # Contatenate file path
-    modelPath = filepath + modelName + ".pth"
+    modelPath = os.path.join(filepath, modelName) #  + ".pth"
     # Load model from file
     model.load_state_dict(torch.load(modelPath))
     # Evaluate model to set (weights, biases)
@@ -349,7 +349,8 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
                                                                                                               'checkpointsDir': './checkpoints',
                                                                                                               'modelName': 'trainedModel',
                                                                                                               'loadCheckpoint': False,
-                                                                                                              'lossLogName': 'Loss-value'}):
+                                                                                                              'lossLogName': 'Loss-value',
+                                                                                                              'epochStart': 0}):
 
     # Setup options from input dictionary
     taskType          = options['taskType']
@@ -360,6 +361,7 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
     checkpointDir     = options['checkpointsDir']
     modelName         = options['modelName']
     lossLogName       = options['lossLogName']
+    epochStart        = options['epochStart']
 
     ##### DEVNOTE #####
     if options['loadCheckpoint'] == True:
@@ -405,7 +407,7 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
 
     for epochID in range(numOfEpochs):
 
-        print(f"  Training Epoch: {epochID+1} of {numOfEpochs}\n-------------------------------")
+        print(f"  Training Epoch: {epochID + epochStart} of {epochStart + numOfEpochs}\n-------------------------------")
         # Do training over all batches
         trainLossHistory[epochID] = TrainModel(trainingDataset, model, lossFcn, optimizer, device, taskType) 
         # Do validation over all batches
@@ -413,15 +415,15 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
 
         # Update Tensorboard if enabled
         if enableTensorBoard:       
-            tensorBoardWriter.add_scalar(lossLogName + "/train", trainLossHistory[epochID], epochID)
-            tensorBoardWriter.add_scalar(lossLogName + "/validation", validationLossHistory[epochID], epochID)
+            tensorBoardWriter.add_scalar(lossLogName + "/train", trainLossHistory[epochID], epochID + epochStart)
+            tensorBoardWriter.add_scalar(lossLogName + "/validation", validationLossHistory[epochID], epochID + epochStart)
             tensorBoardWriter.flush() 
         
         if enableSave:
             if not(os.path.isdir(checkpointDir)):
                 os.mkdir(checkpointDir)
 
-            modelSaveName = os.path.join(checkpointDir, modelName + '_' + str(epochID))
+            modelSaveName = os.path.join(checkpointDir, modelName + '_' + str(epochID + epochStart))
             SaveModelState(model, modelSaveName)
         
 

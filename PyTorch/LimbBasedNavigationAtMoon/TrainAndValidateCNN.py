@@ -31,7 +31,7 @@ def main():
     # SETTINGS and PARAMETERS 
     outChannelsSizes = [48, 32, 75, 15]
     kernelSizes = [3, 1]
-    learnRate = 2E-5
+    learnRate = 1E-6
     momentumValue = 0.001
 
     optimizerID = 1
@@ -45,7 +45,19 @@ def main():
                'modelName': 'trainedModel',
                'loadCheckpoint': False,
                'lossLogName': 'Loss_MoonHorizonExtraction',
-               'logDirectory': './tensorboardLog'}
+               'logDirectory': './tensorboardLog',
+               'epochStart': 149}
+
+    # Options to restart training from checkpoint
+    modelSavePath = './checkpoints/HorizonPixCorrector_CNN_run2'
+
+    # Get last saving of model (NOTE: getmtime does not work properly. Use scandir + list comprehension)
+    with os.scandir(modelSavePath) as it:
+        modelNamesWithTime = [(entry.name, entry.stat().st_mtime) for entry in it if entry.is_file()]
+
+    modelName = sorted(modelNamesWithTime, key=lambda x: x[1])[-1][0]
+
+    restartTraining = True
 
     # DATASET LOADING
     # TODO: add datasets
@@ -175,7 +187,18 @@ def main():
     lossFcn = customTorch.CustomLossFcn(customTorch.MoonLimbPixConvEnhancer_LossFcn)
 
     # MODEL DEFINITION
-    modelCNN_NN = limbPixelExtraction_CNN_NN.HorizonExtractionEnhancerCNN(outChannelsSizes, kernelSizes)
+    if restartTraining:
+        checkPointPath = os.path.join(modelSavePath, modelName)
+        if os.path.isfile(checkPointPath):
+
+            print('RESTART training from checkpoint: ', checkPointPath)
+            modelEmpty = limbPixelExtraction_CNN_NN.HorizonExtractionEnhancerCNN(outChannelsSizes, kernelSizes)
+            modelCNN_NN = customTorch.LoadModelState(modelEmpty, modelName, modelSavePath)
+
+        else:
+            raise ValueError('Specified model state file not found. Check input path.')    
+    else:
+        modelCNN_NN = limbPixelExtraction_CNN_NN.HorizonExtractionEnhancerCNN(outChannelsSizes, kernelSizes)
 
     # Define optimizer object specifying model instance parameters and optimizer parameters
     if optimizerID == 0:
@@ -193,7 +216,8 @@ def main():
                                                                                                               'saveCheckpoints':True,
                                                                                                               'checkpointsDir': './checkpoints',
                                                                                                               'modelName': 'trainedModel',
-                                                                                                              'loadCheckpoint': False}):
+                                                                                                              'loadCheckpoint': False,
+                                                                                                              'epochStart': 150}):
     '''
     (trainedModel, trainingLosses, validationLosses) = customTorch.TrainAndValidateModel(dataloaderIndex, modelCNN_NN, lossFcn, optimizer, options)
 
