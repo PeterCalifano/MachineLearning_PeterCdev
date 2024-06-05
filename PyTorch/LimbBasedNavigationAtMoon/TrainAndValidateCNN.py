@@ -29,24 +29,26 @@ import torch.optim as optim
 def main():
 
     # SETTINGS and PARAMETERS 
+    batch_size = 32 # Defines batch size in dataset
+    TRAINING_PERC = 0.75
     outChannelsSizes = [48, 32, 75, 15]
     kernelSizes = [3, 1]
-    learnRate = 1E-6
+    learnRate = 1E-3
     momentumValue = 0.001
 
     optimizerID = 1
 
     options = {'taskType': 'regression', 
                'device': customTorch.GetDevice(), 
-               'epochs': 150, 
+               'epochs': 100, 
                'Tensorboard':True,
                'saveCheckpoints':True,
-               'checkpointsDir': './checkpoints/HorizonPixCorrector_CNN_run2',
+               'checkpointsDir': './checkpoints/HorizonPixCorrector_CNN_run3',
                'modelName': 'trainedModel',
                'loadCheckpoint': False,
                'lossLogName': 'Loss_MoonHorizonExtraction',
                'logDirectory': './tensorboardLog',
-               'epochStart': 149}
+               'epochStart': 0}
 
     # Options to restart training from checkpoint
     modelSavePath = './checkpoints/HorizonPixCorrector_CNN_run2'
@@ -57,7 +59,7 @@ def main():
 
     modelName = sorted(modelNamesWithTime, key=lambda x: x[1])[-1][0]
 
-    restartTraining = True
+    restartTraining = False
 
     # DATASET LOADING
     # TODO: add datasets
@@ -101,7 +103,7 @@ def main():
     print(dataFilenames)
 
     # Get nPatches from the first datapairs files
-    dataFileID = 0
+    dataFileID = 1
     dataFilePath = os.path.join(dataDirPath, dataFilenames[dataFileID])
     tmpdataDict, tmpdataKeys = datasetPreparation.LoadJSONdata(dataFilePath)
 
@@ -167,7 +169,6 @@ def main():
     dataset = customTorch.MoonLimbPixCorrector_Dataset(dataDict)
 
     # Define the split ratio
-    TRAINING_PERC = 0.8
 
     trainingSize = int(TRAINING_PERC * len(dataset))  
     validationSize = len(dataset) - trainingSize 
@@ -176,7 +177,6 @@ def main():
     trainingData, validationData = torch.utils.data.random_split(dataset, [trainingSize, validationSize])
 
     # Define dataloaders objects
-    batch_size = 64 # Defines batch size in dataset
     trainingDataset   = DataLoader(trainingData, batch_size, shuffle=True)
     validationDataset = DataLoader(validationData, batch_size, shuffle=True) 
 
