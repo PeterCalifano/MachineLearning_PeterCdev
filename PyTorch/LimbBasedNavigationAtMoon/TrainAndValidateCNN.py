@@ -29,18 +29,18 @@ import torch.optim as optim
 def main():
 
     # SETTINGS and PARAMETERS 
-    batch_size = 32 # Defines batch size in dataset
+    batch_size = 16 # Defines batch size in dataset
     TRAINING_PERC = 0.75
     outChannelsSizes = [48, 32, 75, 15]
     kernelSizes = [3, 1]
-    learnRate = 1E-3
+    learnRate = 1E-5
     momentumValue = 0.001
 
     optimizerID = 1
 
     options = {'taskType': 'regression', 
                'device': customTorch.GetDevice(), 
-               'epochs': 100, 
+               'epochs': 15, 
                'Tensorboard':True,
                'saveCheckpoints':True,
                'checkpointsDir': './checkpoints/HorizonPixCorrector_CNN_run3',
@@ -48,10 +48,10 @@ def main():
                'loadCheckpoint': False,
                'lossLogName': 'Loss_MoonHorizonExtraction',
                'logDirectory': './tensorboardLog',
-               'epochStart': 0}
+               'epochStart': 30}
 
     # Options to restart training from checkpoint
-    modelSavePath = './checkpoints/HorizonPixCorrector_CNN_run2'
+    modelSavePath = './checkpoints/HorizonPixCorrector_CNN_run3'
 
     # Get last saving of model (NOTE: getmtime does not work properly. Use scandir + list comprehension)
     with os.scandir(modelSavePath) as it:
@@ -59,7 +59,7 @@ def main():
 
     modelName = sorted(modelNamesWithTime, key=lambda x: x[1])[-1][0]
 
-    restartTraining = False
+    restartTraining = True
 
     # DATASET LOADING
     # TODO: add datasets
@@ -103,7 +103,7 @@ def main():
     print(dataFilenames)
 
     # Get nPatches from the first datapairs files
-    dataFileID = 1
+    dataFileID = 0
     dataFilePath = os.path.join(dataDirPath, dataFilenames[dataFileID])
     tmpdataDict, tmpdataKeys = datasetPreparation.LoadJSONdata(dataFilePath)
 
