@@ -315,9 +315,9 @@ def StartTensorboard(logDir:str) -> None:
             RuntimeWarning('Tensorboard start-up failed. Continuing without opening session.')
     else:
         print('Tensorboard seems to be running in this session! Restarting with new directory...')
-        kill_tensorboard()
-        subprocess.Popen(['tensorboard', '--logdir', logDir, '--host', '0.0.0.0', '--port', '6006'])
-        print('Tensorboard session successfully started using logDir:', logDir)
+        #kill_tensorboard()
+        #subprocess.Popen(['tensorboard', '--logdir', logDir, '--host', '0.0.0.0', '--port', '6006'])
+        #print('Tensorboard session successfully started using logDir:', logDir)
 
 # Function to stop TensorBoard process
 def kill_tensorboard():
