@@ -29,23 +29,23 @@ import torch.optim as optim
 def main():
 
     # SETTINGS and PARAMETERS 
-    outChannelsSizes = [16, 32, 50, 25]
+    outChannelsSizes = [32, 64, 75, 15]
     kernelSizes = [3, 1]
-    learnRate = 1E-3
+    learnRate = 1E-5
     momentumValue = 0.001
 
-    optimizerID = 0
+    optimizerID = 1
 
-    options = {'taskType': 'classification', 
+    options = {'taskType': 'regression', 
                'device': customTorch.GetDevice(), 
-               'epochs': 10, 
+               'epochs': 100, 
                'Tensorboard':True,
                'saveCheckpoints':True,
-               'checkpointsDir': './checkpoints',
+               'checkpointsDir': './checkpoints/HorizonPixCorrector_CNN',
                'modelName': 'trainedModel',
                'loadCheckpoint': False,
                'lossLogName': 'Loss_MoonHorizonExtraction',
-               'logDirectory': 'tensorboardLog'}
+               'logDirectory': './tensorboardLog'}
 
     # DATASET LOADING
     # TODO: add datasets

@@ -11,7 +11,7 @@ from torchvision import datasets # Import vision default datasets from torchvisi
 from torchvision.transforms import ToTensor # Utils
 import datetime
 import numpy as np
-import sys, os
+import sys, os, signal
 import subprocess
 import psutil
 import inspect
@@ -98,11 +98,11 @@ def ValidateModel(dataloader:DataLoader, model:nn.Module, lossFcn:nn.Module, dev
                 # Then convert to float and sum over the batch axis, which is not necessary if size is single prediction
                 correctOuputs += (predVal.argmax(1) == Y).type(torch.float).sum().item() 
 
-            elif taskType.lower() == 'regression':
-                print('TODO')
-
-            elif taskType.lower() == 'custom':
-                print('TODO')
+            #elif taskType.lower() == 'regression':
+            #    #print('TODO')
+#
+            #elif taskType.lower() == 'custom':
+            #    print('TODO')
 
 
     if taskType.lower() == 'classification': 
@@ -111,8 +111,10 @@ def ValidateModel(dataloader:DataLoader, model:nn.Module, lossFcn:nn.Module, dev
         print(f"Validation (Classification): \n Accuracy: {(100*correctOuputs):>0.1f}%, Avg loss: {validationLoss:>8f} \n")
 
     elif taskType.lower() == 'regression':
-        print('TODO')
-        print(f"Validation (Regression): \n Avg absolute accuracy: {avgAbsAccuracy:>0.1f}, Avg relative accuracy: {(100*avgRelAccuracy):>0.1f}%, Avg loss: {validationLoss:>8f} \n")
+        #print('TODO')
+        validationLoss /= numberOfBatches
+        print(f"  Validation (Regression): \n Avg validation loss: {validationLoss:>0.1f}\n")
+        #print(f"Validation (Regression): \n Avg absolute accuracy: {avgAbsAccuracy:>0.1f}, Avg relative accuracy: {(100*avgRelAccuracy):>0.1f}%, Avg loss: {validationLoss:>8f} \n")
 
     elif taskType.lower() == 'custom':
         print('TODO')
@@ -308,11 +310,24 @@ def StartTensorboard(logDir:str) -> None:
     if not(IsTensorboardRunning):
         try:
             subprocess.Popen(['tensorboard', '--logdir', logDir, '--host', '0.0.0.0', '--port', '6006'])
-            print('Tensorboard session successfully started.')
+            print('Tensorboard session successfully started using logDir:', logDir)
         except:
             RuntimeWarning('Tensorboard start-up failed. Continuing without opening session.')
     else:
-        print('Tensorboard seems to be running in this session!')
+        print('Tensorboard seems to be running in this session! Restarting with new directory...')
+        kill_tensorboard()
+        subprocess.Popen(['tensorboard', '--logdir', logDir, '--host', '0.0.0.0', '--port', '6006'])
+        print('Tensorboard session successfully started using logDir:', logDir)
+
+# Function to stop TensorBoard process
+def kill_tensorboard():
+    """Kill all running TensorBoard instances."""
+    for process in psutil.process_iter(['pid', 'name', 'cmdline']):
+        if 'tensorboard' in process.info['name']:
+            for cmd in process.info['cmdline']:
+                if 'tensorboard' in cmd:
+                    print(f"Killing process {process.info['pid']}: {process.info['cmdline']}")
+                    os.kill(process.info['pid'], signal.SIGTERM)
 
 # Function to initialize Tensorboard session and writer
 def ConfigTensorboardSession(logDir:str='./tensorboardLogs') -> SummaryWriter:
@@ -385,16 +400,16 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
 
     # Training and validation loop
     input('\n-------- PRESS ENTER TO START TRAINING LOOP --------')
-    trainLossHistory = []
-    validationLossHistory = []
+    trainLossHistory = np.zeros(numOfEpochs)
+    validationLossHistory = np.zeros(numOfEpochs)
 
     for epochID in range(numOfEpochs):
 
-        print(f"  Training Epoch: {epochID} of numOfEpochs\n-------------------------------")
+        print(f"  Training Epoch: {epochID} of {numOfEpochs}\n-------------------------------")
         # Do training over all batches
         trainLossHistory[epochID] = TrainModel(trainingDataset, model, lossFcn, optimizer, device, taskType) 
         # Do validation over all batches
-        validationLossHistory[epochID] = ValidateModel(validationDataset, lossFcn, device, taskType) 
+        validationLossHistory[epochID] = ValidateModel(validationDataset, model, lossFcn, device, taskType) 
 
         # Update Tensorboard if enabled
         if enableTensorBoard:       
@@ -403,7 +418,10 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
             tensorBoardWriter.flush() 
         
         if enableSave:
-            modelSaveName = checkpointDir + modelName + '_' + epochID
+            if not(os.path.isdir(checkpointDir)):
+                os.mkdir(checkpointDir)
+
+            modelSaveName = os.path.join(checkpointDir, modelName + '_' + str(epochID))
             SaveModelState(model, modelSaveName)
         
 
