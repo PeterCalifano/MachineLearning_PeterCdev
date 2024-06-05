@@ -45,7 +45,7 @@ import torch.nn.functional as torchFunc # Module to apply activation functions i
 # dataset = TensorDataset(main_inputs, additional_inputs, labels)
 
 class HorizonExtractionEnhancerCNN(nn.Module):
-    def __init__(self, outChannelsSizes:list, kernelSize=3, poolingSize=2, alphaDropCoeff=0.1, alphaLeaky=0.01, patchSize=7) -> None:
+    def __init__(self, outChannelsSizes:list, kernelSizes, poolingSize=2, alphaDropCoeff=0.1, alphaLeaky=0.01, patchSize=7) -> None:
         super().__init__()
 
         # Model parameters
@@ -53,24 +53,26 @@ class HorizonExtractionEnhancerCNN(nn.Module):
         self.patchSize = patchSize
         self.imagePixSize = self.patchSize**2
         self.numOfConvLayers = 2
-        self.LinearInputFeaturesSize = (patchSize - self.numOfConvLayers * np.floor(kernelSize/2.0)) * self.outChannelsSizes[-1] # Number of features arriving as input to FC layer
-        self.LinearInputSkipSize = 8
+        #self.LinearInputFeaturesSize = (patchSize - self.numOfConvLayers * np.floor(float(kernelSizes[-1])/2.0)) * self.outChannelsSizes[-1] # Number of features arriving as input to FC layer
+        self.LinearInputFeaturesSize = 32 # Need to make this automatic..
+        self.LinearInputSkipSize = 11
         self.LinearInputSize = self.LinearInputSkipSize + self.LinearInputFeaturesSize
 
         self.alphaLeaky = alphaLeaky
 
         # Model architecture
         # Convolutional Features extractor
-        self.conv2dL1 = nn.Conv2d(1, self.outChannelsSizes[0], kernelSize) 
+        self.conv2dL1 = nn.Conv2d(1, self.outChannelsSizes[0], kernelSizes[0]) 
         self.avgPoolL1 = nn.AvgPool2d(poolingSize, poolingSize)
 
-        self.conv2dL2 = nn.Conv2d(self.outChannelsSizes[0], self.outChannelsSizes[1], kernelSize) 
+        self.conv2dL2 = nn.Conv2d(self.outChannelsSizes[0], self.outChannelsSizes[1], kernelSizes[1]) 
         self.avgPoolL2 = nn.AvgPool2d(poolingSize, poolingSize) 
 
         # Fully Connected predictor
         # NOTE: Add batch normalization here
         self.FlattenL3 = nn.Flatten()
         self.batchNormL3 = nn.BatchNorm1d(int(self.LinearInputSize), eps=1E-5, momentum=0.1, affine=True) # affine=True set gamma and beta parameters as learnable
+        #self.batchNormL3 = nn.BatchNorm1d(41, eps=1E-5, momentum=0.1, affine=True) # affine=True set gamma and beta parameters as learnable
 
         self.dropoutL4 = nn.Dropout2d(alphaDropCoeff)
         self.DenseL4 = nn.Linear(int(self.LinearInputSize), self.outChannelsSizes[2], bias=True)
@@ -83,10 +85,11 @@ class HorizonExtractionEnhancerCNN(nn.Module):
 
     def forward(self, inputSample):
         
+        
         # Extract image and contextual information from inputSample
-    
-        img2Dinput = inputSample[0:self.imagePixSize-1] # First portion of the input vector
-        contextualInfoInput = inputSample[self.imagePixSize:]
+        # ACHTUNG: transpose, reshape, transpose operation assumes that input vector was reshaped column-wise (FORTRAN style)
+        img2Dinput = (((inputSample[:, 0:self.imagePixSize]).T).reshape(int(np.sqrt(float(self.imagePixSize))), -1, 1, inputSample.size(0))).T # First portion of the input vector reshaped to 2D
+        contextualInfoInput = inputSample[:, self.imagePixSize:]
 
         # Convolutional layers
         # L1 (Input)

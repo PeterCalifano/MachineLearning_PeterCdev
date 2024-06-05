@@ -11,7 +11,7 @@ from torchvision import datasets # Import vision default datasets from torchvisi
 from torchvision.transforms import ToTensor # Utils
 import datetime
 import numpy as np
-import sys
+import sys, os
 import subprocess
 import psutil
 import inspect
@@ -30,7 +30,7 @@ def GetDevice():
               else "mps"
               if torch.backends.mps.is_available()
               else "cpu" )
-    print(f"Using {device} device")
+    #print(f"Using {device} device")
     return device
 
 # %% Function to perform one step of training of a model using dataset and specified loss function - 04-05-2024
@@ -143,9 +143,19 @@ def MoonLimbPixConvEnhancer_LossFcn(predictCorrection, labelVector, params:list=
     # alfa*||xCorrT * ConicMatr* xCorr||^2 + (1-alfa)*MSE(label, prediction)
     # Get parameters and labels for computation of the loss
     coeff = 0.5
-    LimbConicMatrixImg = np.reshape(labelVector, 3, 3)
+    LimbConicMatrixImg = (labelVector[:, 0:9].T).reshape(3, 3, labelVector.size()[0]).T
+    patchCentre = labelVector[:, 9:]
+
     # Evaluate loss
-    conicLoss = torch.matmul(predictCorrection.T, torch.matmul(LimbConicMatrixImg, predictCorrection)) # Weighting violation of Horizon conic equation
+    conicLoss = 0.0 # Weighting violation of Horizon conic equation
+    for idBatch in range(labelVector.size()[0]):
+
+        # Compute corrected pixel
+        correctedPix = torch.tensor([0,0,1], dtype=torch.float32, device=GetDevice()).reshape(3,1)
+        correctedPix[0:2] = patchCentre[idBatch, :].reshape(2,1) + predictCorrection[idBatch, :].reshape(2,1)
+
+        conicLoss += torch.matmul(correctedPix.T, torch.matmul(LimbConicMatrixImg[idBatch, :, :].reshape(3,3), correctedPix))
+
     L2regLoss = torch.norm(predictCorrection)**2 # Weighting the norm of the correction to keep it as small as possible
 
     lossValue = coeff * torch.norm(conicLoss)**2 + (1-coeff) * L2regLoss
@@ -357,6 +367,9 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
     # Configure Tensorboard
     if 'logDirectory' in options.keys():
         logDirectory = options['logDirectory']
+        if not(os.path.isdir(logDirectory)):
+            os.mkdir(logDirectory)
+
         tensorBoardWriter = ConfigTensorboardSession(logDirectory)
     else:
         tensorBoardWriter = ConfigTensorboardSession()
@@ -371,16 +384,15 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
 
 
     # Training and validation loop
-    input('-------- PRESS ENTER TO START TRAINING LOOP --------')
+    input('\n-------- PRESS ENTER TO START TRAINING LOOP --------')
     trainLossHistory = []
     validationLossHistory = []
 
     for epochID in range(numOfEpochs):
 
-        print(f"Epoch {epochID}\n-------------------------------")
+        print(f"  Training Epoch: {epochID} of numOfEpochs\n-------------------------------")
         # Do training over all batches
         trainLossHistory[epochID] = TrainModel(trainingDataset, model, lossFcn, optimizer, device, taskType) 
-
         # Do validation over all batches
         validationLossHistory[epochID] = ValidateModel(validationDataset, lossFcn, device, taskType) 
 

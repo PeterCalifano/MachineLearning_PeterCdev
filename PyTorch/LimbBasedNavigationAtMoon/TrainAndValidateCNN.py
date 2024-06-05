@@ -30,6 +30,7 @@ def main():
 
     # SETTINGS and PARAMETERS 
     outChannelsSizes = [16, 32, 50, 25]
+    kernelSizes = [3, 1]
     learnRate = 1E-3
     momentumValue = 0.001
 
@@ -43,7 +44,8 @@ def main():
                'checkpointsDir': './checkpoints',
                'modelName': 'trainedModel',
                'loadCheckpoint': False,
-               'lossLogName': 'Loss_MoonHorizonExtraction'}
+               'lossLogName': 'Loss_MoonHorizonExtraction',
+               'logDirectory': 'tensorboardLog'}
 
     # DATASET LOADING
     # TODO: add datasets
@@ -101,8 +103,8 @@ def main():
     # Initialize dataset building variables
     saveID = 0
     
-    inputDataArray  = np.zeros((58, nSamples))
-    labelsDataArray = np.zeros((9, nSamples))
+    inputDataArray  = np.zeros((60, nSamples), dtype=np.float32)
+    labelsDataArray = np.zeros((11, nSamples), dtype=np.float32)
 
     for dataPair in dataFilenames:
         # Data dict for ith image
@@ -110,14 +112,14 @@ def main():
 
         metadataDict = tmpdataDict['metadata']
 
-        dPosCam_TF           = np.array(metadataDict['dPosCam_TF'])
-        dAttDCM_fromTFtoCAM  = np.array(metadataDict['dAttDCM_fromTFtoCAM'])
-        dSunDir_PixCoords    = np.array(metadataDict['dSunDir_PixCoords'])
-        dLimbConic_PixCoords = np.array(metadataDict['dLimbConic_PixCoords'])
-        dRmoonDEM            = np.array(metadataDict['dRmoonDEM'])
+        dPosCam_TF           = np.array(metadataDict['dPosCam_TF'], dtype=np.float32)
+        dAttDCM_fromTFtoCAM  = np.array(metadataDict['dAttDCM_fromTFtoCAM'], dtype=np.float32)
+        dSunDir_PixCoords    = np.array(metadataDict['dSunDir_PixCoords'], dtype=np.float32)
+        dLimbConic_PixCoords = np.array(metadataDict['dLimbConic_PixCoords'], dtype=np.float32)
+        dRmoonDEM            = np.array(metadataDict['dRmoonDEM'], dtype=np.float32)
 
-        ui16coarseLimbPixels = np.array(tmpdataDict['ui16coarseLimbPixels'])
-        ui8flattenedWindows  = np.array(tmpdataDict['ui8flattenedWindows'])
+        ui16coarseLimbPixels = np.array(tmpdataDict['ui16coarseLimbPixels'], dtype=np.float32)
+        ui8flattenedWindows  = np.array(tmpdataDict['ui8flattenedWindows'], dtype=np.float32)
 
         for sampleID in range(ui16coarseLimbPixels.shape[1]):
             # Get flattened patch
@@ -131,8 +133,11 @@ def main():
                 inputDataArray[49, saveID]    = dRmoonDEM
                 inputDataArray[50:52, saveID] = dSunDir_PixCoords
                 inputDataArray[52:55, saveID] = (Rotation.from_matrix(np.array(dAttDCM_fromTFtoCAM))).as_mrp() # Convert Attitude matrix to MRP parameters
-                inputDataArray[55:, saveID] = dPosCam_TF
-                labelsDataArray[:, saveID] = np.ravel(dLimbConic_PixCoords)
+                inputDataArray[55:58, saveID] = dPosCam_TF
+                inputDataArray[58::, saveID] = ui16coarseLimbPixels[:, sampleID]
+
+                labelsDataArray[0:9, saveID] = np.ravel(dLimbConic_PixCoords)
+                labelsDataArray[9:, saveID] = ui16coarseLimbPixels[:, sampleID]
 
                 saveID += 1
 
@@ -170,7 +175,7 @@ def main():
     lossFcn = customTorch.CustomLossFcn(customTorch.MoonLimbPixConvEnhancer_LossFcn)
 
     # MODEL DEFINITION
-    modelCNN_NN = limbPixelExtraction_CNN_NN.HorizonExtractionEnhancerCNN(outChannelsSizes)
+    modelCNN_NN = limbPixelExtraction_CNN_NN.HorizonExtractionEnhancerCNN(outChannelsSizes, kernelSizes)
 
     # Define optimizer object specifying model instance parameters and optimizer parameters
     if optimizerID == 0:
