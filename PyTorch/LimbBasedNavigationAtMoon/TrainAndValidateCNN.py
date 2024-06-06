@@ -31,35 +31,37 @@ def main():
     # SETTINGS and PARAMETERS 
     batch_size = 16 # Defines batch size in dataset
     TRAINING_PERC = 0.75
-    outChannelsSizes = [48, 32, 75, 15]
+    outChannelsSizes = [16, 32, 75, 15]
     kernelSizes = [3, 1]
-    learnRate = 1E-5
+    learnRate = 5E-3
     momentumValue = 0.001
 
     optimizerID = 1
 
     options = {'taskType': 'regression', 
                'device': customTorch.GetDevice(), 
-               'epochs': 15, 
+               'epochs': 35, 
                'Tensorboard':True,
                'saveCheckpoints':True,
-               'checkpointsDir': './checkpoints/HorizonPixCorrector_CNN_run3',
+               'checkpointsDir': './checkpoints/HorizonPixCorrector_CNN_run6',
                'modelName': 'trainedModel',
                'loadCheckpoint': False,
                'lossLogName': 'Loss_MoonHorizonExtraction',
                'logDirectory': './tensorboardLog',
-               'epochStart': 30}
+               'epochStart': 0}
 
     # Options to restart training from checkpoint
     modelSavePath = './checkpoints/HorizonPixCorrector_CNN_run3'
 
-    # Get last saving of model (NOTE: getmtime does not work properly. Use scandir + list comprehension)
-    with os.scandir(modelSavePath) as it:
-        modelNamesWithTime = [(entry.name, entry.stat().st_mtime) for entry in it if entry.is_file()]
+    if options['epochStart'] == 0:
+        restartTraining = False
+    else:
+        restartTraining = True
+        # Get last saving of model (NOTE: getmtime does not work properly. Use scandir + list comprehension)
+        with os.scandir(modelSavePath) as it:
+            modelNamesWithTime = [(entry.name, entry.stat().st_mtime) for entry in it if entry.is_file()]
+        modelName = sorted(modelNamesWithTime, key=lambda x: x[1])[-1][0]
 
-    modelName = sorted(modelNamesWithTime, key=lambda x: x[1])[-1][0]
-
-    restartTraining = True
 
     # DATASET LOADING
     # TODO: add datasets
@@ -106,6 +108,8 @@ def main():
     dataFileID = 0
     dataFilePath = os.path.join(dataDirPath, dataFilenames[dataFileID])
     tmpdataDict, tmpdataKeys = datasetPreparation.LoadJSONdata(dataFilePath)
+
+    # TODO: add printing of loaded dataset information
 
     # DEBUG
     print(tmpdataKeys)
