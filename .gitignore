@@ -1,18 +1,29 @@
+# Configuration and environment files
 /.venvPyTorchML
 /.venvTensorFlowML
 /.venvTF_GPU
 /.venvML
 .vscode/tasks.json
+
+# Datasets and large files
 datasets/*
-PyTorch/tutorials
 data/*
 testModels
+modelZoo
+checkpoints/*
+
+# PyTorch folders
 PyTorch/__pycache__
-LDC_PeterCdev/
+#PyTorch/snntorch
+#PyTorch/norse
 norse_scripts/MNIST
 norse_scripts/runs
-*.pth
-testModels/*
-modelZoo
+
+# Other repositories
+LDC_PeterCdev/
+
+# File formats
 *.asv
-checkpoints/*
+
+# Tensorboard logs
+tensorboardLog*
