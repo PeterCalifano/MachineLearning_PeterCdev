@@ -38,12 +38,14 @@ def main():
 
     optimizerID = 1
 
+    device = customTorch.GetDevice()
+
     options = {'taskType': 'regression', 
-               'device': customTorch.GetDevice(), 
+               'device': device, 
                'epochs': 35, 
                'Tensorboard':True,
                'saveCheckpoints':True,
-               'checkpointsDir': './checkpoints/HorizonPixCorrector_CNN_run6',
+               'checkpointsDir': './checkpoints/HorizonPixCorrector_CNN_run7',
                'modelName': 'trainedModel',
                'loadCheckpoint': False,
                'lossLogName': 'Loss_MoonHorizonExtraction',
@@ -94,7 +96,7 @@ def main():
     dirNamesRoot = os.listdir(dataPath)
 
     # Select one of the available datapairs folders (each corresponding to a labels generation pipeline output)
-    datapairsID = 0
+    datapairsID = 0 # ACHTUNG! paths from listdir are randomly ordered! --> TODO: modify
     dataDirPath = os.path.join(dataPath, dirNamesRoot[datapairsID])
     dataFilenames = os.listdir(dataDirPath)
 
@@ -210,8 +212,9 @@ def main():
     elif optimizerID == 1:
         optimizer = torch.optim.Adam(modelCNN_NN.parameters(), lr=learnRate)
 
+    print('Using loaded dataset for training and validation: ', dataDirPath)
 
-    # TRAIN and VALIDATE MODEL
+    # %% TRAIN and VALIDATE MODEL
     '''
     TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Module, optimizer, options:dict={'taskType': 'classification', 
                                                                                                               'device': GetDevice(), 
@@ -226,5 +229,7 @@ def main():
     (trainedModel, trainingLosses, validationLosses) = customTorch.TrainAndValidateModel(dataloaderIndex, modelCNN_NN, lossFcn, optimizer, options)
 
 
+
+# %% MAIN SCRIPT
 if __name__ == '__main__':
     main()
