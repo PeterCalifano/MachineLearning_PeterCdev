@@ -426,8 +426,57 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
             modelSaveName = os.path.join(checkpointDir, modelName + '_' + str(epochID + epochStart))
             SaveModelState(model, modelSaveName)
         
+        # %% MODEL PREDICTION EXAMPLES
+        examplePrediction, exampleLosses = EvaluateModel(validationDataset, model, lossFcn, device, 10)
+
+        print('\n\tPredictions on random samples from validation dataset:')
+        torch.set_printoptions(precision=2)
+        for id in range(examplePrediction.shape[1]):
+            print('Prediction, Loss: ', examplePrediction[:, id], exampleLosses[id])
+        
+        torch.set_printoptions(precision=5)
 
     return model, trainLossHistory, validationLossHistory
+
+# %% MODEL PREDICTION EVALUATION
+def EvaluateModel(dataloader:DataLoader, model:nn.Module, lossFcn: nn.Module, device=GetDevice(), numOfSamples:int=10) -> np.array:
+        
+    examplePrediction = []
+    model.eval()
+    with torch.no_grad(): 
+
+        # Get some random samples from dataloader as list
+        extractedSamples = GetSamplesFromDataset(dataloader, numOfSamples)
+
+        # Create input array as torch tensor
+        X = torch.zeros(len(extractedSamples), extractedSamples[0][0].shape[0])
+        Y = torch.zeros(len(extractedSamples), extractedSamples[0][1].shape[0])
+
+        for id, (inputVal, labelVal) in enumerate(extractedSamples):
+            X[id, :] = inputVal
+            Y[id, :] = labelVal
+
+        # Perform FORWARD PASS
+        examplePrediction = model(X.to(device)) # Evaluate model at input
+
+        for id in range(examplePrediction):
+            exampleLosses = lossFcn(examplePrediction, Y.to(device)).item()
+
+    return examplePrediction, exampleLosses
+                
+
+# Function to extract specified number of samples from dataloader
+def GetSamplesFromDataset(dataloader: DataLoader, numOfSamples:int=10):
+
+    samples = []
+    for batch in dataloader:
+        for sample in zip(*batch): # Construct tuple (X,Y) from batch
+            samples.append(sample)
+
+            if len(samples) == numOfSamples:
+                return samples
+                   
+    return samples
 
 # %% MAIN 
 def main():
