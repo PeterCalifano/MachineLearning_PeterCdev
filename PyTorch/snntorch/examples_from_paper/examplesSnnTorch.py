@@ -39,6 +39,18 @@ def main():
     rateEncodedInput = spikegen.rate(inputSignal, numOfTimesteps)
     deltaModEncodedInput = spikegen.delta(inputSignal, numOfTimesteps)
 
+    # %% Example of rate based loss functions
+    from snntorch import functional as SF
+    SF.ce_rate_loss() # cross-entropy spike rate
+    SF.mse_rate_loss() # mean square spike rate
+    SF.ce_max_membrane_loss() # maximum membrane
+    SF.mse_membrane_loss() # mean square membrane
+
+    # %% Example of latency based loss functions
+    SF.ce_temporal_loss()
+    SF.mse_temporal_loss()
+    SF.mse_membrane_loss()
+
 # Run main
 if __name__=='__main__':
     main()
