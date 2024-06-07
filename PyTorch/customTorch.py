@@ -142,9 +142,9 @@ class CustomLossFcn(nn.Module):
    
 # %% Custom loss function for Moon Limb pixel extraction CNN enhancer - 01-06-2024
 def MoonLimbPixConvEnhancer_LossFcn(predictCorrection, labelVector, params:list=None):
-    # alfa*||xCorrT * ConicMatr* xCorr||^2 + (1-alfa)*MSE(label, prediction)
+    # Alternative loss: alfa*||xCorrT * ConicMatr* xCorr||^2 + (1-alfa)*MSE(label, prediction)
     # Get parameters and labels for computation of the loss
-    coeff = 0.5
+    coeff = 0.98 # TODO: convert params to dict
     LimbConicMatrixImg = (labelVector[:, 0:9].T).reshape(3, 3, labelVector.size()[0]).T
     patchCentre = labelVector[:, 9:]
 
@@ -484,7 +484,7 @@ def GetSamplesFromDataset(dataloader: DataLoader, numOfSamples:int=10):
                    
     return samples
 
-# %% MATLAB wrapper class for Torch models evaluation - 07-06-2024
+# %% MATLAB wrapper class for Torch models evaluation - TODO 07-06-2024
 class TorchModel_MATLABwrap():
 
     def __init__(self) -> None:
@@ -492,6 +492,9 @@ class TorchModel_MATLABwrap():
     
     def forward():
         print('TODO: model evaluation method')
+
+# %% TORCH to ONNX format model converter - TODO
+
 
 
 
