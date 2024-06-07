@@ -108,12 +108,12 @@ def ValidateModel(dataloader:DataLoader, model:nn.Module, lossFcn:nn.Module, dev
     if taskType.lower() == 'classification': 
         validationLoss /= numberOfBatches # Compute batch size normalized loss value
         correctOuputs /= size # Compute percentage of correct classifications over batch size
-        print(f"Validation (Classification): \n Accuracy: {(100*correctOuputs):>0.1f}%, Avg loss: {validationLoss:>8f} \n")
+        print(f"\n VALIDATION ((Classification) Accuracy: {(100*correctOuputs):>0.1f}%, Avg loss: {validationLoss:>8f} \n")
 
     elif taskType.lower() == 'regression':
         #print('TODO')
         validationLoss /= numberOfBatches
-        print(f"  Validation (Regression): \n Avg validation loss: {validationLoss:>0.1f}\n")
+        print(f"\n VALIDATION (Regression) Avg loss: {validationLoss:>0.1f}\n")
         #print(f"Validation (Regression): \n Avg absolute accuracy: {avgAbsAccuracy:>0.1f}, Avg relative accuracy: {(100*avgRelAccuracy):>0.1f}%, Avg loss: {validationLoss:>8f} \n")
 
     elif taskType.lower() == 'custom':
@@ -293,8 +293,6 @@ class MoonLimbPixCorrector_Dataset():
             return True
     
 
-
-
 # %% TENSORBOARD functions - 04-06-2024
 # Function to check if Tensorboard is running
 def IsTensorboardRunning() -> bool:
@@ -340,7 +338,7 @@ def ConfigTensorboardSession(logDir:str='./tensorboardLogs') -> SummaryWriter:
     # Return initialized writer
     return tensorBoardWriter
 
-# %% TRAINING and VALIDATION template function
+# %% TRAINING and VALIDATION template function - 04-06-2024
 def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Module, optimizer, options:dict={'taskType': 'classification', 
                                                                                                               'device': GetDevice(), 
                                                                                                               'epochs': 10, 
@@ -401,13 +399,13 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
 
 
     # Training and validation loop
-    input('\n-------- PRESS ENTER TO START TRAINING LOOP --------')
+    input('\n-------- PRESS ENTER TO START TRAINING LOOP --------\n')
     trainLossHistory = np.zeros(numOfEpochs)
     validationLossHistory = np.zeros(numOfEpochs)
 
     for epochID in range(numOfEpochs):
 
-        print(f"  Training Epoch: {epochID + epochStart} of {epochStart + numOfEpochs}\n-------------------------------")
+        print(f"\n\t\t\tTRAINING EPOCH: {epochID + epochStart} of {epochStart + numOfEpochs}\n-------------------------------")
         # Do training over all batches
         trainLossHistory[epochID] = TrainModel(trainingDataset, model, lossFcn, optimizer, device, taskType) 
         # Do validation over all batches
@@ -429,16 +427,16 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
         # %% MODEL PREDICTION EXAMPLES
         examplePrediction, exampleLosses = EvaluateModel(validationDataset, model, lossFcn, device, 10)
 
-        print('\n\tPredictions on random samples from validation dataset:')
+        print('\n  Random Sample predictions from validation dataset:\n')
         torch.set_printoptions(precision=2)
-        for id in range(examplePrediction.shape[1]):
-            print('Prediction, Loss: ', examplePrediction[:, id], exampleLosses[id])
+        for id in range(examplePrediction.shape[0]):
+            print('\tPrediction: ', examplePrediction[id, :].tolist(), ' --> Loss: ',exampleLosses[id].tolist())
         
         torch.set_printoptions(precision=5)
 
     return model, trainLossHistory, validationLossHistory
 
-# %% MODEL PREDICTION EVALUATION
+# %% Model evaluation function on a random number of samples from dataset - 06-06-2024
 def EvaluateModel(dataloader:DataLoader, model:nn.Module, lossFcn: nn.Module, device=GetDevice(), numOfSamples:int=10) -> np.array:
         
     examplePrediction = []
@@ -459,13 +457,21 @@ def EvaluateModel(dataloader:DataLoader, model:nn.Module, lossFcn: nn.Module, de
         # Perform FORWARD PASS
         examplePrediction = model(X.to(device)) # Evaluate model at input
 
-        for id in range(examplePrediction):
-            exampleLosses = lossFcn(examplePrediction, Y.to(device)).item()
+        # Compute loss for each input separately
+        exampleLosses = torch.zeros(examplePrediction.size(0))
+
+        for id in range(examplePrediction.size(0)):
+            
+            # Get prediction and label samples 
+            inputSample = examplePrediction[id, :].reshape(1, -1)
+            labelSample = Y[id,:].reshape(1, -1)
+
+            # Evaluate
+            exampleLosses[id] = lossFcn(inputSample.to(device), labelSample.to(device)).item()
 
     return examplePrediction, exampleLosses
                 
-
-# Function to extract specified number of samples from dataloader
+# %% Function to extract specified number of samples from dataloader - 06-06-2024
 def GetSamplesFromDataset(dataloader: DataLoader, numOfSamples:int=10):
 
     samples = []
@@ -477,6 +483,17 @@ def GetSamplesFromDataset(dataloader: DataLoader, numOfSamples:int=10):
                 return samples
                    
     return samples
+
+# %% MATLAB wrapper class for Torch models evaluation - 07-06-2024
+class TorchModel_MATLABwrap():
+
+    def __init__(self) -> None:
+        print('TODO: Model loader and setup')
+    
+    def forward():
+        print('TODO: model evaluation method')
+
+
 
 # %% MAIN 
 def main():

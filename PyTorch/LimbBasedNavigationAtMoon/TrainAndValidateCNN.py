@@ -33,7 +33,7 @@ def main():
     TRAINING_PERC = 0.75
     outChannelsSizes = [16, 32, 75, 15]
     kernelSizes = [3, 1]
-    learnRate = 5E-3
+    learnRate = 5E-4
     momentumValue = 0.001
 
     optimizerID = 1
