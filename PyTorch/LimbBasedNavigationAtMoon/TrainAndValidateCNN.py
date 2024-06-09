@@ -33,27 +33,30 @@ def main():
     TRAINING_PERC = 0.75
     outChannelsSizes = [16, 32, 75, 15]
     kernelSizes = [3, 1]
-    learnRate = 1E-10
+    learnRate = 5E-4
     momentumValue = 0.001
 
-    optimizerID = 1
+    optimizerID = 1 # 0
 
     device = customTorch.GetDevice()
 
+    exportToONNx = True
+
     options = {'taskType': 'regression', 
                'device': device, 
-               'epochs': 25, 
+               'epochs': 50, 
                'Tensorboard':True,
                'saveCheckpoints':True,
-               'checkpointsDir': './checkpoints/HorizonPixCorrector_CNN_run7',
+               'checkpointsOutDir': './checkpoints/HorizonPixCorrector_CNN_run8',
                'modelName': 'trainedModel',
                'loadCheckpoint': False,
+               'checkpointsInDir': './checkpoints/HorizonPixCorrector_CNN_run8',
                'lossLogName': 'Loss_MoonHorizonExtraction',
                'logDirectory': './tensorboardLog',
-               'epochStart': 50}
+               'epochStart': 0}
 
     # Options to restart training from checkpoint
-    modelSavePath = './checkpoints/HorizonPixCorrector_CNN_run7'
+    modelSavePath = './checkpoints/HorizonPixCorrector_CNN_run8'
 
     if options['epochStart'] == 0:
         restartTraining = False
@@ -171,11 +174,10 @@ def main():
 
     dataDict = {'labelsDataArray': labelsDataArray, 'inputDataArray': inputDataArray}
     
-    # INITIALIZE DATASET OBJECT
+    # INITIALIZE DATASET OBJECT # TEMPORARY from one single dataset
     dataset = customTorch.MoonLimbPixCorrector_Dataset(dataDict)
 
     # Define the split ratio
-
     trainingSize = int(TRAINING_PERC * len(dataset))  
     validationSize = len(dataset) - trainingSize 
 
@@ -226,9 +228,12 @@ def main():
                                                                                                               'loadCheckpoint': False,
                                                                                                               'epochStart': 150}):
     '''
-    (trainedModel, trainingLosses, validationLosses) = customTorch.TrainAndValidateModel(dataloaderIndex, modelCNN_NN, lossFcn, optimizer, options)
+    (trainedModel, trainingLosses, validationLosses, inputSampleList) = customTorch.TrainAndValidateModel(dataloaderIndex, modelCNN_NN, lossFcn, optimizer, options)
 
-
+    # %% Export trained model to ONNx format 
+    if exportToONNx:
+        customTorch.ExportTorchModelToONNx(trainedModel, inputSampleList[0], onnxExportPath='./checkpoints',
+                                            onnxSaveName='trainedModelONNx', modelID=options['epochStart']+options['epochs'])
 
 # %% MAIN SCRIPT
 if __name__ == '__main__':

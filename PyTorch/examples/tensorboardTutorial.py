@@ -1,5 +1,6 @@
 # Script created by PeterC to learn Tensorboard 21-05-2024
 # Documentation references: https://www.tensorflow.org/tensorboard/get_started, https://pytorch.org/tutorials/recipes/recipes/tensorboard_with_pytorch.html
+# More advanced: https://pytorch.org/tutorials/intermediate/tensorboard_tutorial.html
 # Tensorboard is a visualization toolkit for machine learning, mainly enabling tracking and visualization of metrics (loss and accuracy).
 
 # %% Import modules
