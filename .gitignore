@@ -27,6 +27,7 @@ event-based_backup
 # File formats
 *.asv
 *.pyc 
+*.mp4
 
 # Tensorboard logs
 tensorboardLog*
