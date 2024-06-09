@@ -1,0 +1,18 @@
+[submodule "PyTorch/norse/norse_PeterCdev"]
+	path = PyTorch/norse/norse_PeterCdev
+	url = git@github.com:PeterCalifano/norse_PeterCdev.git
+[submodule "PyTorch/snntorch/snntorch_PeterCdev"]
+	path = PyTorch/snntorch/snntorch_PeterCdev
+	url = git@github.com:PeterCalifano/snntorch_PeterCdev.git
+[submodule "event-based/v2e_PeterCdev"]
+	path = event-based/v2e_PeterCdev
+	url = git@github.com:PeterCalifano/v2e_PeterCdev.git
+[submodule "d2l-en_PeterCdev"]
+	path = d2l-en_PeterCdev
+	url = git@github.com:PeterCalifano/d2l-en_PeterCdev.git
+[submodule "PyTorch/Neural-Architecture-Search-for-Spiking-Neural-Networks_PeterCdev"]
+	path = PyTorch/Neural-Architecture-Search-for-Spiking-Neural-Networks_PeterCdev
+	url = git@github.com:PeterCalifano/Neural-Architecture-Search-for-Spiking-Neural-Networks_PeterCdev.git
+[submodule "PyTorch/examples/neural-networks-and-deep-learning_PeterCdev"]
+	path = PyTorch/examples/neural-networks-and-deep-learning_PeterCdev
+	url = git@github.com:PeterCalifano/neural-networks-and-deep-learning_PeterCdev.git

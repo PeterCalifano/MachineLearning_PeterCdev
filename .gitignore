@@ -20,8 +20,8 @@ norse_scripts/MNIST
 norse_scripts/runs
 
 # Other repositories
-LDC_PeterCdev/
-v2e_PeterCdev/
+#LDC_PeterCdev/
+#v2e_PeterCdev/
 
 # File formats
 *.asv
