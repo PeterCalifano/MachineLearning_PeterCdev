@@ -4,9 +4,6 @@
 [submodule "PyTorch/snntorch/snntorch_PeterCdev"]
 	path = PyTorch/snntorch/snntorch_PeterCdev
 	url = git@github.com:PeterCalifano/snntorch_PeterCdev.git
-[submodule "event-based/v2e_PeterCdev"]
-	path = event-based/v2e_PeterCdev
-	url = git@github.com:PeterCalifano/v2e_PeterCdev.git
 [submodule "d2l-en_PeterCdev"]
 	path = d2l-en_PeterCdev
 	url = git@github.com:PeterCalifano/d2l-en_PeterCdev.git
@@ -16,6 +13,4 @@
 [submodule "PyTorch/examples/neural-networks-and-deep-learning_PeterCdev"]
 	path = PyTorch/examples/neural-networks-and-deep-learning_PeterCdev
 	url = git@github.com:PeterCalifano/neural-networks-and-deep-learning_PeterCdev.git
-[submodule "event-based/--force"]
-	path = event-based/--force
-	url = git@github.com:PeterCalifano/v2e_PeterCdev.git
+
