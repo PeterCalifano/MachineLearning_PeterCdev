@@ -16,3 +16,6 @@
 [submodule "PyTorch/examples/neural-networks-and-deep-learning_PeterCdev"]
 	path = PyTorch/examples/neural-networks-and-deep-learning_PeterCdev
 	url = git@github.com:PeterCalifano/neural-networks-and-deep-learning_PeterCdev.git
+[submodule "event-based/--force"]
+	path = event-based/--force
+	url = git@github.com:PeterCalifano/v2e_PeterCdev.git
