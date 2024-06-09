@@ -10,7 +10,12 @@
 [submodule "PyTorch/Neural-Architecture-Search-for-Spiking-Neural-Networks_PeterCdev"]
 	path = PyTorch/Neural-Architecture-Search-for-Spiking-Neural-Networks_PeterCdev
 	url = git@github.com:PeterCalifano/Neural-Architecture-Search-for-Spiking-Neural-Networks_PeterCdev.git
+[submodule "PyTorch/NAS"]
+	path = PyTorch/NAS
+	url = git@github.com:PeterCalifano/Neural-Architecture-Search-for-Spiking-Neural-Networks_PeterCdev.git
 [submodule "PyTorch/examples/neural-networks-and-deep-learning_PeterCdev"]
 	path = PyTorch/examples/neural-networks-and-deep-learning_PeterCdev
 	url = git@github.com:PeterCalifano/neural-networks-and-deep-learning_PeterCdev.git
-
+[submodule "Event-based/v2e_PeterCdev"]
+	path = Event-based/v2e_PeterCdev
+	url = git@github.com:PeterCalifano/v2e_PeterCdev.git
