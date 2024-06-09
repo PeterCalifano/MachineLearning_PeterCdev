@@ -25,6 +25,7 @@ v2e_PeterCdev/
 
 # File formats
 *.asv
+*.pyc 
 
 # Tensorboard logs
 tensorboardLog*

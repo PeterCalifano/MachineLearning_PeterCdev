@@ -58,7 +58,7 @@ utcEndTraj = '2028-03-21 12:00:00';
 % Initial and final ephemeris time of the simulation
 t0Sim = 0*86400;
 et0 = cspice_str2et(utc0Traj) + t0Sim;
-etEnd = et0 + 6*86400;
+etEnd = et0 + 1200; % 6*86400;
 dtMeas = 300;
 etVec = et0:dtMeas:etEnd; %linspace(et0, etEnd, 10000);
 tSim = etEnd-et0;
@@ -203,7 +203,7 @@ if RUN_RENDERING == true
 end
 
 %% Test: labels generations
-ERROR_VISUAL_CHECK = false;
+ERROR_VISUAL_CHECK = true;
 
 imgID = 1;
 imgDirStruct = getDirStruct(imageFolder);
@@ -241,9 +241,6 @@ anglesRange = 0:0.1:2*pi;
 displDirection = [cos(anglesRange); sin(anglesRange)];
 dTargetPixAvgRadius = i_dRbody/drangeCameraToBody  * dKcam(1,1);
 
-o_dSimExtractedLimbPixels(1:2, idW) = o_strConicData.dEllipseCentre + dTargetPixAvgRadius * displDirection;
-saveStr.ui16coarseLimbPixels(:, idW) = uint16(mvnrnd(o_dSimExtractedLimbPixels(:, idW), sigmaPix));
-
 % CODE FROM PAOLO:
 % sx = 13.3e-3;
 % sy = 13.3e-3;
@@ -273,6 +270,9 @@ tightConeLocusImageMatrix_PixCoords = tightConeLocusImageMatrix_PixCoords./tight
     [0, pi/8, pi/4, pi/2, pi], ...
     0);
 
+
+% o_dSimExtractedLimbPixels(1:2, idW) = o_strConicData.dEllipseCentre + dTargetPixAvgRadius * displDirection;
+% saveStr.ui16coarseLimbPixels(:, idW) = uint16(mvnrnd(o_dSimExtractedLimbPixels(:, idW), sigmaPix));
 
 dHomogShapeMatrix_TF = diag([1, 1, 1, -R_Moon^2]);
 
