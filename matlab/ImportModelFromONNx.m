@@ -29,7 +29,7 @@ end
 %% Function code
 
 % Perform checks on dependencies and inputs
-if not(exist('path2model', 'file'))
+if isfile(path2model)
     error('Specified .onnx file has not been found. Check input path.')
 end
 

@@ -3,8 +3,8 @@ clear
 clc
 
 addpath('..');
-addpath('testModels\');
-addpath(genpath('testDatapairs\'));
+addpath('testModelsONNx');
+addpath(genpath('testDatapairs'));
 % SCRIPT NAME
 % LimbPixelsEnhancerCNN_Testing
 % -------------------------------------------------------------------------------------------------------------
@@ -27,18 +27,21 @@ addpath(genpath('testDatapairs\'));
 % Future upgrades
 
 %% OPTIONS
+datasetID = 1;
 fileID   = 1;
 sampleID = 1; % Sample patch ID in loaded datapair file
-testDatapairsStruct = getDirStruct(dataJSONpath);
+testDatapairsStruct = getDirStruct('testDatapairs');
+testDatapairsStruct = getDirStruct( fullfile('testDatapairs', testDatapairsStruct(datasetID).name) );
 
-dataJSONpath = fullfile(testDatapairsStruct(fileID));
+% Get path to JSON file containing data
+dataJSONPath = fullfile(testDatapairsStruct(fileID).folder, testDatapairsStruct(fileID).name);
 
 %% Simulation data loading
-datastruct = JSONdecoder(dataJSONpath(fileID));
+datastruct = JSONdecoder(dataJSONPath);
 
 % Get flattened patch
 flattenedWindow  = datastruct.ui8flattenedWindows(:, sampleID);
-coarseLimbPixels = datastruct.ui16coarseLimbPixels(:, sampleID)
+coarseLimbPixels = datastruct.ui16coarseLimbPixels(:, sampleID);
 % Validate patch counting how many pixels are completely black or white
 % pathIsValid = customTorch.IsPatchValid(flattenedWindow, lowerIntensityThr=5);
 
@@ -52,15 +55,15 @@ coarseLimbPixels = datastruct.ui16coarseLimbPixels(:, sampleID)
 inputDataSample = zeros(60, 1, 'single');
 
 inputDataSample(1:49)  = single(flattenedWindow); 
-inputDataSample(50)    = single(datastruct.dRmoonDEM);
-inputDataSample(51:52) = single(datastruct.dSunDir_PixCoords);
-inputDataSample(53:55) = single(quat2mrp( DCM2quat(reshape(datastruct.dAttDCM_fromTFtoCAM, 3, 3), false) )); % Convert Attitude matrix to MRP parameters
-inputDataSample(56:58) = single(datastruct.dPosCam_TF);
+inputDataSample(50)    = single(datastruct.metadata.dRmoonDEM);
+inputDataSample(51:52) = single(datastruct.metadata.dSunDir_PixCoords);
+inputDataSample(53:55) = single(quat2mrp( DCM2quat(reshape(datastruct.metadata.dAttDCM_fromTFtoCAM, 3, 3), false) )); % Convert Attitude matrix to MRP parameters
+inputDataSample(56:58) = single(datastruct.metadata.dPosCam_TF);
 inputDataSample(59:60) = single(coarseLimbPixels);
 
 %% Model loading
-path2model = 'testModels';
-modelName = 'traineModel_0';
+path2model = 'testModelsONNx';
+modelName = 'traineModelONNx001';
 trainedCNN = ImportModelFromONNx(fullfile(path2model, modelName), 'regression');
 
 % Print model summary 
