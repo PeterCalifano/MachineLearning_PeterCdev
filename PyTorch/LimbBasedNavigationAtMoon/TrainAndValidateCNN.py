@@ -20,7 +20,6 @@ from torch.utils.data import DataLoader # Utils for dataset management, storing 
 from torchvision import datasets # Import vision default datasets from torchvision
 from torchvision.transforms import ToTensor # Utils
 
-import datetime
 import numpy as np
 
 from torch.utils.tensorboard import SummaryWriter # Key class to use tensorboard with PyTorch. VSCode will automatically ask if you want to load tensorboard in the current session.
@@ -176,6 +175,10 @@ def main():
     
     # INITIALIZE DATASET OBJECT # TEMPORARY from one single dataset
     dataset = customTorch.MoonLimbPixCorrector_Dataset(dataDict)
+
+    if exportToONNx:
+        # Save sample dataset for ONNx use
+        customTorch.SaveTorchDataset(dataset, modelSavePath, datasetName='sampleDatasetToONNx')
 
     # Define the split ratio
     trainingSize = int(TRAINING_PERC * len(dataset))  
