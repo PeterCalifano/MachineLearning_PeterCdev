@@ -40,5 +40,7 @@ if strcmpi(taskType, 'classification') && strcmpi(taskType, 'regression')
 end
 
 % Import network
+disp('Attempting to import model from ONNx file...')
 importedModel = importONNXNetwork(path2model, 'OutputLayerType', taskType);
+disp('Model imported successfully.')
 
