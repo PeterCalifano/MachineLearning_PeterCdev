@@ -44,7 +44,7 @@ def main():
 
     options = {'taskType': 'regression', 
                'device': device, 
-               'epochs': 50, 
+               'epochs': 1, 
                'Tensorboard':True,
                'saveCheckpoints':True,
                'checkpointsOutDir': './checkpoints/HorizonPixCorrector_CNN_run8',
@@ -149,7 +149,8 @@ def main():
             flattenedWindow = ui8flattenedWindows[:, sampleID]
 
             # Validate patch counting how many pixels are completely black or white
-            pathIsValid = customTorch.IsPatchValid(flattenedWindow, lowerIntensityThr=5)
+            #pathIsValid = customTorch.IsPatchValid(flattenedWindow, lowerIntensityThr=5)
+            pathIsValid = True
 
             if pathIsValid:
                 inputDataArray[0:49, saveID]  = flattenedWindow
@@ -232,11 +233,11 @@ def main():
                                                                                                               'loadCheckpoint': False,
                                                                                                               'epochStart': 150}):
     '''
-    (trainedModel, trainingLosses, validationLosses, inputSampleList) = customTorch.TrainAndValidateModel(dataloaderIndex, modelCNN_NN, lossFcn, optimizer, options)
+    (trainedModel, trainingLosses, validationLosses, inputSample) = customTorch.TrainAndValidateModel(dataloaderIndex, modelCNN_NN, lossFcn, optimizer, options)
 
     # %% Export trained model to ONNx format 
     if exportToONNx:
-        customTorch.ExportTorchModelToONNx(trainedModel, inputSampleList[0], onnxExportPath='./checkpoints',
+        customTorch.ExportTorchModelToONNx(trainedModel, inputSample, onnxExportPath='./checkpoints',
                                             onnxSaveName='trainedModelONNx', modelID=options['epochStart']+options['epochs'])
 
 # %% MAIN SCRIPT

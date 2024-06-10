@@ -487,30 +487,30 @@ def EvaluateModel(dataloader:DataLoader, model:nn.Module, lossFcn: nn.Module, de
         X = torch.zeros(len(extractedSamples), extractedSamples[0][0].shape[0])
         Y = torch.zeros(len(extractedSamples), extractedSamples[0][1].shape[0])
 
-        inputSampleList = []
+        #inputSampleList = []
         for id, (inputVal, labelVal) in enumerate(extractedSamples):
             X[id, :] = inputVal
             Y[id, :] = labelVal
 
-            inputSampleList.append(inputVal)
+            #inputSampleList.append(inputVal.reshape(1, -1))
 
         # Perform FORWARD PASS
-        examplePrediction = model(X.to(device)) # Evaluate model at input
+        examplePredictions = model(X.to(device)) # Evaluate model at input
 
         # Compute loss for each input separately
-        exampleLosses = torch.zeros(examplePrediction.size(0))
+        exampleLosses = torch.zeros(examplePredictions.size(0))
 
         examplePredictionList = []
-        for id in range(examplePrediction.size(0)):
+        for id in range(examplePredictions.size(0)):
             
             # Get prediction and label samples 
-            examplePredictionList.append(examplePrediction[id, :].reshape(1, -1))
+            examplePredictionList.append(examplePredictions[id, :].reshape(1, -1))
             labelSample = Y[id,:].reshape(1, -1)
 
             # Evaluate
             exampleLosses[id] = lossFcn(examplePredictionList[id].to(device), labelSample.to(device)).item()
 
-    return examplePredictionList, exampleLosses, inputSampleList
+    return examplePredictions, exampleLosses, X.to(device)
                 
 # %% Function to extract specified number of samples from dataloader - 06-06-2024
 def GetSamplesFromDataset(dataloader: DataLoader, numOfSamples:int=10):

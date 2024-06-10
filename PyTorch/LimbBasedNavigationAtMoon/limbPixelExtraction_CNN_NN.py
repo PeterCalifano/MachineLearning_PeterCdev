@@ -20,7 +20,7 @@ import torch
 import customTorch
 import datetime
 from torch import nn
-
+from math import sqrt
 from torch.utils.data import DataLoader # Utils for dataset management, storing pairs of (sample, label)
 from torchvision import datasets # Import vision default datasets from torchvision
 from torchvision.transforms import ToTensor # Utils
@@ -88,7 +88,10 @@ class HorizonExtractionEnhancerCNN(nn.Module):
         # Extract image and contextual information from inputSample
         # ACHTUNG: transpose, reshape, transpose operation assumes that input vector was reshaped column-wise (FORTRAN style)
         #img2Dinput = (((inputSample[:, 0:self.imagePixSize]).T).reshape(int(np.sqrt(float(self.imagePixSize))), -1, 1, inputSample.size(0))).T # First portion of the input vector reshaped to 2D
-        img2Dinput = (((inputSample[:, 0:self.imagePixSize]).T).reshape(int(torch.sqrt(float(self.imagePixSize))), -1, 1, inputSample.size(0))).T # First portion of the input vector reshaped to 2D
+        
+        #img2Dinput =  ( ( (inputSample[:, 0:self.imagePixSize]).T).reshape(int(torch.sqrt( torch.tensor(self.imagePixSize) )), -1, 1, inputSample.size(0) ) ).T # First portion of the input vector reshaped to 2D
+        firstIndex = int(sqrt( self.imagePixSize ))
+        img2Dinput =  ( ( (inputSample[:, 0:self.imagePixSize]).T).reshape(firstIndex, -1, 1, inputSample.size(0) ) ).T # First portion of the input vector reshaped to 2D
 
         contextualInfoInput = inputSample[:, self.imagePixSize:]
 
