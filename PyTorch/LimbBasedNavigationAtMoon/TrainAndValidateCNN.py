@@ -33,7 +33,7 @@ def main():
     TRAINING_PERC = 0.75
     outChannelsSizes = [16, 32, 75, 15]
     kernelSizes = [3, 1]
-    learnRate = 5E-4
+    learnRate = 5E-5
     momentumValue = 0.001
 
     optimizerID = 1 # 0
@@ -44,7 +44,7 @@ def main():
 
     options = {'taskType': 'regression', 
                'device': device, 
-               'epochs': 1, 
+               'epochs': 25, 
                'Tensorboard':True,
                'saveCheckpoints':True,
                'checkpointsOutDir': './checkpoints/HorizonPixCorrector_CNN_run8',
@@ -238,7 +238,7 @@ def main():
     # %% Export trained model to ONNx format 
     if exportToONNx:
         customTorch.ExportTorchModelToONNx(trainedModel, inputSample, onnxExportPath='./checkpoints',
-                                            onnxSaveName='trainedModelONNx', modelID=options['epochStart']+options['epochs'])
+                                            onnxSaveName='trainedModelONNx', modelID=options['epochStart']+options['epochs'], onnx_version=14)
 
 # %% MAIN SCRIPT
 if __name__ == '__main__':

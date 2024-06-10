@@ -16,6 +16,7 @@ import subprocess
 import psutil
 import inspect
 import onnx
+from onnx import version_converter
 
 from torch.utils.tensorboard import SummaryWriter # Key class to use tensorboard with PyTorch. VSCode will automatically ask if you want to load tensorboard in the current session.
 import torch.optim as optim
@@ -527,7 +528,7 @@ def GetSamplesFromDataset(dataloader: DataLoader, numOfSamples:int=10):
 
 
 # %% Torch to/from ONNx format exporter/loader based on TorchDynamo (PyTorch >2.0) - 09-06-2024
-def ExportTorchModelToONNx(model:nn.Module, dummyInputSample:torch.tensor, onnxExportPath:str='.', onnxSaveName:str='trainedModelONNx', modelID:int=0):
+def ExportTorchModelToONNx(model:nn.Module, dummyInputSample:torch.tensor, onnxExportPath:str='.', onnxSaveName:str='trainedModelONNx', modelID:int=0, onnx_version = None):
 
     # Define filename of the exported model
     if modelID > 999:
@@ -542,9 +543,24 @@ def ExportTorchModelToONNx(model:nn.Module, dummyInputSample:torch.tensor, onnxE
     #modelONNx = torch.onnx.export(model, dummyInputSample) # NOTE: ONNx model is stored as a binary protobuf file!
 
     # Save ONNx model 
-    modelONNx.save(modelSaveName+'.onnx')
+    pathToModel = modelSaveName+'.onnx'
+    modelONNx.save(pathToModel)
 
-    return modelONNx
+    # Try to convert model to required version
+    if (onnx_version is not None) and type(onnx_version) is int:
+        print('Attempting conversion of ONNx model to version:', onnx_version)
+        try:
+            #onnx.load(pathToModel)
+            print(f"Model before conversion:\n{modelONNx}")
+            convertedModel = version_converter.convert_version(modelONNx, onnx_version)
+            convertedModel.save(modelSaveName + '_ver' + str(onnx_version) + '.onnx') 
+
+        except Exception as errorMsg:
+            print('Conversion failed. Verify model compatibility with specified operations set.')
+    else: 
+        convertedModel=None
+
+    return modelONNx, convertedModel
 
 def LoadTorchModelFromONNx(dummyInputSample:torch.tensor, onnxExportPath:str='.', onnxSaveName:str='trainedModelONNx', modelID:int=0):
     # Define filename of the exported model
