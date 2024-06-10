@@ -44,7 +44,7 @@ def main():
 
     options = {'taskType': 'regression', 
                'device': device, 
-               'epochs': 25, 
+               'epochs': 1, 
                'Tensorboard':True,
                'saveCheckpoints':True,
                'checkpointsOutDir': './checkpoints/HorizonPixCorrector_CNN_run8',
