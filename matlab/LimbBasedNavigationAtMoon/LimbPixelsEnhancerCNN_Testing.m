@@ -44,7 +44,8 @@ coarseLimbPixels = datastruct.ui16coarseLimbPixels(:, sampleID)
 
 % Improvements I should do to the model:
 % 1) Remove constant input R_DEM. If needed, convert it to apparent pixel size to introduce the concept of
-% "distance" in the network map.
+%   "distance" in the network map. However, note that this is already present due to the relative position
+%   vector. Remove it unless generalization to other targets is required.
 % 2) Input image should be normalized wrt to the maximum. This tip applies to all the inputs.
 
 % Compose input sample
@@ -61,6 +62,13 @@ inputDataSample(59:60) = single(coarseLimbPixels);
 path2model = 'testModels';
 modelName = 'traineModel_0';
 trainedCNN = ImportModelFromONNx(fullfile(path2model, modelName), 'regression');
+
+% Print model summary 
+summary(trainedCNN);
+
+% Plot model architecture
+figure(1);
+plot(trainedCNN);
 
 %% Model evaluation     
 
