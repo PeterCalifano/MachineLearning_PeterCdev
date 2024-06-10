@@ -148,8 +148,8 @@ def main():
             # Get flattened patch
             flattenedWindow = ui8flattenedWindows[:, sampleID]
 
-            # Validate patch
-            pathIsValid = True # TODO
+            # Validate patch counting how many pixels are completely black or white
+            pathIsValid = customTorch.IsPatchValid(flattenedWindow, lowerIntensityThr=5)
 
             if pathIsValid:
                 inputDataArray[0:49, saveID]  = flattenedWindow
