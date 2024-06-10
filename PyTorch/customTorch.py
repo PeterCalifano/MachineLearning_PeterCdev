@@ -342,7 +342,7 @@ def ConfigTensorboardSession(logDir:str='./tensorboardLogs') -> SummaryWriter:
 
 # %% Function to get model checkpoint and load it into nn.Module for training restart - 09-06-2024
 def LoadModelAtCheckpoint(model:nn.Module, modelSavePath:str='./checkpoints', modelName:str='trainedModel', modelEpoch:int=0) -> nn.Module: 
-    # TODO: add checks that model and checkpoint matches 
+    # TODO: add checks that model and checkpoint matches: how to? Check number of parameters?
 
     # Create path to model state file
     checkPointPath = os.path.join(modelSavePath, modelName + '_' + AddZerosPadding(modelEpoch, stringLength=4))
@@ -378,6 +378,7 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
                                                                                                               'loadCheckpoint': False,
                                                                                                               'lossLogName': 'Loss-value',
                                                                                                               'epochStart': 0}):
+    # NOTE: is the default dictionary considered as "single" object or does python perform a merge of the fields?
 
     # Setup options from input dictionary
     taskType          = options['taskType']
@@ -406,12 +407,14 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
     # Configure Tensorboard
     if 'logDirectory' in options.keys():
         logDirectory = options['logDirectory']
-        if not(os.path.isdir(logDirectory)):
-            os.mkdir(logDirectory)
-
-        tensorBoardWriter = ConfigTensorboardSession(logDirectory)
     else:
-        tensorBoardWriter = ConfigTensorboardSession()
+        currentTime = datetime.datetime.now()
+        formattedTimestamp = currentTime.strftime('%d-%m-%Y_%H-%M') # Format time stamp as day, month, year, hour and minute
+        logDirectory = './tensorboardLog_' + modelName + formattedTimestamp
+        
+    if not(os.path.isdir(logDirectory)):
+        os.mkdir(logDirectory)
+    tensorBoardWriter = ConfigTensorboardSession(logDirectory)
 
     # If training is being restarted, attempt to load model
     if options['loadCheckpoint'] == True:
