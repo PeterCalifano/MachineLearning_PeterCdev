@@ -206,8 +206,8 @@ def LoadModelState(model:nn.Module, modelName:str="trainedModel", filepath:str="
     return model
 
 # %% Function to save Dataset object - 01-06-2024
-def SaveTorchDataset(datasetObj:Dataset, datasetFilePath:str) -> None:
-    torch.save(datasetObj, datasetFilePath + ".pt")
+def SaveTorchDataset(datasetObj:Dataset, datasetFilePath:str='', datasetName:str='dataset') -> None:
+    torch.save(datasetObj, datasetFilePath + datasetName + ".pt")
 
 # %% Function to load Dataset object - 01-06-2024
 def LoadTorchDataset(datasetFilePath:str) -> Dataset:
@@ -526,7 +526,7 @@ def GetSamplesFromDataset(dataloader: DataLoader, numOfSamples:int=10):
 
 
 # %% Torch to/from ONNx format exporter/loader based on TorchDynamo (PyTorch >2.0) - 09-06-2024
-def ExportTorchModelToONNx(model:nn.Module, dummyInputSample:torch.tensor, onnxExportPath:str='.', onnxSaveName:str='trainedModelONNx', modelID:int=0) -> None:
+def ExportTorchModelToONNx(model:nn.Module, dummyInputSample:torch.tensor, onnxExportPath:str='.', onnxSaveName:str='trainedModelONNx', modelID:int=0):
 
     # Define filename of the exported model
     if modelID > 999:
@@ -540,6 +540,8 @@ def ExportTorchModelToONNx(model:nn.Module, dummyInputSample:torch.tensor, onnxE
     modelONNx = torch.onnx.dynamo_export(model, dummyInputSample) # NOTE: ONNx model is stored as a binary protobuf file!
     # Save ONNx model 
     modelONNx.save(modelSaveName)
+
+    return modelONNx
 
 def LoadTorchModelFromONNx(dummyInputSample:torch.tensor, onnxExportPath:str='.', onnxSaveName:str='trainedModelONNx', modelID:int=0):
     # Define filename of the exported model
