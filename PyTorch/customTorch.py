@@ -206,8 +206,8 @@ def LoadModelState(model:nn.Module, modelName:str="trainedModel", filepath:str="
     return model
 
 # %% Function to save Dataset object - 01-06-2024
-def SaveTorchDataset(datasetObj:Dataset, datasetFilePath:str) -> None:
-    torch.save(datasetObj, datasetFilePath + ".pt")
+def SaveTorchDataset(datasetObj:Dataset, datasetFilePath:str='', datasetName:str='dataset') -> None:
+    torch.save(datasetObj, datasetFilePath + datasetName + ".pt")
 
 # %% Function to load Dataset object - 01-06-2024
 def LoadTorchDataset(datasetFilePath:str) -> Dataset:
@@ -342,7 +342,7 @@ def ConfigTensorboardSession(logDir:str='./tensorboardLogs') -> SummaryWriter:
 
 # %% Function to get model checkpoint and load it into nn.Module for training restart - 09-06-2024
 def LoadModelAtCheckpoint(model:nn.Module, modelSavePath:str='./checkpoints', modelName:str='trainedModel', modelEpoch:int=0) -> nn.Module: 
-    # TODO: add checks that model and checkpoint matches 
+    # TODO: add checks that model and checkpoint matches: how to? Check number of parameters?
 
     # Create path to model state file
     checkPointPath = os.path.join(modelSavePath, modelName + '_' + AddZerosPadding(modelEpoch, stringLength=4))
@@ -378,6 +378,7 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
                                                                                                               'loadCheckpoint': False,
                                                                                                               'lossLogName': 'Loss-value',
                                                                                                               'epochStart': 0}):
+    # NOTE: is the default dictionary considered as "single" object or does python perform a merge of the fields?
 
     # Setup options from input dictionary
     taskType          = options['taskType']
@@ -406,12 +407,14 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
     # Configure Tensorboard
     if 'logDirectory' in options.keys():
         logDirectory = options['logDirectory']
-        if not(os.path.isdir(logDirectory)):
-            os.mkdir(logDirectory)
-
-        tensorBoardWriter = ConfigTensorboardSession(logDirectory)
     else:
-        tensorBoardWriter = ConfigTensorboardSession()
+        currentTime = datetime.datetime.now()
+        formattedTimestamp = currentTime.strftime('%d-%m-%Y_%H-%M') # Format time stamp as day, month, year, hour and minute
+        logDirectory = './tensorboardLog_' + modelName + formattedTimestamp
+        
+    if not(os.path.isdir(logDirectory)):
+        os.mkdir(logDirectory)
+    tensorBoardWriter = ConfigTensorboardSession(logDirectory)
 
     # If training is being restarted, attempt to load model
     if options['loadCheckpoint'] == True:
@@ -521,7 +524,7 @@ def GetSamplesFromDataset(dataloader: DataLoader, numOfSamples:int=10):
 
 
 # %% Torch to/from ONNx format exporter/loader based on TorchDynamo (PyTorch >2.0) - 09-06-2024
-def ExportTorchModelToONNx(model:nn.Module, dummyInputSample:torch.tensor, onnxExportPath:str='.', onnxSaveName:str='trainedModelONNx', modelID:int=0) -> None:
+def ExportTorchModelToONNx(model:nn.Module, dummyInputSample:torch.tensor, onnxExportPath:str='.', onnxSaveName:str='trainedModelONNx', modelID:int=0):
 
     # Define filename of the exported model
     if modelID > 999:
@@ -535,6 +538,8 @@ def ExportTorchModelToONNx(model:nn.Module, dummyInputSample:torch.tensor, onnxE
     modelONNx = torch.onnx.dynamo_export(model, dummyInputSample) # NOTE: ONNx model is stored as a binary protobuf file!
     # Save ONNx model 
     modelONNx.save(modelSaveName)
+
+    return modelONNx
 
 def LoadTorchModelFromONNx(dummyInputSample:torch.tensor, onnxExportPath:str='.', onnxSaveName:str='trainedModelONNx', modelID:int=0):
     # Define filename of the exported model

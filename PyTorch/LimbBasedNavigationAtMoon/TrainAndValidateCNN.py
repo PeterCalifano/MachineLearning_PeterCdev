@@ -20,7 +20,6 @@ from torch.utils.data import DataLoader # Utils for dataset management, storing 
 from torchvision import datasets # Import vision default datasets from torchvision
 from torchvision.transforms import ToTensor # Utils
 
-import datetime
 import numpy as np
 
 from torch.utils.tensorboard import SummaryWriter # Key class to use tensorboard with PyTorch. VSCode will automatically ask if you want to load tensorboard in the current session.
@@ -148,8 +147,8 @@ def main():
             # Get flattened patch
             flattenedWindow = ui8flattenedWindows[:, sampleID]
 
-            # Validate patch
-            pathIsValid = True # TODO
+            # Validate patch counting how many pixels are completely black or white
+            pathIsValid = customTorch.IsPatchValid(flattenedWindow, lowerIntensityThr=5)
 
             if pathIsValid:
                 inputDataArray[0:49, saveID]  = flattenedWindow
@@ -176,6 +175,10 @@ def main():
     
     # INITIALIZE DATASET OBJECT # TEMPORARY from one single dataset
     dataset = customTorch.MoonLimbPixCorrector_Dataset(dataDict)
+
+    if exportToONNx:
+        # Save sample dataset for ONNx use
+        customTorch.SaveTorchDataset(dataset, modelSavePath, datasetName='sampleDatasetToONNx')
 
     # Define the split ratio
     trainingSize = int(TRAINING_PERC * len(dataset))  
