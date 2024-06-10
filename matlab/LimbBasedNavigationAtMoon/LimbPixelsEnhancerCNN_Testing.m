@@ -30,39 +30,36 @@ addpath('..')
 
 
 %% Simulation data loading
+dataJSONpath = fullfile();
+datastruct = JSONdecoder(dataJSONpath);
 
-JSONdecoder();
+% Get flattened patch
+sampleID = 1
+flattenedWindow  = datastruct.ui8flattenedWindows(:, sampleID);
+coarseLimbPixels = datastruct.ui16coarseLimbPixels(:, sampleID)
+% Validate patch counting how many pixels are completely black or white
+% pathIsValid = customTorch.IsPatchValid(flattenedWindow, lowerIntensityThr=5);
 
+% Compose input sample
+inputDataSample = zeros(60, 1, 'single');
 
+inputDataSample(1:49)   = single(flattenedWindow);
+inputDataSample(50)     = single(datastruct.dRmoonDEM);
+inputDataSample(51:52)  = single(datastruct.dSunDir_PixCoords);
+inputDataSample(53:55)  = single(quat2mrp( DCM2quat(datastruct.dAttDCM_fromTFtoCAM, false) )); % Convert Attitude matrix to MRP parameters
+inputDataSample(56:58)  = single(datastruct.dPosCam_TF);
+inputDataSample(59:60)  = single(coarseLimbPixels);
 
 %% Model loading
 path2model;
 trainedCNN = ImportModelFromONNx(path2model, 'regression');
 
-
-
 %% Model evaluation     
-saveID = 1;
 
-    
-% Get flattened patch
-flattenedWindow = ui8flattenedWindows(:, sampleID);
-
-% Validate patch counting how many pixels are completely black or white
-% pathIsValid = customTorch.IsPatchValid(flattenedWindow, lowerIntensityThr=5);
-
-% Compose input sample
-inputDataSample = zeros(60, 1);
-
-inputDataSample(1:49)   = flattenedWindow;
-inputDataSample(50)     = dRmoonDEM;
-inputDataSample(51:52)  = dSunDir_PixCoords;
-inputDataSample(53:55)  = dAttDCM_fromTFtoCAM; % Convert Attitude matrix to MRP parameters
-inputDataSample(56:58)  = dPosCam_TF;
-inputDataSample(59:60)  = ui16coarseLimbPixels;
-
-% TODO: check which shape the model from ONNx will require
-% Which dtype? --> Python should use float (?)
+% NOTES: 
+% 1) Check which shape the model from ONNx will require --> MATLAB converts the model as it is. 
+%    Therefore it will requires the same shape as in Torch code.
+% 2) Which dtype? --> Python should use float (?) --> Apparently yes, try single
 
 outputPrediction = predict(trainedCNN, reshape(inputDataSample, 1, 60) );
 
