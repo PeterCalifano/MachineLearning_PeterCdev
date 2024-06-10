@@ -520,8 +520,6 @@ def GetSamplesFromDataset(dataloader: DataLoader, numOfSamples:int=10):
     return samples
 
 
-
-
 # %% Torch to/from ONNx format exporter/loader based on TorchDynamo (PyTorch >2.0) - 09-06-2024
 def ExportTorchModelToONNx(model:nn.Module, dummyInputSample:torch.tensor, onnxExportPath:str='.', onnxSaveName:str='trainedModelONNx', modelID:int=0) -> None:
 
@@ -561,6 +559,11 @@ def LoadTorchModelFromONNx(dummyInputSample:torch.tensor, onnxExportPath:str='.'
 # %% Other auxiliary functions - 09-06-2024
 def AddZerosPadding(intNum:int, stringLength:str=4):
     return f"{intNum:0{stringLength}d}" # Return strings like 00010
+
+
+#inputImageSize:list, kernelSizes:list, OutputChannelsSizes:list, PoolingLayersSizes:list, inputChannelSize:int=1, withBiases=True
+def ComputeConvLayerOutputSize(modelDescriptionDict: dict):
+    raise NotImplementedError('TODO') # Returns length of output of CNN as flatten
 
 # %% MATLAB wrapper class for Torch models evaluation - TODO DD-06-2024
 #class TorchModel_MATLABwrap():

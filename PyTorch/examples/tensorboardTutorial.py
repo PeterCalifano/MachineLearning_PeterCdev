@@ -29,6 +29,11 @@ loss = 10
 epoch = 0
 writer.add_scalar("Loss/train", loss, epoch) # In LDC this all that is done, simply adding the scalar loss metric at a given epoch to the writer and then flushing it.
                                              # The first input is simply a tag for the visualization.
+value1 = 0
+value2 = 0
+tag_dict = {'tag1': value1, 'tag2': value2}
+writer.add_scalars("parent_tag", tag_dict) # In LDC this all that is done, simply adding the scalar loss metric at a given epoch to the writer and then flushing it.
+                                             # The first input is simply a tag for the visualization.
 # Then call flush to make sure all events are logged to disk:
 writer.flush() 
 
