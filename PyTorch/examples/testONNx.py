@@ -25,7 +25,7 @@ def main():
     # Define inputs
     exportPath = './ExportedModelsToONNx'
     modelSavePath = './checkpoints/HorizonPixCorrector_CNN_run8'
-    modelName = 'trainedModel'
+    modelName = 'trainedModel_' + customTorch.AddZerosPadding(0, 4)
     datasetSavePath = modelSavePath + 'sampleDatasetToONNx'
     batch_size = 16
 
