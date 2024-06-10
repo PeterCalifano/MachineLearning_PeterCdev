@@ -542,7 +542,7 @@ def ExportTorchModelToONNx(model:nn.Module, dummyInputSample:torch.tensor, onnxE
     #modelONNx = torch.onnx.export(model, dummyInputSample) # NOTE: ONNx model is stored as a binary protobuf file!
 
     # Save ONNx model 
-    modelONNx.save(modelSaveName)
+    modelONNx.save(modelSaveName+'.onnx')
 
     return modelONNx
 
@@ -553,7 +553,7 @@ def LoadTorchModelFromONNx(dummyInputSample:torch.tensor, onnxExportPath:str='.'
     else: 
         stringLength = 3
 
-    modelSaveName = os.path.join(onnxExportPath, onnxSaveName + AddZerosPadding(modelID, stringLength))
+    modelSaveName = os.path.join(onnxExportPath, onnxSaveName + '_', AddZerosPadding(modelID, stringLength))
 
     if os.path.isfile():
             modelONNx = onnx.load(modelSaveName)
