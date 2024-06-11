@@ -166,11 +166,16 @@ def MoonLimbPixConvEnhancer_LossFcn(predictCorrection, labelVector, params:list=
     return lossValue
 
 
-# %% Function to save model state - 04-05-2024
-def SaveModelState(model:nn.Module, modelName:str="trainedModel", enableTracing:bool=False, exampleInput=None) -> None:
+# %% Function to save model state - 04-05-2024, updated 11-06-2024
+def SaveTorchModel(model:nn.Module, modelName:str="trainedModel", saveAsTraced:bool=False, exampleInput=None) -> None:
     if 'os.path' not in sys.modules:
         import os.path
 
+    if saveAsTraced: 
+        extension = '.pt'
+    else:
+        extension = '.pth'
+        
     if modelName == 'trainedModel': 
         if not(os.path.isdir('./testModels')):
             os.mkdir('testModels')
@@ -184,9 +189,10 @@ def SaveModelState(model:nn.Module, modelName:str="trainedModel", enableTracing:
                 gitignoreFile = open('.gitignore', 'a')
                 gitignoreFile.write("\ntestModels/*")
                 gitignoreFile.close()
-        filename = "testModels/" + modelName + '.pt'
+
+        filename = "testModels/" + modelName + extension 
     else:
-        filename = modelName + '.pt'
+        filename = modelName + extension 
     
     # Attach timetag to model checkpoint
     #currentTime = datetime.datetime.now()
@@ -195,24 +201,55 @@ def SaveModelState(model:nn.Module, modelName:str="trainedModel", enableTracing:
     #filename =  filename + "_" + formattedTimestamp
     print("Saving PyTorch Model State to:", filename)
 
-    if enableTracing:
+    if saveAsTraced:
+        print('Saving traced model...')
         if exampleInput is not None:
-            tracedModel = torch.jit.trace(model, exampleInput)
+            tracedModel = torch.jit.trace(model.forward, exampleInput)
             tracedModel.save(filename)
+            print('Model correctly saved with filename: ', filename)
         else: 
             raise ValueError('You must provide an example input to trace the model through torch.jit.trace()')
     else:
+        print('Saving NOT traced model...')
         torch.save(model.state_dict(), filename) # Save model as internal torch representation
+        print('Model correctly saved with filename: ', filename)
 
-# %% Function to load model state - 04-05-2024 
-def LoadModelState(model:nn.Module, modelName:str="trainedModel", filepath:str="testModels/") -> nn.Module:
+
+# %% Function to load model state into empty model- 04-05-2024, updated 11-06-2024
+def LoadTorchModel(model:nn.Module=None, modelName:str="trainedModel", filepath:str="testModels/", loadAsTraced:bool=False) -> nn.Module:
+    
+    if loadAsTraced: 
+        extension = '.pt'
+    else:
+        extension = '.pth'
+
     # Contatenate file path
-    modelPath = os.path.join(filepath, modelName + '.pt') 
-    # Load model from file
-    model.load_state_dict(torch.load(modelPath))
-    # Evaluate model to set (weights, biases)
-    model.eval()
+    modelPath = os.path.join(filepath, modelName + extension) 
+
+    if not(os.path.isfile(modelPath)):
+        raise FileNotFoundError('Model specified by: ', modelPath, ': NOT FOUND.')
+    
+    if loadAsTraced and model is None:
+        print('Loading traced model from filename: ', modelPath)
+        # Load traced model using torch.jit
+        model = torch.jit.load(modelPath)
+    elif not(loadAsTraced) or (loadAsTraced and model is not None):
+
+        if loadAsTraced and model is not None:
+            print('loadAsTraced is specified as true, but model has been provided. Loading from state: ', modelPath)
+        else: 
+            print('Loading model from filename: ', modelPath)
+
+        # Load model from file
+        model.load_state_dict(torch.load(modelPath))
+        # Evaluate model to set (weights, biases)
+        model.eval()
+
+    else:
+        raise ValueError('Incorrect combination of inputs! Valid options: \n  1) model is None AND loadAsTraced is True; \n  2) model is nn.Module AND loadAsTraced is False; \n  3) model is nn.Module AND loadAsTraced is True (fallback to case 2)')
+
     return model
+
 
 # %% Function to save Dataset object - 01-06-2024
 def SaveTorchDataset(datasetObj:Dataset, datasetFilePath:str='', datasetName:str='dataset') -> None:
@@ -286,21 +323,19 @@ class MoonLimbPixCorrector_Dataset():
 
         return inputVec, label
     
-    # Function to validate path (check it is not completely black or white)
-    def IsPatchValid(patchFlatten, lowerIntensityThr=5):
-        
-        # Count how many pixels are below threshold
-        howManyBelowThreshold = np.sum(patchFlatten <= lowerIntensityThr)
-        howManyPixels = len(patchFlatten)
-        width = np.sqrt(howManyPixels)
-
-        lowerThreshold = width/2
-        upperThreshold = howManyPixels - lowerThreshold
-
-        if howManyBelowThreshold <  lowerThreshold or howManyBelowThreshold > upperThreshold:
-            return False
-        else:
-            return True
+# %% Function to validate path (check it is not completely black or white)
+def IsPatchValid(patchFlatten, lowerIntensityThr=5):
+    
+    # Count how many pixels are below threshold
+    howManyBelowThreshold = np.sum(patchFlatten <= lowerIntensityThr)
+    howManyPixels = len(patchFlatten)
+    width = np.sqrt(howManyPixels)
+    lowerThreshold = width/2
+    upperThreshold = howManyPixels - lowerThreshold
+    if howManyBelowThreshold <  lowerThreshold or howManyBelowThreshold > upperThreshold:
+        return False
+    else:
+        return True
     
 
 # %% TENSORBOARD functions - 04-06-2024
@@ -360,7 +395,7 @@ def LoadModelAtCheckpoint(model:nn.Module, modelSavePath:str='./checkpoints', mo
     if os.path.isfile(checkPointPath):
         print('Loading model to RESTART training from checkpoint: ', checkPointPath)
         try:
-            loadedModel = LoadModelState(model, modelName, modelSavePath)
+            loadedModel = LoadTorchModel(model, modelName, modelSavePath)
         except Exception as exception:
             print('Loading of model for training restart failed with error:', exception)
             print('Skipping reload and training from scratch...')
@@ -464,7 +499,7 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
                 os.mkdir(checkpointDir)
 
             modelSaveName = os.path.join(checkpointDir, modelName + '_' + AddZerosPadding(epochID + epochStart, stringLength=4))
-            SaveModelState(model, modelSaveName)
+            SaveTorchModel(model, modelSaveName)
         
         # %% MODEL PREDICTION EXAMPLES
         examplePrediction, exampleLosses, inputSampleList = EvaluateModel(validationDataset, model, lossFcn, device, 10)
@@ -579,8 +614,6 @@ def ExportTorchModelToONNx(model:nn.Module, dummyInputSample:torch.tensor, onnxE
     return modelONNx, convertedModel
 
 
-
-
 def LoadTorchModelFromONNx(dummyInputSample:torch.tensor, onnxExportPath:str='.', onnxSaveName:str='trainedModelONNx', modelID:int=0):
     # Define filename of the exported model
     if modelID > 999:
@@ -597,7 +630,7 @@ def LoadTorchModelFromONNx(dummyInputSample:torch.tensor, onnxExportPath:str='.'
     else: 
         raise ImportError('Specified input path to .onnx model not found.')
 
-# %% Model Graph visualization function based on Netron module #TODO
+# %% Model Graph visualization function based on Netron module # TODO
 
 
 
@@ -610,16 +643,21 @@ def AddZerosPadding(intNum:int, stringLength:str=4):
 def ComputeConvLayerOutputSize(modelDescriptionDict: dict):
     raise NotImplementedError('TODO') # Returns length of output of CNN as flatten
 
-# %% MATLAB wrapper class for Torch models evaluation - TODO DD-06-2024
-#class TorchModel_MATLABwrap():
-#
-#    def __init__(self) -> None:
-#        print('TODO: Model loader and setup')
-#    
-#    def forward():
-#        print('TODO: model evaluation method')
-#
-# %% TORCH to ONNX format model converter - TODO
+# %% MATLAB wrapper class for Torch models evaluation - TODO 11-06-2024
+class TorchModel_MATLABwrap():
+    # Attributes
+
+    def __init__(self, trainedModelPath:str) -> None:
+        # Load model state and state
+        trainedModel = LoadTorchModel()
+        # 
+        self.trainedModel = trainedModel
+        print('TODO: Model loader and setup')
+    
+    def forward():
+        print('TODO: model evaluation method')
+
+# %% TORCH to ONNX format model converter - TODO 11-06-2024
 
 
 

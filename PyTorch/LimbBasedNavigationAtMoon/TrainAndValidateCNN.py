@@ -40,7 +40,7 @@ def main():
 
     device = customTorch.GetDevice()
 
-    exportToONNx = True
+    exportTracedModel = True
 
     options = {'taskType': 'regression', 
                'device': device, 
@@ -178,7 +178,7 @@ def main():
     # INITIALIZE DATASET OBJECT # TEMPORARY from one single dataset
     dataset = customTorch.MoonLimbPixCorrector_Dataset(dataDict)
 
-    if exportToONNx:
+    if exportTracedModel:
         # Save sample dataset for ONNx use
         customTorch.SaveTorchDataset(dataset, modelSavePath, datasetName='sampleDatasetToONNx')
 
@@ -206,7 +206,7 @@ def main():
 
             print('RESTART training from checkpoint: ', checkPointPath)
             modelEmpty = limbPixelExtraction_CNN_NN.HorizonExtractionEnhancerCNN(outChannelsSizes, kernelSizes)
-            modelCNN_NN = customTorch.LoadModelState(modelEmpty, modelName, modelSavePath)
+            modelCNN_NN = customTorch.LoadTorchModel(modelEmpty, modelName, modelSavePath)
 
         else:
             raise ValueError('Specified model state file not found. Check input path.')    
@@ -235,10 +235,13 @@ def main():
     '''
     (trainedModel, trainingLosses, validationLosses, inputSample) = customTorch.TrainAndValidateModel(dataloaderIndex, modelCNN_NN, lossFcn, optimizer, options)
 
-    # %% Export trained model to ONNx format 
-    if exportToONNx:
+    # %% Export trained model to ONNx and traced Pytorch format 
+    if exportTracedModel:
         customTorch.ExportTorchModelToONNx(trainedModel, inputSample, onnxExportPath='./checkpoints',
                                             onnxSaveName='trainedModelONNx', modelID=options['epochStart']+options['epochs'], onnx_version=14)
+
+        customTorch.SaveTorchModel(trainedModel, modelName='trainedTracedModel'+customTorch.AddZerosPadding(options['epochStart']+options['epochs'], 3), 
+                                   saveAsTraced=True, exampleInput=inputSample)
 
 # %% MAIN SCRIPT
 if __name__ == '__main__':
