@@ -167,7 +167,7 @@ def MoonLimbPixConvEnhancer_LossFcn(predictCorrection, labelVector, params:list=
 
 
 # %% Function to save model state - 04-05-2024
-def SaveModelState(model:nn.Module, modelName:str="trainedModel") -> None:
+def SaveModelState(model:nn.Module, modelName:str="trainedModel", enableTracing:bool=False, exampleInput=None) -> None:
     if 'os.path' not in sys.modules:
         import os.path
 
@@ -184,9 +184,9 @@ def SaveModelState(model:nn.Module, modelName:str="trainedModel") -> None:
                 gitignoreFile = open('.gitignore', 'a')
                 gitignoreFile.write("\ntestModels/*")
                 gitignoreFile.close()
-        filename = "testModels/" + modelName
+        filename = "testModels/" + modelName + '.pt'
     else:
-        filename = modelName
+        filename = modelName + '.pt'
     
     # Attach timetag to model checkpoint
     #currentTime = datetime.datetime.now()
@@ -194,12 +194,20 @@ def SaveModelState(model:nn.Module, modelName:str="trainedModel") -> None:
 
     #filename =  filename + "_" + formattedTimestamp
     print("Saving PyTorch Model State to:", filename)
-    torch.save(model.state_dict(), filename) # Save model as internal torch representation
+
+    if enableTracing:
+        if exampleInput is not None:
+            tracedModel = torch.jit.trace(model, exampleInput)
+            tracedModel.save(filename)
+        else: 
+            raise ValueError('You must provide an example input to trace the model through torch.jit.trace()')
+    else:
+        torch.save(model.state_dict(), filename) # Save model as internal torch representation
 
 # %% Function to load model state - 04-05-2024 
 def LoadModelState(model:nn.Module, modelName:str="trainedModel", filepath:str="testModels/") -> nn.Module:
     # Contatenate file path
-    modelPath = os.path.join(filepath, modelName) #  + ".pth"
+    modelPath = os.path.join(filepath, modelName + '.pt') 
     # Load model from file
     model.load_state_dict(torch.load(modelPath))
     # Evaluate model to set (weights, biases)
@@ -556,6 +564,10 @@ def ExportTorchModelToONNx(model:nn.Module, dummyInputSample:torch.tensor, onnxE
             tmpModel = onnx.load(pathToModel)
             # Convert model to get new model proto
             convertedModelProto = version_converter.convert_version(tmpModel, onnx_version)
+
+            # TEST
+            #convertedModelProto.ir_version = 7
+
             # Save model proto to .onnbx
             onnx.save_model(convertedModelProto, modelSaveName + '_ver' + str(onnx_version) + '.onnx')
 
