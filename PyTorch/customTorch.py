@@ -668,17 +668,34 @@ def ComputeConvLayerOutputSize(modelDescriptionDict: dict):
 
 # %% MATLAB wrapper class for Torch models evaluation - TODO 11-06-2024
 class TorchModel_MATLABwrap():
-    # Attributes
+    def __init__(self, trainedModelName:str, trainedModelPath:str) -> None:
 
-    def __init__(self, trainedModelPath:str) -> None:
         # Load model state and state
-        trainedModel = LoadTorchModel()
-        # 
+        trainedModel = LoadTorchModel(None, trainedModelName, trainedModelPath, loadAsTraced=True)
         self.trainedModel = trainedModel
-        print('TODO: Model loader and setup')
+        # Get available device
+        self.device = GetDevice()
+
+    def forward(self, inputSample:np.ndarray):
+        
+        if inputSample.dtype is not np.float32:
+            inputSample = np.float32(inputSample)
+
+        # TODO: check the input is exactly identical to what the model receives using EvaluateModel() loading from dataset!        
+        # Convert numpy array into torch.tensor for model inference
+        X = torch.tensor(inputSample)
+
+        # ########### DEBUG ######################: 
+        print('Evaluating model using batch input: ', X)
+        ############################################
+
+        # Perform inference using model
+        Y = self.trainedModel(X.to(self.device))
+
+        return Y
     
-    def forward():
-        print('TODO: model evaluation method')
+
+
 
 # %% TORCH to ONNX format model converter - TODO 11-06-2024
 
