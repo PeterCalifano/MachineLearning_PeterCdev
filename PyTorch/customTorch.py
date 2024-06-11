@@ -218,13 +218,17 @@ def SaveTorchModel(model:nn.Module, modelName:str="trainedModel", saveAsTraced:b
 # %% Function to load model state into empty model- 04-05-2024, updated 11-06-2024
 def LoadTorchModel(model:nn.Module=None, modelName:str="trainedModel", filepath:str="testModels/", loadAsTraced:bool=False) -> nn.Module:
     
-    if loadAsTraced: 
-        extension = '.pt'
-    else:
-        extension = '.pth'
+    # Check if input name has extension
+    rootFileName, extension = os.path.splitext(os.path.join(filepath, modelName))
+
+    if extension is "":
+        if loadAsTraced: 
+            extension = '.pt'
+        else:
+            extension = '.pth'
 
     # Contatenate file path
-    modelPath = os.path.join(filepath, modelName + extension) 
+    modelPath = os.path.join(rootFileName + extension) 
 
     if not(os.path.isfile(modelPath)):
         raise FileNotFoundError('Model specified by: ', modelPath, ': NOT FOUND.')
@@ -354,8 +358,8 @@ def StartTensorboard(logDir:str) -> None:
         try:
             subprocess.Popen(['tensorboard', '--logdir', logDir, '--host', '0.0.0.0', '--port', '6006'])
             print('Tensorboard session successfully started using logDir:', logDir)
-        except:
-            RuntimeWarning('Tensorboard start-up failed. Continuing without opening session.')
+        except Exception as errMsg:
+            print('Failed due to:', errMsg, '. Continuing without opening session.')
     else:
         print('Tensorboard seems to be running in this session! Restarting with new directory...')
         #kill_tensorboard()
@@ -519,42 +523,61 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
     return model, trainLossHistory, validationLossHistory, inputSampleList
 
 # %% Model evaluation function on a random number of samples from dataset - 06-06-2024
-def EvaluateModel(dataloader:DataLoader, model:nn.Module, lossFcn: nn.Module, device=GetDevice(), numOfSamples:int=10) -> np.array:
+
+# TODO: upgrade to use single sample as torch.tensor
+
+def EvaluateModel(dataloader:DataLoader, model:nn.Module, lossFcn: nn.Module, device=GetDevice(), numOfSamples:int=10, inputSample:torch.tensor=None) -> np.array:
         
-    model.eval()
+    model.eval() # Set model in prediction mode
     with torch.no_grad(): 
+        if inputSample is None:
+            # Get some random samples from dataloader as list
+            extractedSamples = GetSamplesFromDataset(dataloader, numOfSamples)
 
-        # Get some random samples from dataloader as list
-        extractedSamples = GetSamplesFromDataset(dataloader, numOfSamples)
+            # Create input array as torch tensor
+            X = torch.zeros(len(extractedSamples), extractedSamples[0][0].shape[0])
+            Y = torch.zeros(len(extractedSamples), extractedSamples[0][1].shape[0])
 
-        # Create input array as torch tensor
-        X = torch.zeros(len(extractedSamples), extractedSamples[0][0].shape[0])
-        Y = torch.zeros(len(extractedSamples), extractedSamples[0][1].shape[0])
-
-        #inputSampleList = []
-        for id, (inputVal, labelVal) in enumerate(extractedSamples):
-            X[id, :] = inputVal
-            Y[id, :] = labelVal
+            #inputSampleList = []
+            for id, (inputVal, labelVal) in enumerate(extractedSamples):
+                X[id, :] = inputVal
+                Y[id, :] = labelVal
 
             #inputSampleList.append(inputVal.reshape(1, -1))
 
-        # Perform FORWARD PASS
-        examplePredictions = model(X.to(device)) # Evaluate model at input
+            # Perform FORWARD PASS
+            examplePredictions = model(X.to(device)) # Evaluate model at input
 
-        # Compute loss for each input separately
-        exampleLosses = torch.zeros(examplePredictions.size(0))
+            # Compute loss for each input separately
+            exampleLosses = torch.zeros(examplePredictions.size(0))
 
-        examplePredictionList = []
-        for id in range(examplePredictions.size(0)):
-            
-            # Get prediction and label samples 
-            examplePredictionList.append(examplePredictions[id, :].reshape(1, -1))
-            labelSample = Y[id,:].reshape(1, -1)
+            examplePredictionList = []
+            for id in range(examplePredictions.size(0)):
 
-            # Evaluate
-            exampleLosses[id] = lossFcn(examplePredictionList[id].to(device), labelSample.to(device)).item()
+                # Get prediction and label samples 
+                examplePredictionList.append(examplePredictions[id, :].reshape(1, -1))
+                labelSample = Y[id,:].reshape(1, -1)
 
-    return examplePredictions, exampleLosses, X.to(device)
+                # Evaluate loss function
+                exampleLosses[id] = lossFcn(examplePredictionList[id].to(device), labelSample.to(device)).item()
+   
+        else:
+            # Perform FORWARD PASS
+            X = inputSample
+            examplePredictions = model(X.to(device)) # Evaluate model at input
+
+            examplePredictionList = []
+            for id in range(examplePredictions.size(0)):
+
+                # Get prediction and label samples 
+                examplePredictionList.append(examplePredictions[id, :].reshape(1, -1))
+                labelSample = Y[id,:].reshape(1, -1)
+
+                # Evaluate loss function
+                exampleLosses[id] = lossFcn(examplePredictionList[id].to(device), labelSample.to(device)).item()
+
+        return examplePredictions, exampleLosses, X.to(device)
+
                 
 # %% Function to extract specified number of samples from dataloader - 06-06-2024
 def GetSamplesFromDataset(dataloader: DataLoader, numOfSamples:int=10):
