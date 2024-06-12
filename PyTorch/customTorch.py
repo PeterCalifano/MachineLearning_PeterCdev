@@ -267,6 +267,9 @@ def LoadTorchDataset(datasetFilePath:str) -> Dataset:
 # %% Generic Dataset class for Supervised learning - 30-05-2024
 # Base class for Supervised learning datasets
 # Reference for implementation of virtual methods: https://stackoverflow.com/questions/4714136/how-to-implement-virtual-methods-in-python
+
+'''
+
 from abc import abstractmethod
 from abc import ABCMeta
 
@@ -298,7 +301,7 @@ class GenericSupervisedDataset(Dataset, metaclass=ABCMeta):
     def __getitem__(self, index):
         raise NotImplementedError()
         return inputVec, label
-
+'''
 # %% Custom Dataset class for Moon Limb pixel extraction CNN enhancer - 01-06-2024
 # First prototype completed by PC - 04-06-2024 --> to move to new module
 class MoonLimbPixCorrector_Dataset():
