@@ -5,6 +5,7 @@
 import sys, os
 # Append paths of custom modules
 sys.path.append(os.path.join('/home/peterc/devDir/MachineLearning_PeterCdev/PyTorch'))
+sys.path.append(os.path.join('/home/peterc/devDir/MachineLearning_PeterCdev/PyTorch/LimbBasedNavigationAtMoon'))
 
 import customTorch # Custom torch tools
 import limbPixelExtraction_CNN_NN
@@ -21,7 +22,6 @@ from torch.utils.data import DataLoader # Utils for dataset management, storing 
 from torchvision import datasets # Import vision default datasets from torchvision
 from torchvision.transforms import ToTensor # Utils
 
-import datetime
 import numpy as np
 
 from torch.utils.tensorboard import SummaryWriter # Key class to use tensorboard with PyTorch. VSCode will automatically ask if you want to load tensorboard in the current session.
@@ -30,23 +30,44 @@ import torch.optim as optim
 def main():
 
     # SETTINGS and PARAMETERS 
-    outChannelsSizes = [32, 64, 75, 15]
+    batch_size = 16 # Defines batch size in dataset
+    TRAINING_PERC = 0.75
+    outChannelsSizes = [16, 32, 75, 15]
     kernelSizes = [3, 1]
-    learnRate = 1E-5
+    learnRate = 5E-8
     momentumValue = 0.001
 
-    optimizerID = 1
+    optimizerID = 1 # 0
+
+    device = customTorch.GetDevice()
+
+    exportTracedModel = True
 
     options = {'taskType': 'regression', 
-               'device': customTorch.GetDevice(), 
-               'epochs': 100, 
+               'device': device, 
+               'epochs': 25, 
                'Tensorboard':True,
                'saveCheckpoints':True,
-               'checkpointsDir': './checkpoints/HorizonPixCorrector_CNN',
+               'checkpointsOutDir': './checkpoints/HorizonPixCorrector_CNN_run8',
                'modelName': 'trainedModel',
                'loadCheckpoint': False,
+               'checkpointsInDir': './checkpoints/HorizonPixCorrector_CNN_run8',
                'lossLogName': 'Loss_MoonHorizonExtraction',
-               'logDirectory': './tensorboardLog'}
+               'logDirectory': './tensorboardLog',
+               'epochStart': 50}
+
+    # Options to restart training from checkpoint
+    modelSavePath = './checkpoints/HorizonPixCorrector_CNN_run8'
+
+    if options['epochStart'] == 0:
+        restartTraining = False
+    else:
+        restartTraining = True
+        # Get last saving of model (NOTE: getmtime does not work properly. Use scandir + list comprehension)
+        with os.scandir(modelSavePath) as it:
+            modelNamesWithTime = [(entry.name, entry.stat().st_mtime) for entry in it if entry.is_file()]
+        modelName = sorted(modelNamesWithTime, key=lambda x: x[1])[-1][0]
+
 
     # DATASET LOADING
     # TODO: add datasets
@@ -80,7 +101,7 @@ def main():
     dirNamesRoot = os.listdir(dataPath)
 
     # Select one of the available datapairs folders (each corresponding to a labels generation pipeline output)
-    datapairsID = 0
+    datapairsID = 0 # ACHTUNG! paths from listdir are randomly ordered! --> TODO: modify
     dataDirPath = os.path.join(dataPath, dirNamesRoot[datapairsID])
     dataFilenames = os.listdir(dataDirPath)
 
@@ -94,6 +115,8 @@ def main():
     dataFileID = 0
     dataFilePath = os.path.join(dataDirPath, dataFilenames[dataFileID])
     tmpdataDict, tmpdataKeys = datasetPreparation.LoadJSONdata(dataFilePath)
+
+    # TODO: add printing of loaded dataset information
 
     # DEBUG
     print(tmpdataKeys)
@@ -127,8 +150,9 @@ def main():
             # Get flattened patch
             flattenedWindow = ui8flattenedWindows[:, sampleID]
 
-            # Validate patch
-            pathIsValid = True # TODO
+            # Validate patch counting how many pixels are completely black or white
+            #pathIsValid = customTorch.IsPatchValid(flattenedWindow, lowerIntensityThr=5)
+            pathIsValid = True
 
             if pathIsValid:
                 inputDataArray[0:49, saveID]  = flattenedWindow
@@ -153,12 +177,14 @@ def main():
 
     dataDict = {'labelsDataArray': labelsDataArray, 'inputDataArray': inputDataArray}
     
-    # INITIALIZE DATASET OBJECT
+    # INITIALIZE DATASET OBJECT # TEMPORARY from one single dataset
     dataset = customTorch.MoonLimbPixCorrector_Dataset(dataDict)
 
-    # Define the split ratio
-    TRAINING_PERC = 0.8
+    if exportTracedModel:
+        # Save sample dataset for ONNx use
+        customTorch.SaveTorchDataset(dataset, modelSavePath, datasetName='sampleDatasetToONNx')
 
+    # Define the split ratio
     trainingSize = int(TRAINING_PERC * len(dataset))  
     validationSize = len(dataset) - trainingSize 
 
@@ -166,7 +192,6 @@ def main():
     trainingData, validationData = torch.utils.data.random_split(dataset, [trainingSize, validationSize])
 
     # Define dataloaders objects
-    batch_size = 64 # Defines batch size in dataset
     trainingDataset   = DataLoader(trainingData, batch_size, shuffle=True)
     validationDataset = DataLoader(validationData, batch_size, shuffle=True) 
 
@@ -177,7 +202,18 @@ def main():
     lossFcn = customTorch.CustomLossFcn(customTorch.MoonLimbPixConvEnhancer_LossFcn)
 
     # MODEL DEFINITION
-    modelCNN_NN = limbPixelExtraction_CNN_NN.HorizonExtractionEnhancerCNN(outChannelsSizes, kernelSizes)
+    if restartTraining:
+        checkPointPath = os.path.join(modelSavePath, modelName)
+        if os.path.isfile(checkPointPath):
+
+            print('RESTART training from checkpoint: ', checkPointPath)
+            modelEmpty = limbPixelExtraction_CNN_NN.HorizonExtractionEnhancerCNN(outChannelsSizes, kernelSizes)
+            modelCNN_NN = customTorch.LoadTorchModel(modelEmpty, modelName, modelSavePath)
+
+        else:
+            raise ValueError('Specified model state file not found. Check input path.')    
+    else:
+        modelCNN_NN = limbPixelExtraction_CNN_NN.HorizonExtractionEnhancerCNN(outChannelsSizes, kernelSizes)
 
     # Define optimizer object specifying model instance parameters and optimizer parameters
     if optimizerID == 0:
@@ -185,8 +221,9 @@ def main():
     elif optimizerID == 1:
         optimizer = torch.optim.Adam(modelCNN_NN.parameters(), lr=learnRate)
 
+    print('Using loaded dataset for training and validation: ', dataDirPath)
 
-    # TRAIN and VALIDATE MODEL
+    # %% TRAIN and VALIDATE MODEL
     '''
     TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Module, optimizer, options:dict={'taskType': 'classification', 
                                                                                                               'device': GetDevice(), 
@@ -195,10 +232,19 @@ def main():
                                                                                                               'saveCheckpoints':True,
                                                                                                               'checkpointsDir': './checkpoints',
                                                                                                               'modelName': 'trainedModel',
-                                                                                                              'loadCheckpoint': False}):
+                                                                                                              'loadCheckpoint': False,
+                                                                                                              'epochStart': 150}):
     '''
-    (trainedModel, trainingLosses, validationLosses) = customTorch.TrainAndValidateModel(dataloaderIndex, modelCNN_NN, lossFcn, optimizer, options)
+    (trainedModel, trainingLosses, validationLosses, inputSample) = customTorch.TrainAndValidateModel(dataloaderIndex, modelCNN_NN, lossFcn, optimizer, options)
 
+    # %% Export trained model to ONNx and traced Pytorch format 
+    if exportTracedModel:
+        customTorch.ExportTorchModelToONNx(trainedModel, inputSample, onnxExportPath='./checkpoints',
+                                            onnxSaveName='trainedModelONNx', modelID=options['epochStart']+options['epochs'], onnx_version=14)
 
+        customTorch.SaveTorchModel(trainedModel, modelName='trainedTracedModel'+customTorch.AddZerosPadding(options['epochStart']+options['epochs'], 3), 
+                                   saveAsTraced=True, exampleInput=inputSample)
+
+# %% MAIN SCRIPT
 if __name__ == '__main__':
     main()

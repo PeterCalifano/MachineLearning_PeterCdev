@@ -15,6 +15,8 @@ import sys, os, signal
 import subprocess
 import psutil
 import inspect
+import onnx
+from onnx import version_converter
 
 from torch.utils.tensorboard import SummaryWriter # Key class to use tensorboard with PyTorch. VSCode will automatically ask if you want to load tensorboard in the current session.
 import torch.optim as optim
@@ -108,12 +110,12 @@ def ValidateModel(dataloader:DataLoader, model:nn.Module, lossFcn:nn.Module, dev
     if taskType.lower() == 'classification': 
         validationLoss /= numberOfBatches # Compute batch size normalized loss value
         correctOuputs /= size # Compute percentage of correct classifications over batch size
-        print(f"Validation (Classification): \n Accuracy: {(100*correctOuputs):>0.1f}%, Avg loss: {validationLoss:>8f} \n")
+        print(f"\n VALIDATION ((Classification) Accuracy: {(100*correctOuputs):>0.1f}%, Avg loss: {validationLoss:>8f} \n")
 
     elif taskType.lower() == 'regression':
         #print('TODO')
         validationLoss /= numberOfBatches
-        print(f"  Validation (Regression): \n Avg validation loss: {validationLoss:>0.1f}\n")
+        print(f"\n VALIDATION (Regression) Avg loss: {validationLoss:>0.1f}\n")
         #print(f"Validation (Regression): \n Avg absolute accuracy: {avgAbsAccuracy:>0.1f}, Avg relative accuracy: {(100*avgRelAccuracy):>0.1f}%, Avg loss: {validationLoss:>8f} \n")
 
     elif taskType.lower() == 'custom':
@@ -142,9 +144,9 @@ class CustomLossFcn(nn.Module):
    
 # %% Custom loss function for Moon Limb pixel extraction CNN enhancer - 01-06-2024
 def MoonLimbPixConvEnhancer_LossFcn(predictCorrection, labelVector, params:list=None):
-    # alfa*||xCorrT * ConicMatr* xCorr||^2 + (1-alfa)*MSE(label, prediction)
+    # Alternative loss: alfa*||xCorrT * ConicMatr* xCorr||^2 + (1-alfa)*MSE(label, prediction)
     # Get parameters and labels for computation of the loss
-    coeff = 0.5
+    coeff = 0.98 # TODO: convert params to dict
     LimbConicMatrixImg = (labelVector[:, 0:9].T).reshape(3, 3, labelVector.size()[0]).T
     patchCentre = labelVector[:, 9:]
 
@@ -164,11 +166,16 @@ def MoonLimbPixConvEnhancer_LossFcn(predictCorrection, labelVector, params:list=
     return lossValue
 
 
-# %% Function to save model state - 04-05-2024
-def SaveModelState(model:nn.Module, modelName:str="trainedModel") -> None:
+# %% Function to save model state - 04-05-2024, updated 11-06-2024
+def SaveTorchModel(model:nn.Module, modelName:str="trainedModel", saveAsTraced:bool=False, exampleInput=None) -> None:
     if 'os.path' not in sys.modules:
         import os.path
 
+    if saveAsTraced: 
+        extension = '.pt'
+    else:
+        extension = '.pth'
+        
     if modelName == 'trainedModel': 
         if not(os.path.isdir('./testModels')):
             os.mkdir('testModels')
@@ -182,31 +189,75 @@ def SaveModelState(model:nn.Module, modelName:str="trainedModel") -> None:
                 gitignoreFile = open('.gitignore', 'a')
                 gitignoreFile.write("\ntestModels/*")
                 gitignoreFile.close()
-        filename = "testModels/" + modelName
+
+        filename = "testModels/" + modelName + extension 
     else:
-        filename = modelName
+        filename = modelName + extension 
     
     # Attach timetag to model checkpoint
-    currentTime = datetime.datetime.now()
-    formattedTimestamp = currentTime.strftime('%d-%m-%Y_%H-%M') # Format time stamp as day, month, year, hour and minute
+    #currentTime = datetime.datetime.now()
+    #formattedTimestamp = currentTime.strftime('%d-%m-%Y_%H-%M') # Format time stamp as day, month, year, hour and minute
 
-    filename =  filename + "_" + formattedTimestamp
+    #filename =  filename + "_" + formattedTimestamp
     print("Saving PyTorch Model State to:", filename)
-    torch.save(model.state_dict(), filename) # Save model as internal torch representation
 
-# %% Function to load model state - 04-05-2024 
-def LoadModelState(model:nn.Module, modelName:str="trainedModel", filepath:str="testModels/") -> nn.Module:
+    if saveAsTraced:
+        print('Saving traced model...')
+        if exampleInput is not None:
+            tracedModel = torch.jit.trace(model.forward, exampleInput)
+            tracedModel.save(filename)
+            print('Model correctly saved with filename: ', filename)
+        else: 
+            raise ValueError('You must provide an example input to trace the model through torch.jit.trace()')
+    else:
+        print('Saving NOT traced model...')
+        torch.save(model.state_dict(), filename) # Save model as internal torch representation
+        print('Model correctly saved with filename: ', filename)
+
+
+# %% Function to load model state into empty model- 04-05-2024, updated 11-06-2024
+def LoadTorchModel(model:nn.Module=None, modelName:str="trainedModel", filepath:str="testModels/", loadAsTraced:bool=False) -> nn.Module:
+    
+    # Check if input name has extension
+    rootFileName, extension = os.path.splitext(os.path.join(filepath, modelName))
+
+    if extension is "":
+        if loadAsTraced: 
+            extension = '.pt'
+        else:
+            extension = '.pth'
+
     # Contatenate file path
-    modelPath = filepath + modelName + ".pth"
-    # Load model from file
-    model.load_state_dict(torch.load(modelPath))
-    # Evaluate model to set (weights, biases)
-    model.eval()
+    modelPath = os.path.join(rootFileName + extension) 
+
+    if not(os.path.isfile(modelPath)):
+        raise FileNotFoundError('Model specified by: ', modelPath, ': NOT FOUND.')
+    
+    if loadAsTraced and model is None:
+        print('Loading traced model from filename: ', modelPath)
+        # Load traced model using torch.jit
+        model = torch.jit.load(modelPath)
+    elif not(loadAsTraced) or (loadAsTraced and model is not None):
+
+        if loadAsTraced and model is not None:
+            print('loadAsTraced is specified as true, but model has been provided. Loading from state: ', modelPath)
+        else: 
+            print('Loading model from filename: ', modelPath)
+
+        # Load model from file
+        model.load_state_dict(torch.load(modelPath))
+        # Evaluate model to set (weights, biases)
+        model.eval()
+
+    else:
+        raise ValueError('Incorrect combination of inputs! Valid options: \n  1) model is None AND loadAsTraced is True; \n  2) model is nn.Module AND loadAsTraced is False; \n  3) model is nn.Module AND loadAsTraced is True (fallback to case 2)')
+
     return model
 
+
 # %% Function to save Dataset object - 01-06-2024
-def SaveTorchDataset(datasetObj:Dataset, datasetFilePath:str) -> None:
-    torch.save(datasetObj, datasetFilePath + ".pt")
+def SaveTorchDataset(datasetObj:Dataset, datasetFilePath:str='', datasetName:str='dataset') -> None:
+    torch.save(datasetObj, datasetFilePath + datasetName + ".pt")
 
 # %% Function to load Dataset object - 01-06-2024
 def LoadTorchDataset(datasetFilePath:str) -> Dataset:
@@ -249,7 +300,7 @@ class GenericSupervisedDataset(Dataset, metaclass=ABCMeta):
         return inputVec, label
 
 # %% Custom Dataset class for Moon Limb pixel extraction CNN enhancer - 01-06-2024
-# First prototype completed by PC - 04-06-2024
+# First prototype completed by PC - 04-06-2024 --> to move to new module
 class MoonLimbPixCorrector_Dataset():
 
     def __init__(self, dataDict:dict, datasetType:str='train', transform=None, target_transform=None):
@@ -276,24 +327,20 @@ class MoonLimbPixCorrector_Dataset():
 
         return inputVec, label
     
-    # Function to validate path (check it is not completely black or white)
-    def IsPatchValid(patchFlatten, lowerIntensityThr=5):
-        
-        # Count how many pixels are below threshold
-        howManyBelowThreshold = np.sum(patchFlatten <= lowerIntensityThr)
-        howManyPixels = len(patchFlatten)
-        width = np.sqrt(howManyPixels)
-
-        lowerThreshold = width/2
-        upperThreshold = howManyPixels - lowerThreshold
-
-        if howManyBelowThreshold <  lowerThreshold or howManyBelowThreshold > upperThreshold:
-            return False
-        else:
-            return True
+# %% Function to validate path (check it is not completely black or white)
+def IsPatchValid(patchFlatten, lowerIntensityThr=5):
     
-
-
+    # Count how many pixels are below threshold
+    howManyBelowThreshold = np.sum(patchFlatten <= lowerIntensityThr)
+    howManyPixels = len(patchFlatten)
+    width = np.sqrt(howManyPixels)
+    lowerThreshold = width/2
+    upperThreshold = howManyPixels - lowerThreshold
+    if howManyBelowThreshold <  lowerThreshold or howManyBelowThreshold > upperThreshold:
+        return False
+    else:
+        return True
+    
 
 # %% TENSORBOARD functions - 04-06-2024
 # Function to check if Tensorboard is running
@@ -311,13 +358,13 @@ def StartTensorboard(logDir:str) -> None:
         try:
             subprocess.Popen(['tensorboard', '--logdir', logDir, '--host', '0.0.0.0', '--port', '6006'])
             print('Tensorboard session successfully started using logDir:', logDir)
-        except:
-            RuntimeWarning('Tensorboard start-up failed. Continuing without opening session.')
+        except Exception as errMsg:
+            print('Failed due to:', errMsg, '. Continuing without opening session.')
     else:
         print('Tensorboard seems to be running in this session! Restarting with new directory...')
-        kill_tensorboard()
-        subprocess.Popen(['tensorboard', '--logdir', logDir, '--host', '0.0.0.0', '--port', '6006'])
-        print('Tensorboard session successfully started using logDir:', logDir)
+        #kill_tensorboard()
+        #subprocess.Popen(['tensorboard', '--logdir', logDir, '--host', '0.0.0.0', '--port', '6006'])
+        #print('Tensorboard session successfully started using logDir:', logDir)
 
 # Function to stop TensorBoard process
 def kill_tensorboard():
@@ -340,16 +387,46 @@ def ConfigTensorboardSession(logDir:str='./tensorboardLogs') -> SummaryWriter:
     # Return initialized writer
     return tensorBoardWriter
 
-# %% TRAINING and VALIDATION template function
+
+# %% Function to get model checkpoint and load it into nn.Module for training restart - 09-06-2024
+def LoadModelAtCheckpoint(model:nn.Module, modelSavePath:str='./checkpoints', modelName:str='trainedModel', modelEpoch:int=0) -> nn.Module: 
+    # TODO: add checks that model and checkpoint matches: how to? Check number of parameters?
+
+    # Create path to model state file
+    checkPointPath = os.path.join(modelSavePath, modelName + '_' + AddZerosPadding(modelEpoch, stringLength=4))
+
+    # Attempt to load the model state and evaluate it
+    if os.path.isfile(checkPointPath):
+        print('Loading model to RESTART training from checkpoint: ', checkPointPath)
+        try:
+            loadedModel = LoadTorchModel(model, modelName, modelSavePath)
+        except Exception as exception:
+            print('Loading of model for training restart failed with error:', exception)
+            print('Skipping reload and training from scratch...')
+            return model
+    else:
+        raise ValueError('Specified model state file not found. Check input path.') 
+    
+    # Get last saving of model (NOTE: getmtime does not work properly. Use scandir + list comprehension)
+    #with os.scandir(modelSavePath) as it:
+        #modelNamesWithTime = [(entry.name, entry.stat().st_mtime) for entry in it if entry.is_file()]
+        #modelName = sorted(modelNamesWithTime, key=lambda x: x[1])[-1][0]
+
+    return loadedModel
+    
+
+# %% TRAINING and VALIDATION template function - 04-06-2024
 def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Module, optimizer, options:dict={'taskType': 'classification', 
                                                                                                               'device': GetDevice(), 
                                                                                                               'epochs': 10, 
                                                                                                               'Tensorboard':True,
                                                                                                               'saveCheckpoints':True,
-                                                                                                              'checkpointsDir': './checkpoints',
+                                                                                                              'checkpointsOutDir': './checkpoints',      
                                                                                                               'modelName': 'trainedModel',
                                                                                                               'loadCheckpoint': False,
-                                                                                                              'lossLogName': 'Loss-value'}):
+                                                                                                              'lossLogName': 'Loss-value',
+                                                                                                              'epochStart': 0}):
+    # NOTE: is the default dictionary considered as "single" object or does python perform a merge of the fields?
 
     # Setup options from input dictionary
     taskType          = options['taskType']
@@ -357,14 +434,10 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
     numOfEpochs       = options['epochs']
     enableTensorBoard = options['Tensorboard']
     enableSave        = options['saveCheckpoints']
-    checkpointDir     = options['checkpointsDir']
+    checkpointDir     = options['checkpointsOutDir']
     modelName         = options['modelName']
     lossLogName       = options['lossLogName']
-
-    ##### DEVNOTE #####
-    if options['loadCheckpoint'] == True:
-        raise NotImplementedError('Current version does not support loading model checkpoints yet!')
-    ###################
+    epochStart        = options['epochStart']
 
     # Get Torch dataloaders
     if ('TrainingDataLoader' in dataloaderIndex.keys() and 'ValidationDataLoader' in dataloaderIndex.keys()):
@@ -382,12 +455,18 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
     # Configure Tensorboard
     if 'logDirectory' in options.keys():
         logDirectory = options['logDirectory']
-        if not(os.path.isdir(logDirectory)):
-            os.mkdir(logDirectory)
-
-        tensorBoardWriter = ConfigTensorboardSession(logDirectory)
     else:
-        tensorBoardWriter = ConfigTensorboardSession()
+        currentTime = datetime.datetime.now()
+        formattedTimestamp = currentTime.strftime('%d-%m-%Y_%H-%M') # Format time stamp as day, month, year, hour and minute
+        logDirectory = './tensorboardLog_' + modelName + formattedTimestamp
+        
+    if not(os.path.isdir(logDirectory)):
+        os.mkdir(logDirectory)
+    tensorBoardWriter = ConfigTensorboardSession(logDirectory)
+
+    # If training is being restarted, attempt to load model
+    if options['loadCheckpoint'] == True:
+        model = LoadModelAtCheckpoint(model, options['checkpointsInDir'], modelName, epochStart)
 
     # Move model to device if possible (check memory)
     try:
@@ -399,13 +478,13 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
 
 
     # Training and validation loop
-    input('\n-------- PRESS ENTER TO START TRAINING LOOP --------')
+    input('\n-------- PRESS ENTER TO START TRAINING LOOP --------\n')
     trainLossHistory = np.zeros(numOfEpochs)
     validationLossHistory = np.zeros(numOfEpochs)
 
     for epochID in range(numOfEpochs):
 
-        print(f"  Training Epoch: {epochID} of {numOfEpochs}\n-------------------------------")
+        print(f"\n\t\t\tTRAINING EPOCH: {epochID + epochStart} of {epochStart + numOfEpochs}\n-------------------------------")
         # Do training over all batches
         trainLossHistory[epochID] = TrainModel(trainingDataset, model, lossFcn, optimizer, device, taskType) 
         # Do validation over all batches
@@ -413,19 +492,215 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
 
         # Update Tensorboard if enabled
         if enableTensorBoard:       
-            tensorBoardWriter.add_scalar(lossLogName + "/train", trainLossHistory[epochID], epochID)
-            tensorBoardWriter.add_scalar(lossLogName + "/validation", validationLossHistory[epochID], epochID)
+            #tensorBoardWriter.add_scalar(lossLogName + "/train", trainLossHistory[epochID], epochID + epochStart)
+            #tensorBoardWriter.add_scalar(lossLogName + "/validation", validationLossHistory[epochID], epochID + epochStart)
+            entriesTagDict = {'Training': trainLossHistory[epochID], 'Validation': validationLossHistory[epochID]}
+            tensorBoardWriter.add_scalars(lossLogName, entriesTagDict, epochID)
             tensorBoardWriter.flush() 
         
         if enableSave:
             if not(os.path.isdir(checkpointDir)):
                 os.mkdir(checkpointDir)
 
-            modelSaveName = os.path.join(checkpointDir, modelName + '_' + str(epochID))
-            SaveModelState(model, modelSaveName)
+            modelSaveName = os.path.join(checkpointDir, modelName + '_' + AddZerosPadding(epochID + epochStart, stringLength=4))
+            SaveTorchModel(model, modelSaveName)
         
+        # %% MODEL PREDICTION EXAMPLES
+        examplePrediction, exampleLosses, inputSampleList = EvaluateModel(validationDataset, model, lossFcn, device, 10)
 
-    return model, trainLossHistory, validationLossHistory
+        # Add model graph using samples from EvaluateModel
+        #if enableTensorBoard:       
+            #tensorBoardWriter.add_graph(model, inputSampleList, verbose=False)
+            #tensorBoardWriter.flush() 
+
+        print('\n  Random Sample predictions from validation dataset:\n')
+        torch.set_printoptions(precision=2)
+        for id in range(examplePrediction.shape[0]):
+            print('\tPrediction: ', examplePrediction[id, :].tolist(), ' --> Loss: ',exampleLosses[id].tolist())
+        
+        torch.set_printoptions(precision=5)
+
+    return model, trainLossHistory, validationLossHistory, inputSampleList
+
+# %% Model evaluation function on a random number of samples from dataset - 06-06-2024
+
+# TODO: upgrade to use single sample as torch.tensor
+
+def EvaluateModel(dataloader:DataLoader, model:nn.Module, lossFcn: nn.Module, device=GetDevice(), numOfSamples:int=10, inputSample:torch.tensor=None) -> np.array:
+        
+    model.eval() # Set model in prediction mode
+    with torch.no_grad(): 
+        if inputSample is None:
+            # Get some random samples from dataloader as list
+            extractedSamples = GetSamplesFromDataset(dataloader, numOfSamples)
+
+            # Create input array as torch tensor
+            X = torch.zeros(len(extractedSamples), extractedSamples[0][0].shape[0])
+            Y = torch.zeros(len(extractedSamples), extractedSamples[0][1].shape[0])
+
+            #inputSampleList = []
+            for id, (inputVal, labelVal) in enumerate(extractedSamples):
+                X[id, :] = inputVal
+                Y[id, :] = labelVal
+
+            #inputSampleList.append(inputVal.reshape(1, -1))
+
+            # Perform FORWARD PASS
+            examplePredictions = model(X.to(device)) # Evaluate model at input
+
+            # Compute loss for each input separately
+            exampleLosses = torch.zeros(examplePredictions.size(0))
+
+            examplePredictionList = []
+            for id in range(examplePredictions.size(0)):
+
+                # Get prediction and label samples 
+                examplePredictionList.append(examplePredictions[id, :].reshape(1, -1))
+                labelSample = Y[id,:].reshape(1, -1)
+
+                # Evaluate loss function
+                exampleLosses[id] = lossFcn(examplePredictionList[id].to(device), labelSample.to(device)).item()
+   
+        else:
+            # Perform FORWARD PASS
+            X = inputSample
+            examplePredictions = model(X.to(device)) # Evaluate model at input
+
+            examplePredictionList = []
+            for id in range(examplePredictions.size(0)):
+
+                # Get prediction and label samples 
+                examplePredictionList.append(examplePredictions[id, :].reshape(1, -1))
+                labelSample = Y[id,:].reshape(1, -1)
+
+                # Evaluate loss function
+                exampleLosses[id] = lossFcn(examplePredictionList[id].to(device), labelSample.to(device)).item()
+
+        return examplePredictions, exampleLosses, X.to(device)
+
+                
+# %% Function to extract specified number of samples from dataloader - 06-06-2024
+def GetSamplesFromDataset(dataloader: DataLoader, numOfSamples:int=10):
+
+    samples = []
+    for batch in dataloader:
+        for sample in zip(*batch): # Construct tuple (X,Y) from batch
+            samples.append(sample)
+
+            if len(samples) == numOfSamples:
+                return samples
+                   
+    return samples
+
+
+# %% Torch to/from ONNx format exporter/loader based on TorchDynamo (PyTorch >2.0) - 09-06-2024
+def ExportTorchModelToONNx(model:nn.Module, dummyInputSample:torch.tensor, onnxExportPath:str='.', onnxSaveName:str='trainedModelONNx', modelID:int=0, onnx_version = None):
+
+    # Define filename of the exported model
+    if modelID > 999:
+        stringLength = modelID
+    else: 
+        stringLength = 3
+
+    modelSaveName = os.path.join(onnxExportPath, onnxSaveName + AddZerosPadding(modelID, stringLength))
+
+    # Export model to ONNx object
+    modelONNx = torch.onnx.dynamo_export(model, dummyInputSample) # NOTE: ONNx model is stored as a binary protobuf file!
+    #modelONNx = torch.onnx.export(model, dummyInputSample) # NOTE: ONNx model is stored as a binary protobuf file!
+
+    # Save ONNx model 
+    pathToModel = modelSaveName+'.onnx'
+    modelONNx.save(pathToModel) # NOTE: this is a torch utility, not onnx!
+
+    # Try to convert model to required version
+    if (onnx_version is not None) and type(onnx_version) is int:
+        convertedModel=None
+        print('Attempting conversion of ONNx model to version:', onnx_version)
+        try:
+            print(f"Model before conversion:\n{modelONNx}")
+            # Reload onnx object using onnx module
+            tmpModel = onnx.load(pathToModel)
+            # Convert model to get new model proto
+            convertedModelProto = version_converter.convert_version(tmpModel, onnx_version)
+
+            # TEST
+            #convertedModelProto.ir_version = 7
+
+            # Save model proto to .onnbx
+            onnx.save_model(convertedModelProto, modelSaveName + '_ver' + str(onnx_version) + '.onnx')
+
+        except Exception as errorMsg:
+            print('Conversion failed due to error:', errorMsg)
+    else: 
+        convertedModel=None
+
+    return modelONNx, convertedModel
+
+
+def LoadTorchModelFromONNx(dummyInputSample:torch.tensor, onnxExportPath:str='.', onnxSaveName:str='trainedModelONNx', modelID:int=0):
+    # Define filename of the exported model
+    if modelID > 999:
+        stringLength = modelID
+    else: 
+        stringLength = 3
+
+    modelSaveName = os.path.join(onnxExportPath, onnxSaveName + '_', AddZerosPadding(modelID, stringLength))
+
+    if os.path.isfile():
+            modelONNx = onnx.load(modelSaveName)
+            torchModel = None
+            return torchModel, modelONNx
+    else: 
+        raise ImportError('Specified input path to .onnx model not found.')
+
+# %% Model Graph visualization function based on Netron module # TODO
+
+
+
+# %% Other auxiliary functions - 09-06-2024
+def AddZerosPadding(intNum:int, stringLength:str=4):
+    return f"{intNum:0{stringLength}d}" # Return strings like 00010
+
+
+#inputImageSize:list, kernelSizes:list, OutputChannelsSizes:list, PoolingLayersSizes:list, inputChannelSize:int=1, withBiases=True
+def ComputeConvLayerOutputSize(modelDescriptionDict: dict):
+    raise NotImplementedError('TODO') # Returns length of output of CNN as flatten
+
+# %% MATLAB wrapper class for Torch models evaluation - TODO 11-06-2024
+class TorchModel_MATLABwrap():
+    def __init__(self, trainedModelName:str, trainedModelPath:str) -> None:
+
+        # Load model state and state
+        trainedModel = LoadTorchModel(None, trainedModelName, trainedModelPath, loadAsTraced=True)
+        self.trainedModel = trainedModel
+        # Get available device
+        self.device = GetDevice()
+
+    def forward(self, inputSample:np.ndarray):
+        
+        if inputSample.dtype is not np.float32:
+            inputSample = np.float32(inputSample)
+
+        # TODO: check the input is exactly identical to what the model receives using EvaluateModel() loading from dataset!        
+        # Convert numpy array into torch.tensor for model inference
+        X = torch.tensor(inputSample)
+
+        # ########### DEBUG ######################: 
+        print('Evaluating model using batch input: ', X)
+        ############################################
+
+        # Perform inference using model
+        Y = self.trainedModel(X.to(self.device))
+
+        return Y
+    
+
+
+
+# %% TORCH to ONNX format model converter - TODO 11-06-2024
+
+
+
 
 # %% MAIN 
 def main():

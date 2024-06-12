@@ -20,12 +20,11 @@ import torch
 import customTorch
 import datetime
 from torch import nn
-
+from math import sqrt
 from torch.utils.data import DataLoader # Utils for dataset management, storing pairs of (sample, label)
 from torchvision import datasets # Import vision default datasets from torchvision
 from torchvision.transforms import ToTensor # Utils
 
-import datetime
 import numpy as np
 
 from torch.utils.tensorboard import SummaryWriter 
@@ -71,7 +70,7 @@ class HorizonExtractionEnhancerCNN(nn.Module):
         # Fully Connected predictor
         # NOTE: Add batch normalization here
         self.FlattenL3 = nn.Flatten()
-        self.batchNormL3 = nn.BatchNorm1d(int(self.LinearInputSize), eps=1E-5, momentum=0.1, affine=True) # affine=True set gamma and beta parameters as learnable
+        #self.batchNormL3 = nn.BatchNorm1d(int(self.LinearInputSize), eps=1E-5, momentum=0.1, affine=True) # affine=True set gamma and beta parameters as learnable
         #self.batchNormL3 = nn.BatchNorm1d(41, eps=1E-5, momentum=0.1, affine=True) # affine=True set gamma and beta parameters as learnable
 
         self.dropoutL4 = nn.Dropout2d(alphaDropCoeff)
@@ -88,7 +87,12 @@ class HorizonExtractionEnhancerCNN(nn.Module):
         
         # Extract image and contextual information from inputSample
         # ACHTUNG: transpose, reshape, transpose operation assumes that input vector was reshaped column-wise (FORTRAN style)
-        img2Dinput = (((inputSample[:, 0:self.imagePixSize]).T).reshape(int(np.sqrt(float(self.imagePixSize))), -1, 1, inputSample.size(0))).T # First portion of the input vector reshaped to 2D
+        #img2Dinput = (((inputSample[:, 0:self.imagePixSize]).T).reshape(int(np.sqrt(float(self.imagePixSize))), -1, 1, inputSample.size(0))).T # First portion of the input vector reshaped to 2D
+        
+        #img2Dinput =  ( ( (inputSample[:, 0:self.imagePixSize]).T).reshape(int(torch.sqrt( torch.tensor(self.imagePixSize) )), -1, 1, inputSample.size(0) ) ).T # First portion of the input vector reshaped to 2D
+        firstIndex = int(sqrt( self.imagePixSize ))
+        img2Dinput =  ( ( (inputSample[:, 0:self.imagePixSize]).T).reshape(firstIndex, -1, 1, inputSample.size(0) ) ).T # First portion of the input vector reshaped to 2D
+
         contextualInfoInput = inputSample[:, self.imagePixSize:]
 
         # Convolutional layers
@@ -105,7 +109,7 @@ class HorizonExtractionEnhancerCNN(nn.Module):
         val = torch.cat((val, contextualInfoInput), dim=1)
 
         # L4 
-        val = self.batchNormL3(val)
+        #val = self.batchNormL3(val)
         val = self.dropoutL4(val)
         val = torchFunc.leaky_relu(self.DenseL4(val), self.alphaLeaky)
         # L5
