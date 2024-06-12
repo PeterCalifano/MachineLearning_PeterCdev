@@ -27,6 +27,28 @@ addpath(genpath('testDatapairs'));
 % Future upgrades
 
 %% OPTIONS
+bUSE_PYENV = true;
+
+[~, whoamiOut] = system('whoami');
+[outflag, hostnameOut] = system('cat /etc/hostname');
+
+whoamiOut = whoamiOut(1:end-1);
+hostnameOut = hostnameOut(1:end-1);
+
+if bUSE_PYENV 
+
+    if strcmpi(whoamiOut, 'peterc') && strcmpi(hostnameOut, 'PETERC-FLIP')
+        % if strcmpi(outToShell, 'PCWIN64')
+        PYTHONHOME = '/home/peterc/devDir/MachineLearning_PeterCdev/.venvML/bin/python3.10';
+    elseif strcmpi(whoamiOut, 'peterc') && strcmpi(hostnameOut, 'PETERC-RECOIL')
+    elseif strcmpi(whoamiOut, 'peterc') && strcmpi(hostnameOut, '')
+    end
+    
+
+    pyenvir = pyenv(Version=PYTHONHOME, ExecutionMode="OutOfProcess");
+    disp(pyenvir);
+end
+
 datasetID = 1;
 fileID   = 1;
 sampleID = 1; % Sample patch ID in loaded datapair file
@@ -62,23 +84,48 @@ inputDataSample(56:58) = single(datastruct.metadata.dPosCam_TF);
 inputDataSample(59:60) = single(coarseLimbPixels);
 
 %% Model loading
-path2model = 'testModelsONNx';
-modelName = 'traineModelONNx001';
-trainedCNN = ImportModelFromONNx(fullfile(path2model, modelName), 'regression');
+path2model = '/home/peterc/devDir/MachineLearning_PeterCdev';
+modelName = 'trainedTracedModel075.pt';
+path2customTorch = '/home/peterc/devDir/MachineLearning_PeterCdev/PyTorch/';
 
-% Print model summary 
-summary(trainedCNN);
 
-% Plot model architecture
-figure(1);
-plot(trainedCNN);
+if count(py.sys.path, path2customTorch) == 0
+    insert(py.sys.path,int32(0), path2customTorch);
+end
 
-%% Model evaluation     
+np = py.importlib.import_module('numpy');
+return
 
+customTorch = py.importlib.import_module('customTorch');
+
+% Initialize MATLAB Torch wrapper object
+% class TorchModel_MATLABwrap():
+%     def __init__(self, trainedModelName:str, trainedModelPath:str)
+%     def forward(self, inputSample:np.ndarray)
+
+torchModelWrapper = customTorch.TorchModel_MATLABwrap(path2model, modelName);
+
+% Prepare numpy array input
+inputSample_numpyInstance = np.ndarray(inputDataSample);
+
+% Perform inference
+modelPrediction = torchModelWrapper.forward(inputSample_numpyInstance);
+
+return 
+
+%% Using import from ONNx to MATLAB Deep Learning toolbox
 % NOTES: 
 % 1) Check which shape the model from ONNx will require --> MATLAB converts the model as it is. 
 %    Therefore it will require the same shape as in Torch code.
 % 2) Which dtype? --> Python should use float (?) --> Apparently yes, try single()
 
-outputPrediction = predict(trainedCNN, reshape(inputDataSample, 1, 60) );
+% trainedCNN = ImportModelFromONNx(fullfile(path2model, modelName), 'regression');
+% Print model summary 
+% summary(trainedCNN);
+
+% Plot model architecture
+% figure(1);
+% plot(trainedCNN);
+
+% outputPrediction = predict(trainedCNN, reshape(inputDataSample, 1, 60) );
 
