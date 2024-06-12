@@ -219,7 +219,7 @@ def SaveTorchModel(model:nn.Module, modelName:str="trainedModel", saveAsTraced:b
 def LoadTorchModel(model:nn.Module=None, modelName:str="trainedModel", filepath:str="testModels/", loadAsTraced:bool=False) -> nn.Module:
     
     # Check if input name has extension
-    rootFileName, extension = os.path.splitext(os.path.join(filepath, modelName))
+    modelNameCheck, extension = os.path.splitext(modelName)
 
     if extension is "":
         if loadAsTraced: 
@@ -228,7 +228,7 @@ def LoadTorchModel(model:nn.Module=None, modelName:str="trainedModel", filepath:
             extension = '.pth'
 
     # Contatenate file path
-    modelPath = os.path.join(rootFileName + extension) 
+    modelPath = os.path.join(filepath, modelName + extension) 
 
     if not(os.path.isfile(modelPath)):
         raise FileNotFoundError('Model specified by: ', modelPath, ': NOT FOUND.')
@@ -669,7 +669,7 @@ def ComputeConvLayerOutputSize(modelDescriptionDict: dict):
 # %% MATLAB wrapper class for Torch models evaluation - TODO 11-06-2024
 class TorchModel_MATLABwrap():
     def __init__(self, trainedModelName:str, trainedModelPath:str) -> None:
-
+        
         # Load model state and state
         trainedModel = LoadTorchModel(None, trainedModelName, trainedModelPath, loadAsTraced=True)
         self.trainedModel = trainedModel
