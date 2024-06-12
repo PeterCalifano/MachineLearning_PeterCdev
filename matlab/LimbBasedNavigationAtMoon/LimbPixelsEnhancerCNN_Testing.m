@@ -44,7 +44,7 @@ if bUSE_PYENV
         % if strcmpi(outToShell, 'PCWIN64')
         PYTHONHOME = '/home/peterc/devDir/MachineLearning_PeterCdev/.venvML/bin/python3.10';
     elseif strcmpi(whoamiOut, 'peterc-flip\pietr')
-        PYTHONHOME = "C:\devDir\MachineLearning_PeterCdev\.venvML\bin\python"
+        PYTHONHOME = "C:\devDir\MachineLearning_PeterCdev\.venvML\bin\python";
     end
 
     pyenvir = pyenv(Version=PYTHONHOME, ExecutionMode="OutOfProcess");
@@ -96,7 +96,6 @@ if count(py.sys.path, path2customTorch) == 0
 end
 
 np = py.importlib.import_module('numpy');
-return
 
 customTorch = py.importlib.import_module('customTorch');
 
@@ -105,8 +104,8 @@ customTorch = py.importlib.import_module('customTorch');
 %     def __init__(self, trainedModelName:str, trainedModelPath:str)
 %     def forward(self, inputSample:np.ndarray)
 
-torchModelWrapper = customTorch.TorchModel_MATLABwrap(path2model, modelName);
-
+torchModelWrapper = customTorch.TorchModel_MATLABwrap(modelName, path2model);
+return
 % Prepare numpy array input
 inputSample_numpyInstance = np.ndarray(inputDataSample);
 
