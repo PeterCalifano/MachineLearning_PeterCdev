@@ -692,7 +692,7 @@ class TorchModel_MATLABwrap():
         # Perform inference using model
         Y = self.trainedModel(X.to(self.device))
 
-        return Y
+        return np.array(Y)
     
 
 
