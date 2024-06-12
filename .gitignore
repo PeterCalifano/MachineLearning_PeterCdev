@@ -31,3 +31,5 @@ event-based_backup
 
 # Tensorboard logs
 tensorboardLog*
+
+*.json
