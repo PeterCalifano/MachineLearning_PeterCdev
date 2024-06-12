@@ -30,20 +30,22 @@ addpath(genpath('testDatapairs'));
 bUSE_PYENV = true;
 
 [~, whoamiOut] = system('whoami');
-[outflag, hostnameOut] = system('cat /etc/hostname');
+if not(strcmpi(computer, 'PCWIN64'))
+    [outflag, hostnameOut] = system('cat /etc/hostname');
+    hostnameOut = hostnameOut(1:end-1);
+
+end
 
 whoamiOut = whoamiOut(1:end-1);
-hostnameOut = hostnameOut(1:end-1);
 
 if bUSE_PYENV 
 
     if strcmpi(whoamiOut, 'peterc') && strcmpi(hostnameOut, 'PETERC-FLIP')
         % if strcmpi(outToShell, 'PCWIN64')
         PYTHONHOME = '/home/peterc/devDir/MachineLearning_PeterCdev/.venvML/bin/python3.10';
-    elseif strcmpi(whoamiOut, 'peterc') && strcmpi(hostnameOut, 'PETERC-RECOIL')
-    elseif strcmpi(whoamiOut, 'peterc') && strcmpi(hostnameOut, '')
+    elseif strcmpi(whoamiOut, 'peterc-flip\pietr')
+        PYTHONHOME = "C:\devDir\MachineLearning_PeterCdev\.venvML\bin\python"
     end
-    
 
     pyenvir = pyenv(Version=PYTHONHOME, ExecutionMode="OutOfProcess");
     disp(pyenvir);
