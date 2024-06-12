@@ -241,6 +241,8 @@ def LoadTorchModel(model:nn.Module=None, modelName:str="trainedModel", filepath:
         print('Loading traced model from filename: ', modelPath)
         # Load traced model using torch.jit
         model = torch.jit.load(modelPath)
+        print('Traced model correctly loaded.')
+        
     elif not(loadAsTraced) or (loadAsTraced and model is not None):
 
         if loadAsTraced and model is not None:
@@ -676,12 +678,14 @@ def ComputeConvLayerOutputSize(modelDescriptionDict: dict):
 # %% MATLAB wrapper class for Torch models evaluation - TODO 11-06-2024
 class TorchModel_MATLABwrap():
     def __init__(self, trainedModelName:str, trainedModelPath:str) -> None:
-        
-        # Load model state and state
-        trainedModel = LoadTorchModel(None, trainedModelName, trainedModelPath, loadAsTraced=True)
-        self.trainedModel = trainedModel
         # Get available device
         self.device = GetDevice()
+
+        # Load model state and state
+        trainedModel = LoadTorchModel(None, trainedModelName, trainedModelPath, loadAsTraced=True)
+
+        self.trainedModel = trainedModel.to(self.device)
+
 
     def forward(self, inputSample:np.ndarray):
         
