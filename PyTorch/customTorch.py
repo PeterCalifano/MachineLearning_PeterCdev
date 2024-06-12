@@ -690,7 +690,7 @@ class TorchModel_MATLABwrap():
 
         # TODO: check the input is exactly identical to what the model receives using EvaluateModel() loading from dataset!        
         # Convert numpy array into torch.tensor for model inference
-        X = torch.tensor(inputSample)
+        X = torch.tensor(inputSample).reshape(1, -1)
 
         # ########### DEBUG ######################: 
         print('Evaluating model using batch input: ', X)
@@ -699,7 +699,7 @@ class TorchModel_MATLABwrap():
         # Perform inference using model
         Y = self.trainedModel(X.to(self.device))
 
-        return Y.cpu().numpy() # Move to cpu and convert to numpy
+        return Y.detach().cpu().numpy() # Move to cpu and convert to numpy
     
         
 

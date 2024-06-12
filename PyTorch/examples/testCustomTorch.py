@@ -62,7 +62,7 @@ def main():
     # %% TEST TORCH MATLAB WRAPPER
     torchWrapper = customTorch.TorchModel_MATLABwrap(tracedModelName, tracedModelSavePath)
 
-    testPrediction = torchWrapper.forward(np.ndarray(inputSampleList[0]))
+    testPrediction = torchWrapper.forward((inputSampleList[0].cpu()).numpy())
 
     print(testPrediction)
 
