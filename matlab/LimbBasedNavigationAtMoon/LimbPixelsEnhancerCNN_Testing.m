@@ -5,6 +5,8 @@ clc
 addpath('..');
 addpath('testModelsONNx');
 addpath(genpath('testDatapairs'));
+addpath(genpath('/home/peterc/devDir/MATLABcodes'))
+
 % SCRIPT NAME
 % LimbPixelsEnhancerCNN_Testing
 % -------------------------------------------------------------------------------------------------------------
@@ -43,6 +45,10 @@ if bUSE_PYENV
     if strcmpi(whoamiOut, 'peterc') && strcmpi(hostnameOut, 'PETERC-FLIP')
         % if strcmpi(outToShell, 'PCWIN64')
         PYTHONHOME = '/home/peterc/devDir/MachineLearning_PeterCdev/.venvML/bin/python3.10';
+
+    elseif strcmpi(whoamiOut, 'peterc') && strcmpi(hostnameOut, 'peterc-MS-7916')
+        PYTHONHOME = '/home/peterc/devDir/MachineLearning_PeterCdev/.venvML/bin/python3.10';
+
     elseif strcmpi(whoamiOut, 'peterc-flip\pietr')
         PYTHONHOME = "C:\devDir\MachineLearning_PeterCdev\.venvML\bin\python";
     end
@@ -87,7 +93,7 @@ inputDataSample(59:60) = single(coarseLimbPixels);
 
 %% Model loading
 path2model = '/home/peterc/devDir/MachineLearning_PeterCdev';
-modelName = 'trainedTracedModel075.pt';
+modelName = 'trainedTracedModel025_cpu.pt';
 path2customTorch = '/home/peterc/devDir/MachineLearning_PeterCdev/PyTorch/';
 
 
