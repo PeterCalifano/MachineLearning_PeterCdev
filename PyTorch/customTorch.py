@@ -219,13 +219,17 @@ def SaveTorchModel(model:nn.Module, modelName:str="trainedModel", saveAsTraced:b
 def LoadTorchModel(model:nn.Module=None, modelName:str="trainedModel", filepath:str="testModels/", loadAsTraced:bool=False) -> nn.Module:
     
     # Check if input name has extension
-    modelNameCheck, extension = os.path.splitext(modelName)
+    modelNameCheck, extension = os.path.splitext(str(modelName))
 
-    if extension == '':
+    #print(modelName, ' ', modelNameCheck, ' ', extension)
+
+    if extension != '.pt' and extension != '.pth':
         if loadAsTraced: 
             extension = '.pt'
         else:
-            extension = '.pth'        
+            extension = '.pth'
+    else:
+        extension = ''      
 
     # Contatenate file path
     modelPath = os.path.join(filepath, modelName + extension) 
