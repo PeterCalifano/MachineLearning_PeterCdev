@@ -11,6 +11,7 @@ import limbPixelExtraction_CNN_NN
 import datasetPreparation
 
 import torch
+import platform
 import datetime
 from torch import nn
 from scipy.spatial.transform import Rotation
@@ -74,7 +75,8 @@ def main():
 
     ######## TEMPORARY CODE: load single dataset and split ########
     # Create the dataset
-    dataPath = os.path.join('/home/peterc/devDir/MATLABcodes/syntheticRenderings/Datapairs')
+    #dataPath = os.path.join('/home/peterc/devDir/MATLABcodes/syntheticRenderings/Datapairs')
+    dataPath = os.path.join('/mnt/c/Users/pietr/OneDrive - Politecnico di Milano/PoliMi - LM/MATLABwideCodes/MATLABcodes/syntheticRenderings/Datapairs')
     dirNamesRoot = os.listdir(dataPath)
 
     # Select one of the available datapairs folders (each corresponding to a labels generation pipeline output)
