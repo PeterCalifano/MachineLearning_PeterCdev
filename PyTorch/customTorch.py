@@ -221,11 +221,11 @@ def LoadTorchModel(model:nn.Module=None, modelName:str="trainedModel", filepath:
     # Check if input name has extension
     modelNameCheck, extension = os.path.splitext(modelName)
 
-    if extension == "":
+    if extension == '':
         if loadAsTraced: 
             extension = '.pt'
         else:
-            extension = '.pth'
+            extension = '.pth'        
 
     # Contatenate file path
     modelPath = os.path.join(filepath, modelName + extension) 
