@@ -167,7 +167,7 @@ def MoonLimbPixConvEnhancer_LossFcn(predictCorrection, labelVector, params:list=
 
 
 # %% Function to save model state - 04-05-2024, updated 11-06-2024
-def SaveTorchModel(model:nn.Module, modelName:str="trainedModel", saveAsTraced:bool=False, exampleInput=None) -> None:
+def SaveTorchModel(model:nn.Module, modelName:str="trainedModel", saveAsTraced:bool=False, exampleInput=None, targetDevice:str='cpu') -> None:
     if 'os.path' not in sys.modules:
         import os.path
 
@@ -190,9 +190,9 @@ def SaveTorchModel(model:nn.Module, modelName:str="trainedModel", saveAsTraced:b
                 gitignoreFile.write("\ntestModels/*")
                 gitignoreFile.close()
 
-        filename = "testModels/" + modelName + extension 
+        filename = "testModels/" + modelName + '_' + targetDevice + extension 
     else:
-        filename = modelName + extension 
+        filename = modelName  + '_' + targetDevice + extension 
     
     # Attach timetag to model checkpoint
     #currentTime = datetime.datetime.now()
@@ -204,7 +204,7 @@ def SaveTorchModel(model:nn.Module, modelName:str="trainedModel", saveAsTraced:b
     if saveAsTraced:
         print('Saving traced model...')
         if exampleInput is not None:
-            tracedModel = torch.jit.trace(model.forward, exampleInput)
+            tracedModel = torch.jit.trace((model).to(targetDevice), exampleInput.to(targetDevice))
             tracedModel.save(filename)
             print('Model correctly saved with filename: ', filename)
         else: 
@@ -242,7 +242,7 @@ def LoadTorchModel(model:nn.Module=None, modelName:str="trainedModel", filepath:
         # Load traced model using torch.jit
         model = torch.jit.load(modelPath)
         print('Traced model correctly loaded.')
-        
+
     elif not(loadAsTraced) or (loadAsTraced and model is not None):
 
         if loadAsTraced and model is not None:

@@ -33,7 +33,7 @@ def main():
     TRAINING_PERC = 0.75
     outChannelsSizes = [16, 32, 75, 15]
     kernelSizes = [3, 1]
-    learnRate = 5E-8
+    learnRate = 5E-3
     momentumValue = 0.001
 
     optimizerID = 1 # 0
@@ -44,19 +44,19 @@ def main():
 
     options = {'taskType': 'regression', 
                'device': device, 
-               'epochs': 25, 
+               'epochs': 5, 
                'Tensorboard':True,
                'saveCheckpoints':True,
-               'checkpointsOutDir': './checkpoints/HorizonPixCorrector_CNN_run8',
+               'checkpointsOutDir': './checkpoints/HorizonPixCorrector_CNN_run10',
                'modelName': 'trainedModel',
                'loadCheckpoint': False,
-               'checkpointsInDir': './checkpoints/HorizonPixCorrector_CNN_run8',
+               'checkpointsInDir': './checkpoints/HorizonPixCorrector_CNN_run10',
                'lossLogName': 'Loss_MoonHorizonExtraction',
                'logDirectory': './tensorboardLog',
-               'epochStart': 50}
+               'epochStart': 0}
 
     # Options to restart training from checkpoint
-    modelSavePath = './checkpoints/HorizonPixCorrector_CNN_run8'
+    modelSavePath = './checkpoints/HorizonPixCorrector_CNN_run10'
 
     if options['epochStart'] == 0:
         restartTraining = False
