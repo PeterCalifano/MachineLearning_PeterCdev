@@ -63,12 +63,13 @@ class pytcp_requestHandler(socketserver.BaseRequestHandler):
                     dataBuffer += packet
 
                 # SERVER SHUTDOWN COMMAND HANDLING
-                if dataBuffer.decode('utf-8'.strip().lower()) == 'shutdown':
+                if len(dataBuffer) == 8 and dataBuffer.decode('utf-8'.strip().lower()) == 'shutdown':
                     print("Shutdown command received. Shutting down server...")
-                    self.server.shutdown()  # Gracefully shut down the server --> this seems not to work due to the fact that the server has to terminate the job
+                    # Shut down the server
                     self.server.server_close()
                     print('Server is now OFF.')
-                    break
+                    exit()
+
                 
                 print("Expected data buffer size from client:", bufferSizeExpected, "bytes")
                 if len(dataBuffer) == bufferSizeExpected:
@@ -95,6 +96,7 @@ class pytcp_requestHandler(socketserver.BaseRequestHandler):
 
         except Exception as e:
             print(f"Error occurred while handling request: {e}")
+            
         finally:
             print(f"Connection with {self.client_address} closed")
 
