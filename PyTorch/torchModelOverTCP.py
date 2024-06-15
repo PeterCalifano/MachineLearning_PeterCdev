@@ -34,7 +34,7 @@ def main():
     torchWrapper = customTorch.TorchModel_MATLABwrap(tracedModelName, tracedModelSavePath)
 
     # %% TCP SERVER INITIALIZATION
-    HOST, PORT = "127.0.0.1", 65433 # Define host and port (random is ok)
+    HOST, PORT = "127.0.0.1", 65432 # Define host and port (random is ok)
 
     # Define DataProcessor object for RequestHandler
     numOfBytes = 60*8 # Length of input * number of bytes in double

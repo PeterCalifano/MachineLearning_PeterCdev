@@ -66,8 +66,10 @@ if bUSE_TORCH_OVER_TCP == true
 
     % Define object properties
     serverAddress = '127.0.0.1';
-    portNumber = 65433;
+    portNumber = int32(65432);
     SEND_SHUTDOWN = true;
+
+    dataBufferSize = int32(60);
 
     % Create communication handler
     commHandler = CommManager(serverAddress, portNumber, 20);
@@ -77,10 +79,10 @@ if bUSE_TORCH_OVER_TCP == true
     
     % Serialize input data from array
     if SEND_SHUTDOWN == true
-        dataBufferToWrite = getByteStreamFromArray('shutdown');
+        dataBufferToWrite = [getByteStreamFromArray(int32(72)), getByteStreamFromArray('shutdown')];
 
     else
-        dataBufferToWrite = getByteStreamFromArray(inputDataSample);
+        dataBufferToWrite = [getByteStreamFromArray(dataBufferSize), getByteStreamFromArray(inputDataSample)];
         % dataBufferToWrite_Size = length(dataBufferToWrite);
     end
 
