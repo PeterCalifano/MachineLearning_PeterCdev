@@ -9,10 +9,11 @@ import os
 # %% Data processing function wrapper as generic interface in RequestHandler for TCP servers - PeterC - 15-06-2024
 class DataProcessor():
     '''Data processing function wrapper as generic interface in RequestHandler for TCP servers'''
-    def __init__(self, processDataFcn:callable, inputTargetType):
+    def __init__(self, processDataFcn:callable, inputTargetType, BufferSizeInBytes:int):
         '''Constructor'''
         self.processDataFcn = processDataFcn
         self.inputTargetType = inputTargetType
+        self.BufferSizeInBytes = BufferSizeInBytes
 
     def process(self, inputData):
         '''Processing method running specified processing function'''
@@ -42,11 +43,11 @@ class pytcp_requestHandler(socketserver.BaseRequestHandler):
         try:
             while True:
                 # Read the length of the data (4 bytes) specified by the client
-                # bufferSizeFromClient = self.request.recv(4)
-                # if not bufferSizeFromClient:
-                #     break
-                # bufferSize = int.from_bytes(bufferSizeFromClient, 'big')
-                bufferSize = self.BufferSizeInBytes
+                bufferSizeFromClient = self.request.recv(4)
+                if not bufferSizeFromClient:
+                    break
+                bufferSize = int.from_bytes(bufferSizeFromClient, 'big')
+                bufferSizeExpected = self.BufferSizeInBytes
 
                 # Read the entire data buffer
                 dataBuffer = b''
@@ -62,20 +63,24 @@ class pytcp_requestHandler(socketserver.BaseRequestHandler):
                     self.server.shutdown()  # Gracefully shut down the server
                     print('Server is now OFF.')
                     break
+                
+                if len(dataBuffer) == bufferSizeExpected:
+                    # Deserialize the received data buffer using pickle
+                    dataArray = pickle.loads(dataBuffer)
+                    print(f"Received array:\t{dataArray}")
+                else:
+                    raise BufferError('Data buffer size does not match buffer size by Data Processor!')
 
-                # Deserialize the received data buffer using pickle
-                dataArray = pickle.loads(dataBuffer)
-                print(f"Received array:\t{dataArray}")
 
                 # Move the data to DataProcessor and process according to specified function
                 outputData = self.DataProcessor(dataArray)
 
                 # Serialize the output data before sending them back
                 outputDataSerialized = pickle.dumps(outputData) 
-                #outputDataSizeInBytes = len(outputDataSerialized)
+                outputDataSizeInBytes = len(outputDataSerialized)
 
                 # Send the length of the processed data - CURRENTLY NOT IN USE 
-                # self.request.sendall(outputDataSizeInBytes.to_bytes(4, 'big'))
+                self.request.sendall(outputDataSizeInBytes.to_bytes(4, 'big'))
 
                 # Send the serialized output data
                 self.request.sendall(outputDataSerialized)
@@ -89,7 +94,7 @@ class pytcp_requestHandler(socketserver.BaseRequestHandler):
 # %% TCP server class - PeterC -15-06-2024
 class pytcp_server(socketserver.TCPServer):
     '''Python-based custom tcp server class using socketserver module'''
-    def __init__(self, serverAddress: tuple[str|bytes|bytearray, int], RequestHandlerClass: pytcp_requestHandler, bindAndActivate:bool=True) -> None:
+    def __init__(self, serverAddress: tuple[str|bytes|bytearray, int], RequestHandlerClass:pytcp_requestHandler, DataProcessor:DataProcessor, bindAndActivate:bool=True) -> None:
         '''Constructor for custom tcp server'''
         self.DataProcessor = DataProcessor # Initialize DataProcessing object for handle
         super().__init__(serverAddress, RequestHandlerClass, bindAndActivate)

@@ -34,13 +34,14 @@ def main():
     torchWrapper = customTorch.TorchModel_MATLABwrap(tracedModelName, tracedModelSavePath)
 
     # %% TCP SERVER INITIALIZATION
-    HOST, PORT = "localhost", 65333 # Define host and port (random is ok)
+    HOST, PORT = "127.0.0.1", 65433 # Define host and port (random is ok)
 
     # Define DataProcessor object for RequestHandler
-    dataProcessorObj = tcpServerPy.DataProcessor(torchWrapper.forward, np.array)
+    numOfBytes = 60*8 # Length of input * number of bytes in double
+    dataProcessorObj = tcpServerPy.DataProcessor(torchWrapper.forward, np.array, numOfBytes)
 
     # Initialize TCP server and keep it running
-    with tcpServerPy.pytcp_server((HOST, PORT), tcpServerPy.pytcp_requestHandler, bindAndActivate=True) as server:
+    with tcpServerPy.pytcp_server((HOST, PORT), tcpServerPy.pytcp_requestHandler, dataProcessorObj, bindAndActivate=True) as server:
         try:
             print('\nServer initialized correctly. Set in "serve_forever" mode.')
             server.serve_forever()
