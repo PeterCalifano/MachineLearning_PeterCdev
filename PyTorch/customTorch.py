@@ -161,7 +161,7 @@ def MoonLimbPixConvEnhancer_LossFcn(predictCorrection, labelVector, params:list=
         conicLoss += torch.matmul(correctedPix.T, torch.matmul(LimbConicMatrixImg[idBatch, :, :].reshape(3,3), correctedPix))
 
     L2regLoss = torch.norm(predictCorrection)**2 # Weighting the norm of the correction to keep it as small as possible
-
+    # Total loss function
     lossValue = coeff * torch.norm(conicLoss)**2 + (1-coeff) * L2regLoss
     return lossValue
 
@@ -277,8 +277,6 @@ def LoadTorchDataset(datasetFilePath:str) -> Dataset:
 # Base class for Supervised learning datasets
 # Reference for implementation of virtual methods: https://stackoverflow.com/questions/4714136/how-to-implement-virtual-methods-in-python
 
-'''
-
 from abc import abstractmethod
 from abc import ABCMeta
 
@@ -310,7 +308,7 @@ class GenericSupervisedDataset(Dataset, metaclass=ABCMeta):
     def __getitem__(self, index):
         raise NotImplementedError()
         return inputVec, label
-'''
+
 # %% Custom Dataset class for Moon Limb pixel extraction CNN enhancer - 01-06-2024
 # First prototype completed by PC - 04-06-2024 --> to move to new module
 class MoonLimbPixCorrector_Dataset():
@@ -536,10 +534,8 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
 
 # %% Model evaluation function on a random number of samples from dataset - 06-06-2024
 
-# TODO: upgrade to use single sample as torch.tensor
-
 def EvaluateModel(dataloader:DataLoader, model:nn.Module, lossFcn: nn.Module, device=GetDevice(), numOfSamples:int=10, inputSample:torch.tensor=None) -> np.array:
-        
+    '''Torch model evaluation function to perform inference using either specified input samples or input dataloader'''
     model.eval() # Set model in prediction mode
     with torch.no_grad(): 
         if inputSample is None:
@@ -574,7 +570,7 @@ def EvaluateModel(dataloader:DataLoader, model:nn.Module, lossFcn: nn.Module, de
                 exampleLosses[id] = lossFcn(examplePredictionList[id].to(device), labelSample.to(device)).item()
    
         else:
-            # Perform FORWARD PASS
+            # Perform FORWARD PASS # NOTE: NOT TESTED
             X = inputSample
             examplePredictions = model(X.to(device)) # Evaluate model at input
 
@@ -678,7 +674,7 @@ def AddZerosPadding(intNum:int, stringLength:str=4):
 def ComputeConvLayerOutputSize(modelDescriptionDict: dict):
     raise NotImplementedError('TODO') # Returns length of output of CNN as flatten
 
-# %% MATLAB wrapper class for Torch models evaluation - TODO 11-06-2024
+# %% MATLAB wrapper class for Torch models evaluation - 11-06-2024
 class TorchModel_MATLABwrap():
     def __init__(self, trainedModelName:str, trainedModelPath:str) -> None:
         # Get available device
@@ -691,7 +687,7 @@ class TorchModel_MATLABwrap():
 
 
     def forward(self, inputSample:np.ndarray):
-        
+        '''Forward method to perform inference for ONE sample input using trainedModel'''
         if inputSample.dtype is not np.float32:
             inputSample = np.float32(inputSample)
 

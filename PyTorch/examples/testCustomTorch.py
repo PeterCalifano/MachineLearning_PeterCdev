@@ -59,14 +59,14 @@ def main():
     
     examplePrediction, exampleLosses, inputSampleList = customTorch.EvaluateModel(sampleDataset, trainedTracedModel, lossFcn)
 
-    customTorch.SaveTorchModel(trainedTracedModel.to('cpu'), 'trainedTracedModel075_cpu', tracedModelSavePath, True, inputSampleList[0])
+    customTorch.SaveTorchModel(trainedTracedModel.to('cpu'), os.path.join(tracedModelSavePath, 'trainedTracedModel075_cpu'), True, inputSampleList[0])
 
     # %% TEST TORCH MATLAB WRAPPER
     torchWrapper = customTorch.TorchModel_MATLABwrap(tracedModelName, tracedModelSavePath)
 
     testPrediction = torchWrapper.forward((inputSampleList[0].cpu()).numpy())
 
-    print(testPrediction)
+    print('Test output:', testPrediction)
 
 if __name__ == '__main__':
     main()
