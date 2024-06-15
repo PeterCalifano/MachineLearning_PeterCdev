@@ -5,7 +5,6 @@
 import socketserver
 import pickle
 import os
-from socketserver import _AfInetAddress
 
 # %% Data processing function wrapper as generic interface in RequestHandler for TCP servers - PeterC - 15-06-2024
 class DataProcessor():
@@ -88,7 +87,7 @@ class pytcp_server(socketserver.TCPServer):
         self.DataProcessor = DataProcessor # Initialize DataProcessing object for handle
         super().__init__(serverAddress, RequestHandlerClass, bindAndActivate)
     
-    def finish_request(self, request, client_address: socketserver.Any) -> None:
+    def finish_request(self, request, client_address) -> None:
         '''Function evaluating Request Handler'''
         self.RequestHandlerClass(request, client_address, self, self.DataProcessor)
 
