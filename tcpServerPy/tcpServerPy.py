@@ -46,7 +46,11 @@ class pytcp_requestHandler(socketserver.BaseRequestHandler):
                 bufferSizeFromClient = self.request.recv(4)
                 if not bufferSizeFromClient:
                     break
-                bufferSize = int.from_bytes(bufferSizeFromClient, 'big')
+                bufferSize = int.from_bytes(bufferSizeFromClient, 'little') # NOTE: MATLAB writes as LITTLE endian
+
+                # Print received length bytes for debugging a
+                print(f"Received length bytes: {bufferSizeFromClient}", "\t", f"Interpreted length: {bufferSize}")               
+            
                 bufferSizeExpected = self.BufferSizeInBytes
 
                 # Read the entire data buffer
@@ -58,7 +62,7 @@ class pytcp_requestHandler(socketserver.BaseRequestHandler):
                     dataBuffer += packet
 
                 # SERVER SHUTDOWN COMMAND HANDLING
-                if dataBuffer.decode('utf-8'.strip().lower() == 'shutdown'):
+                if dataBuffer.decode('utf-8'.strip().lower()) == 'shutdown':
                     print("Shutdown command received. Shutting down server...")
                     self.server.shutdown()  # Gracefully shut down the server
                     print('Server is now OFF.')

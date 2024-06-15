@@ -66,11 +66,11 @@ if bUSE_TORCH_OVER_TCP == true
 
     % Define object properties
     serverAddress = '127.0.0.1';
-    portNumber = int32(65432);
+    portNumber = uint16(50000);
     SEND_SHUTDOWN = true;
 
-    dataBufferSize = int32(60);
-
+    dataBufferSize = uint16(60*8);
+    
     % Create communication handler
     commHandler = CommManager(serverAddress, portNumber, 20);
 
@@ -79,16 +79,31 @@ if bUSE_TORCH_OVER_TCP == true
     
     % Serialize input data from array
     if SEND_SHUTDOWN == true
-        dataBufferToWrite = [getByteStreamFromArray(int32(72)), getByteStreamFromArray('shutdown')];
+
+        dataMessage = 'shutdown';
+
+        if isa(dataMessage, 'string')
+            dataMessage = char(dataMessage);
+        end
+
+        dataLength = length(dataMessage);
+        lengthAsBytes = typecast(uint32(dataLength), 'uint8');
+
+        dataBufferToWrite = [lengthAsBytes, uint8(dataMessage)];
 
     else
-        dataBufferToWrite = [getByteStreamFromArray(dataBufferSize), getByteStreamFromArray(inputDataSample)];
+    
+        dataBuffer = getByteStreamFromArray(dataMessage);
+        dataLength = typecast(uint32(length(dataBuffer)), 'uint8');
+
+        dataBufferToWrite = [dataLength, dataBuffer];
         % dataBufferToWrite_Size = length(dataBufferToWrite);
     end
 
     % Send data to server
     commHandler.WriteBuffer(dataBufferToWrite);
 
+    return
     % Test function to read data buffer
     recvBuffer = commHandler.ReadBuffer();
     

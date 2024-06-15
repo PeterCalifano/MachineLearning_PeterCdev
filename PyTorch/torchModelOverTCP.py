@@ -34,7 +34,7 @@ def main():
     torchWrapper = customTorch.TorchModel_MATLABwrap(tracedModelName, tracedModelSavePath)
 
     # %% TCP SERVER INITIALIZATION
-    HOST, PORT = "127.0.0.1", 65432 # Define host and port (random is ok)
+    HOST, PORT = "127.0.0.1", 50000 # Define host and port (random is ok)
 
     # Define DataProcessor object for RequestHandler
     numOfBytes = 60*8 # Length of input * number of bytes in double
@@ -46,7 +46,7 @@ def main():
             print('\nServer initialized correctly. Set in "serve_forever" mode.')
             server.serve_forever()
         except KeyboardInterrupt:
-            print("\nServer is shutting down.")
+            print("\nServer is gracefully shutting down =D.")
             server.shutdown()
             server.server_close()
 
