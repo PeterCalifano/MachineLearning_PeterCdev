@@ -16,6 +16,8 @@ import numpy as np
 import customTorch
 import tcpServerPy
 
+
+
 # MAIN SCRIPT
 def main():
     print('\n\n----------------------------------- RUNNING: torchModelOverTCP.py -----------------------------------\n')

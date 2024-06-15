@@ -56,6 +56,13 @@ class pytcp_requestHandler(socketserver.BaseRequestHandler):
                         break
                     dataBuffer += packet
 
+                # SERVER SHUTDOWN COMMAND HANDLING
+                if dataBuffer.decode('utf-8'.strip().lower() == 'shutdown'):
+                    print("Shutdown command received. Shutting down server...")
+                    self.server.shutdown()  # Gracefully shut down the server
+                    print('Server is now OFF.')
+                    break
+
                 # Deserialize the received data buffer using pickle
                 dataArray = pickle.loads(dataBuffer)
                 print(f"Received array:\t{dataArray}")
