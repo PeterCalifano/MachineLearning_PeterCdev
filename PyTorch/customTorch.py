@@ -702,6 +702,10 @@ class TorchModel_MATLABwrap():
         # Perform inference using model
         Y = self.trainedModel(X.to(self.device))
 
+        # ########### DEBUG ######################: 
+        print('Model prediction: ', Y)
+        ############################################
+
         return Y.detach().cpu().numpy() # Move to cpu and convert to numpy
     
         

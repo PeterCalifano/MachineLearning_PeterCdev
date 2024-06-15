@@ -3,8 +3,7 @@
 
 # Python imports
 import socketserver
-import pickle
-import os
+import numpy as np
 
 # %% Data processing function wrapper as generic interface in RequestHandler for TCP servers - PeterC - 15-06-2024
 class DataProcessor():
@@ -17,16 +16,28 @@ class DataProcessor():
 
     def process(self, inputData):
         '''Processing method running specified processing function'''
-        return self.processDataFcn(inputData)
+
+        # Decode inputData
+        decodedData = self.decode(inputData)
+        # Execute processing function
+        processedData = self.processDataFcn(decodedData)
+
+        return self.encode(processedData)
     
-    def convert(self, inputData):
-        '''Data conversion function from raw data array to specified target type'''
+    def decode(self, inputData):
+        '''Data conversion function from raw bytes stream to specified target numpy type'''
         if not isinstance(inputData, self.inputTargetType):
             try:
-                inputData = self.inputTargetType(inputData)
+                dataArray = np.array(np.frombuffer(inputData, dtype=self.inputTargetType), dtype=self.inputTargetType)
+                print(f"Received data array:\t{dataArray}")
+                
             except Exception as errMsg:
-                raise TypeError('Data conversion from raw data array to specified target type {targetType} failed with error: \n'.format(self.inputTargetType) + str(errMsg))
-
+                raise TypeError('Data conversion from raw data array to specified target type {targetType} failed with error: \n'.format(targetType=self.inputTargetType) + str(errMsg))
+        return dataArray
+    
+    def encode(self, processedData):
+        '''Data conversion function from numpy array to raw bytes stream'''
+        return processedData.tobytes()
 
 # %% Request handler class - PeterC + GPT4o- 15-06-2024
 class pytcp_requestHandler(socketserver.BaseRequestHandler):
@@ -50,7 +61,7 @@ class pytcp_requestHandler(socketserver.BaseRequestHandler):
                 bufferSize = int.from_bytes(bufferSizeFromClient, self.ENDIANNESS) # NOTE: MATLAB writes as LITTLE endian
 
                 # Print received length bytes for debugging a
-                print(f"Received length bytes: {bufferSizeFromClient}", "\t", f"Interpreted length: {bufferSize}")               
+                print(f"Received length bytes: {bufferSizeFromClient}", ", ", f"Interpreted length: {bufferSize}")               
             
                 bufferSizeExpected = self.BufferSizeInBytes
 
@@ -72,20 +83,16 @@ class pytcp_requestHandler(socketserver.BaseRequestHandler):
 
                 
                 print("Expected data buffer size from client:", bufferSizeExpected, "bytes")
-                if len(dataBuffer) == bufferSizeExpected:
-                    # Deserialize the received data buffer using pickle
-                    dataArray = pickle.loads(dataBuffer)
-                    print(f"Received data array:\t{dataArray}")
+                if not(len(dataBuffer) == bufferSizeExpected):
+                    raise BufferError('Data buffer size does not match buffer size by Data Processor! Received message contains {nBytesReceived}'.format(nBytesReceived=len(dataBuffer)) )
                 else:
-                    raise BufferError('Data buffer size does not match buffer size by Data Processor! Received message contains {nBytesReceived}'.format(len(dataBuffer)))
-
+                    print('Message size matches expected size. Calling data processor...')
 
                 # Move the data to DataProcessor and process according to specified function
-                #outputData = self.DataProcessor(dataArray)
-                outputData = "Acknowledge message. Array was received!"
+                outputDataSerialized = self.DataProcessor.process(dataBuffer)
+                # For strings: outputDataSerialized = ("Acknowledge message. Array was received!").encode('utf-8')
 
-                # Serialize the output data before sending them back
-                outputDataSerialized = pickle.dumps(outputData) 
+                # Get size of serialized output data          
                 outputDataSizeInBytes = len(outputDataSerialized)
 
                 # Send the length of the processed data - CURRENTLY NOT IN USE 
@@ -93,6 +100,7 @@ class pytcp_requestHandler(socketserver.BaseRequestHandler):
 
                 # Send the serialized output data
                 self.request.sendall(outputDataSerialized)
+                break
 
         except Exception as e:
             print(f"Error occurred while handling request: {e}")

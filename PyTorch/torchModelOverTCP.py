@@ -37,8 +37,8 @@ def main():
     HOST, PORT = "127.0.0.1", 50000 # Define host and port (random is ok)
 
     # Define DataProcessor object for RequestHandler
-    numOfBytes = 60*8 # Length of input * number of bytes in double
-    dataProcessorObj = tcpServerPy.DataProcessor(torchWrapper.forward, np.array, numOfBytes)
+    numOfBytes = 60*4 # Length of input * number of bytes in double
+    dataProcessorObj = tcpServerPy.DataProcessor(torchWrapper.forward, np.float32, numOfBytes)
 
     # Initialize TCP server and keep it running
     with tcpServerPy.pytcp_server((HOST, PORT), tcpServerPy.pytcp_requestHandler, dataProcessorObj, bindAndActivate=True) as server:

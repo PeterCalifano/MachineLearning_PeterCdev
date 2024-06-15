@@ -67,7 +67,7 @@ if bUSE_TORCH_OVER_TCP == true
     % Define object properties
     serverAddress = '127.0.0.1';
     portNumber = uint16(50000);
-    SEND_SHUTDOWN = true;
+    SEND_SHUTDOWN = false;
 
     dataBufferSize = uint16(60*8);
     
@@ -92,10 +92,15 @@ if bUSE_TORCH_OVER_TCP == true
         dataBufferToWrite = [lengthAsBytes, uint8(dataMessage)];
 
     else
-    
-        dataBuffer = getByteStreamFromArray(dataMessage);
-        dataLength = typecast(uint32(length(dataBuffer)), 'uint8');
 
+        if iscolumn(inputDataSample)
+            dataMessage = transpose(inputDataSample);
+        else
+            dataMessage = (inputDataSample);
+        end
+
+        dataBuffer = typecast(dataMessage, 'uint8');
+        dataLength = typecast(uint32(length(dataBuffer)), 'uint8');
         dataBufferToWrite = [dataLength, dataBuffer];
         % dataBufferToWrite_Size = length(dataBufferToWrite);
     end
@@ -103,14 +108,18 @@ if bUSE_TORCH_OVER_TCP == true
     % Send data to server
     commHandler.WriteBuffer(dataBufferToWrite);
 
-    return
+    if SEND_SHUTDOWN == true
+        return;
+    end
+
     % Test function to read data buffer
-    recvBuffer = commHandler.ReadBuffer();
+    % [recvBytes, recvDataBuffer, commManager] = ReadBuffer(commManager)
+    [recvBytes, recvDataBuffer] = commHandler.ReadBuffer();
     
     % Convert received bytes stream into matrix
-    dataBufferReceived = getArrayFromByteStream(recvBuffer);
+    dataBufferReceived = typecast(recvDataBuffer, 'single');
     
-    fprintf('\nReceived data length: %d. Data:\n', length(dataBufferReceived));
+    fprintf('\nReceived data length: %d. \nData vector: ', recvBytes);
     disp(dataBufferReceived);
 
 else
