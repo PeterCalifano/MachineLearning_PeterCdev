@@ -1,4 +1,4 @@
-# Script created by PeterC to test ONNx related codes (mainly from Torch) - 10-06-2024
+''' Script created by PeterC to test evaluation of loaded model - 10-06-2024 '''
 import onnx 
 import torch
 from torch import nn 
