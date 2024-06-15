@@ -14,15 +14,12 @@ import numpy as np
 
 # Custom imports
 import customTorch
-import limbPixelExtraction_CNN_NN
 import tcpServerPy
-
-
 
 # MAIN SCRIPT
 def main():
-    print('\n\n--------------------------- RUNNING: torchModelOverTCP.py ---------------------------n')
-    print('MAIN script operations: initialize always-on server --> listen to data from client --> if OK, evaluate model --> if OK, return output to client\n\n')
+    print('\n\n----------------------------------- RUNNING: torchModelOverTCP.py -----------------------------------\n')
+    print("MAIN script operations: initialize always-on server --> listen to data from client --> if OK, evaluate model --> if OK, return output to client\n")
     
     # %% TORCH MODEL LOADING
     # Model path
@@ -38,12 +35,12 @@ def main():
     HOST, PORT = "localhost", 65333 # Define host and port (random is ok)
 
     # Define DataProcessor object for RequestHandler
-    dataProcessorObj = tcpServerPy.DataProcessor(torchWrapper.forward, np.ndarray)
+    dataProcessorObj = tcpServerPy.DataProcessor(torchWrapper.forward, np.array)
 
     # Initialize TCP server and keep it running
     with tcpServerPy.pytcp_server((HOST, PORT), tcpServerPy.pytcp_requestHandler, bindAndActivate=True) as server:
-        print('Server initialized correctly. Set in "serve_forever" mode.')
-        #server.serve_forever()
+        print('\nServer initialized correctly. Set in "serve_forever" mode.')
+        server.serve_forever()
 
 if __name__ == "__main__":
     main()

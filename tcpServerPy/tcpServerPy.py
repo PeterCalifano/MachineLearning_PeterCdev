@@ -65,7 +65,7 @@ class pytcp_requestHandler(socketserver.BaseRequestHandler):
 
                 # Serialize the output data before sending them back
                 outputDataSerialized = pickle.dumps(outputData) 
-                outputDataSizeInBytes = len(outputDataSerialized)
+                #outputDataSizeInBytes = len(outputDataSerialized)
 
                 # Send the length of the processed data - CURRENTLY NOT IN USE 
                 # self.request.sendall(outputDataSizeInBytes.to_bytes(4, 'big'))

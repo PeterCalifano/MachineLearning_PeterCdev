@@ -686,7 +686,7 @@ class TorchModel_MATLABwrap():
         self.trainedModel = trainedModel.to(self.device)
 
 
-    def forward(self, inputSample:np.ndarray):
+    def forward(self, inputSample:np.array):
         '''Forward method to perform inference for ONE sample input using trainedModel'''
         if inputSample.dtype is not np.float32:
             inputSample = np.float32(inputSample)
