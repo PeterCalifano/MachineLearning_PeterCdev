@@ -41,8 +41,13 @@ def main():
 
     # Initialize TCP server and keep it running
     with tcpServerPy.pytcp_server((HOST, PORT), tcpServerPy.pytcp_requestHandler, bindAndActivate=True) as server:
-        print('\nServer initialized correctly. Set in "serve_forever" mode.')
-        server.serve_forever()
+        try:
+            print('\nServer initialized correctly. Set in "serve_forever" mode.')
+            server.serve_forever()
+        except KeyboardInterrupt:
+            print("\nServer is shutting down.")
+            server.shutdown()
+            server.server_close()
 
 if __name__ == "__main__":
     main()
