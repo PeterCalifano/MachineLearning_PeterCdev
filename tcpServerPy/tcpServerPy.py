@@ -31,10 +31,11 @@ class DataProcessor():
 # %% Request handler class - PeterC + GPT4o- 15-06-2024
 class pytcp_requestHandler(socketserver.BaseRequestHandler):
     '''Request Handler class for tcp server'''
-    def __init__(self, request, client_address, server, DataProcessor:DataProcessor):
+    def __init__(self, request, client_address, server, DataProcessor:DataProcessor, ENDIANNESS:str='little'):
         ''''Constructor'''
         self.DataProcessor = DataProcessor # Initialize DataProcessing object for handle
         self.BufferSizeInBytes = DataProcessor.BufferSizeInBytes
+        self.ENDIANNESS = ENDIANNESS
         super().__init__(request, client_address, server)
 
     def handle(self) -> None:
@@ -46,7 +47,7 @@ class pytcp_requestHandler(socketserver.BaseRequestHandler):
                 bufferSizeFromClient = self.request.recv(4)
                 if not bufferSizeFromClient:
                     break
-                bufferSize = int.from_bytes(bufferSizeFromClient, 'little') # NOTE: MATLAB writes as LITTLE endian
+                bufferSize = int.from_bytes(bufferSizeFromClient, self.ENDIANNESS) # NOTE: MATLAB writes as LITTLE endian
 
                 # Print received length bytes for debugging a
                 print(f"Received length bytes: {bufferSizeFromClient}", "\t", f"Interpreted length: {bufferSize}")               
@@ -64,27 +65,30 @@ class pytcp_requestHandler(socketserver.BaseRequestHandler):
                 # SERVER SHUTDOWN COMMAND HANDLING
                 if dataBuffer.decode('utf-8'.strip().lower()) == 'shutdown':
                     print("Shutdown command received. Shutting down server...")
-                    self.server.shutdown()  # Gracefully shut down the server
+                    self.server.shutdown()  # Gracefully shut down the server --> this seems not to work due to the fact that the server has to terminate the job
+                    self.server.server_close()
                     print('Server is now OFF.')
                     break
                 
+                print("Expected data buffer size from client:", bufferSizeExpected, "bytes")
                 if len(dataBuffer) == bufferSizeExpected:
                     # Deserialize the received data buffer using pickle
                     dataArray = pickle.loads(dataBuffer)
-                    print(f"Received array:\t{dataArray}")
+                    print(f"Received data array:\t{dataArray}")
                 else:
-                    raise BufferError('Data buffer size does not match buffer size by Data Processor!')
+                    raise BufferError('Data buffer size does not match buffer size by Data Processor! Received message contains {nBytesReceived}'.format(len(dataBuffer)))
 
 
                 # Move the data to DataProcessor and process according to specified function
-                outputData = self.DataProcessor(dataArray)
+                #outputData = self.DataProcessor(dataArray)
+                outputData = "Acknowledge message. Array was received!"
 
                 # Serialize the output data before sending them back
                 outputDataSerialized = pickle.dumps(outputData) 
                 outputDataSizeInBytes = len(outputDataSerialized)
 
                 # Send the length of the processed data - CURRENTLY NOT IN USE 
-                self.request.sendall(outputDataSizeInBytes.to_bytes(4, 'big'))
+                self.request.sendall(outputDataSizeInBytes.to_bytes(4, self.ENDIANNESS))
 
                 # Send the serialized output data
                 self.request.sendall(outputDataSerialized)
@@ -97,6 +101,7 @@ class pytcp_requestHandler(socketserver.BaseRequestHandler):
 
 # %% TCP server class - PeterC -15-06-2024
 class pytcp_server(socketserver.TCPServer):
+    allow_reuse_address = True
     '''Python-based custom tcp server class using socketserver module'''
     def __init__(self, serverAddress: tuple[str|bytes|bytearray, int], RequestHandlerClass:pytcp_requestHandler, DataProcessor:DataProcessor, bindAndActivate:bool=True) -> None:
         '''Constructor for custom tcp server'''
