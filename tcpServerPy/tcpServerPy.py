@@ -94,6 +94,7 @@ class pytcp_requestHandler(socketserver.BaseRequestHandler):
 
                 # Get size of serialized output data          
                 outputDataSizeInBytes = len(outputDataSerialized)
+                print('Sending number of bytes to client:', outputDataSizeInBytes+4)
 
                 # Send the length of the processed data - CURRENTLY NOT IN USE 
                 self.request.sendall(outputDataSizeInBytes.to_bytes(4, self.ENDIANNESS))
@@ -117,7 +118,7 @@ class pytcp_server(socketserver.TCPServer):
         '''Constructor for custom tcp server'''
         self.DataProcessor = DataProcessor # Initialize DataProcessing object for handle
         super().__init__(serverAddress, RequestHandlerClass, bindAndActivate)
-    
+        print('Server opened on (HOST, PORT): (',serverAddress[0],', ',serverAddress[1],')')
     def finish_request(self, request, client_address) -> None:
         '''Function evaluating Request Handler'''
         self.RequestHandlerClass(request, client_address, self, self.DataProcessor)

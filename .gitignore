@@ -33,3 +33,5 @@ event-based_backup
 tensorboardLog*
 
 *.json
+
+slprj
