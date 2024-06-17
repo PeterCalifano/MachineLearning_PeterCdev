@@ -161,13 +161,13 @@ def MoonLimbPixConvEnhancer_LossFcn(predictCorrection, labelVector, params:list=
         conicLoss += torch.matmul(correctedPix.T, torch.matmul(LimbConicMatrixImg[idBatch, :, :].reshape(3,3), correctedPix))
 
     L2regLoss = torch.norm(predictCorrection)**2 # Weighting the norm of the correction to keep it as small as possible
-
+    # Total loss function
     lossValue = coeff * torch.norm(conicLoss)**2 + (1-coeff) * L2regLoss
     return lossValue
 
 
 # %% Function to save model state - 04-05-2024, updated 11-06-2024
-def SaveTorchModel(model:nn.Module, modelName:str="trainedModel", saveAsTraced:bool=False, exampleInput=None) -> None:
+def SaveTorchModel(model:nn.Module, modelName:str="trainedModel", saveAsTraced:bool=False, exampleInput=None, targetDevice:str='cpu') -> None:
     if 'os.path' not in sys.modules:
         import os.path
 
@@ -190,9 +190,9 @@ def SaveTorchModel(model:nn.Module, modelName:str="trainedModel", saveAsTraced:b
                 gitignoreFile.write("\ntestModels/*")
                 gitignoreFile.close()
 
-        filename = "testModels/" + modelName + extension 
+        filename = "testModels/" + modelName + '_' + targetDevice + extension 
     else:
-        filename = modelName + extension 
+        filename = modelName  + '_' + targetDevice + extension 
     
     # Attach timetag to model checkpoint
     #currentTime = datetime.datetime.now()
@@ -204,7 +204,7 @@ def SaveTorchModel(model:nn.Module, modelName:str="trainedModel", saveAsTraced:b
     if saveAsTraced:
         print('Saving traced model...')
         if exampleInput is not None:
-            tracedModel = torch.jit.trace(model.forward, exampleInput)
+            tracedModel = torch.jit.trace((model).to(targetDevice), exampleInput.to(targetDevice))
             tracedModel.save(filename)
             print('Model correctly saved with filename: ', filename)
         else: 
@@ -219,16 +219,20 @@ def SaveTorchModel(model:nn.Module, modelName:str="trainedModel", saveAsTraced:b
 def LoadTorchModel(model:nn.Module=None, modelName:str="trainedModel", filepath:str="testModels/", loadAsTraced:bool=False) -> nn.Module:
     
     # Check if input name has extension
-    rootFileName, extension = os.path.splitext(os.path.join(filepath, modelName))
+    modelNameCheck, extension = os.path.splitext(str(modelName))
 
-    if extension is "":
+    #print(modelName, ' ', modelNameCheck, ' ', extension)
+
+    if extension != '.pt' and extension != '.pth':
         if loadAsTraced: 
             extension = '.pt'
         else:
             extension = '.pth'
+    else:
+        extension = ''      
 
     # Contatenate file path
-    modelPath = os.path.join(rootFileName + extension) 
+    modelPath = os.path.join(filepath, modelName + extension) 
 
     if not(os.path.isfile(modelPath)):
         raise FileNotFoundError('Model specified by: ', modelPath, ': NOT FOUND.')
@@ -237,6 +241,8 @@ def LoadTorchModel(model:nn.Module=None, modelName:str="trainedModel", filepath:
         print('Loading traced model from filename: ', modelPath)
         # Load traced model using torch.jit
         model = torch.jit.load(modelPath)
+        print('Traced model correctly loaded.')
+
     elif not(loadAsTraced) or (loadAsTraced and model is not None):
 
         if loadAsTraced and model is not None:
@@ -257,6 +263,9 @@ def LoadTorchModel(model:nn.Module=None, modelName:str="trainedModel", filepath:
 
 # %% Function to save Dataset object - 01-06-2024
 def SaveTorchDataset(datasetObj:Dataset, datasetFilePath:str='', datasetName:str='dataset') -> None:
+
+    if not(os.path.isdir(datasetFilePath)):
+        os.makedirs(datasetFilePath)
     torch.save(datasetObj, datasetFilePath + datasetName + ".pt")
 
 # %% Function to load Dataset object - 01-06-2024
@@ -267,6 +276,7 @@ def LoadTorchDataset(datasetFilePath:str) -> Dataset:
 # %% Generic Dataset class for Supervised learning - 30-05-2024
 # Base class for Supervised learning datasets
 # Reference for implementation of virtual methods: https://stackoverflow.com/questions/4714136/how-to-implement-virtual-methods-in-python
+
 from abc import abstractmethod
 from abc import ABCMeta
 
@@ -524,10 +534,8 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
 
 # %% Model evaluation function on a random number of samples from dataset - 06-06-2024
 
-# TODO: upgrade to use single sample as torch.tensor
-
 def EvaluateModel(dataloader:DataLoader, model:nn.Module, lossFcn: nn.Module, device=GetDevice(), numOfSamples:int=10, inputSample:torch.tensor=None) -> np.array:
-        
+    '''Torch model evaluation function to perform inference using either specified input samples or input dataloader'''
     model.eval() # Set model in prediction mode
     with torch.no_grad(): 
         if inputSample is None:
@@ -562,7 +570,7 @@ def EvaluateModel(dataloader:DataLoader, model:nn.Module, lossFcn: nn.Module, de
                 exampleLosses[id] = lossFcn(examplePredictionList[id].to(device), labelSample.to(device)).item()
    
         else:
-            # Perform FORWARD PASS
+            # Perform FORWARD PASS # NOTE: NOT TESTED
             X = inputSample
             examplePredictions = model(X.to(device)) # Evaluate model at input
 
@@ -666,24 +674,26 @@ def AddZerosPadding(intNum:int, stringLength:str=4):
 def ComputeConvLayerOutputSize(modelDescriptionDict: dict):
     raise NotImplementedError('TODO') # Returns length of output of CNN as flatten
 
-# %% MATLAB wrapper class for Torch models evaluation - TODO 11-06-2024
+# %% MATLAB wrapper class for Torch models evaluation - 11-06-2024
 class TorchModel_MATLABwrap():
     def __init__(self, trainedModelName:str, trainedModelPath:str) -> None:
-
-        # Load model state and state
-        trainedModel = LoadTorchModel(None, trainedModelName, trainedModelPath, loadAsTraced=True)
-        self.trainedModel = trainedModel
         # Get available device
         self.device = GetDevice()
 
-    def forward(self, inputSample:np.ndarray):
-        
+        # Load model state and state
+        trainedModel = LoadTorchModel(None, trainedModelName, trainedModelPath, loadAsTraced=True)
+
+        self.trainedModel = trainedModel.to(self.device)
+
+
+    def forward(self, inputSample:np.array):
+        '''Forward method to perform inference for ONE sample input using trainedModel'''
         if inputSample.dtype is not np.float32:
             inputSample = np.float32(inputSample)
 
         # TODO: check the input is exactly identical to what the model receives using EvaluateModel() loading from dataset!        
         # Convert numpy array into torch.tensor for model inference
-        X = torch.tensor(inputSample)
+        X = torch.tensor(inputSample).reshape(1, -1)
 
         # ########### DEBUG ######################: 
         print('Evaluating model using batch input: ', X)
@@ -692,8 +702,13 @@ class TorchModel_MATLABwrap():
         # Perform inference using model
         Y = self.trainedModel(X.to(self.device))
 
-        return Y
+        # ########### DEBUG ######################: 
+        print('Model prediction: ', Y)
+        ############################################
+
+        return Y.detach().cpu().numpy() # Move to cpu and convert to numpy
     
+        
 
 
 
