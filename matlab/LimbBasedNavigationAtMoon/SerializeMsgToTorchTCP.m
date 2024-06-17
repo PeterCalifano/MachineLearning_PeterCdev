@@ -1,9 +1,17 @@
-function [dataBufferToWrite] = SerializeMsgToTorchTCP(ui8flattenedWindow, ...
+function [dataLength, dataBufferToWrite] = SerializeMsgToTorchTCP(ui8flattenedWindow, ...
     dRmoonDEM, ...
     dSunDir_PixCoords, ...
-    dAttDCM_fromTFtoCAM, ...
+    dAttMRP_fromTFtoCAM, ...
     dPosCam_TF, ...
     ui8coarseLimbPixels)%#codegen
+arguments
+    ui8flattenedWindow  (49,1)
+    dRmoonDEM           (1,1)
+    dSunDir_PixCoords   (2,1)
+    dAttMRP_fromTFtoCAM (3,1)
+    dPosCam_TF          (3,1)
+    ui8coarseLimbPixels (2,1)
+end
 %% PROTOTYPE
 % -------------------------------------------------------------------------------------------------------------
 %% DESCRIPTION
@@ -44,12 +52,13 @@ function [dataBufferToWrite] = SerializeMsgToTorchTCP(ui8flattenedWindow, ...
 % dPosCam_TF
 % ui8coarseLimbPixels
 
+
 inputDataSample = zeros(60, 1, 'single');
 
 inputDataSample(1:49)  = single(ui8flattenedWindow);
 inputDataSample(50)    = single(dRmoonDEM);
 inputDataSample(51:52) = single(dSunDir_PixCoords);
-inputDataSample(53:55) = single(quat2mrp( DCM2quat(reshape(dAttDCM_fromTFtoCAM, 3, 3), false) )); % Convert Attitude matrix to MRP parameters
+inputDataSample(53:55) = single(dAttMRP_fromTFtoCAM); % Convert Attitude matrix to MRP parameters
 inputDataSample(56:58) = single(dPosCam_TF);
 inputDataSample(59:60) = single(ui8coarseLimbPixels);
 

@@ -39,6 +39,7 @@ function [dPredictedPixCorrection] = DeserializeMsgFromTorchTCP(recvBytes, recvD
 % dPosCam_TF
 % ui8coarseLimbPixels
 
+
 dataBufferReceived = typecast(recvDataBuffer, 'single');
 
 fprintf('\nReceived data length: %d. \nData vector: ', recvBytes);
