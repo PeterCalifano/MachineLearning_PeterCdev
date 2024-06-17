@@ -17,7 +17,7 @@ addpath('/home/peterc/devDir/robots-api/matlab/CommManager')
 % CHANGELOG
 % 09-06-2024    Pietro Califano     Script initialized. Model loading code added.
 % 10-06-2024    Pietro Califano     First version of script completed.
-% 15-06-2024    Pietro Califano     Added code to use Torch over TCP server
+% 15-06-2024    Pietro Califano     Added code to use Torch over TCP server. Test passed.
 % -------------------------------------------------------------------------------------------------------------
 % DEPENDENCIES
 % Deep Learning toolbox
@@ -26,6 +26,7 @@ addpath('/home/peterc/devDir/robots-api/matlab/CommManager')
 %% OPTIONS
 bUSE_TORCH_OVER_TCP = true;
 bUSE_PYENV = true;
+bRUN_SIMULINK_SIM = true;
 
 datasetID = 1;
 fileID   = 1;
@@ -73,32 +74,24 @@ if bUSE_TORCH_OVER_TCP == true
     
     % Create communication handler
     commHandler = CommManager(serverAddress, portNumber, 20);
-
     % Initialize tcpclient object and communication to server
     commHandler.Initialize()
     
     % Serialize input data from array
     if SEND_SHUTDOWN == true
-
         dataMessage = 'shutdown';
-
         if isa(dataMessage, 'string')
             dataMessage = char(dataMessage);
         end
-
         dataLength = length(dataMessage);
         lengthAsBytes = typecast(uint32(dataLength), 'uint8');
-
         dataBufferToWrite = [lengthAsBytes, uint8(dataMessage)];
-
     else
-
         if iscolumn(inputDataSample)
             dataMessage = transpose(inputDataSample);
         else
             dataMessage = (inputDataSample);
         end
-
         dataBuffer = typecast(dataMessage, 'uint8');
         dataLength = typecast(uint32(length(dataBuffer)), 'uint8');
         dataBufferToWrite = [dataLength, dataBuffer];
@@ -107,18 +100,14 @@ if bUSE_TORCH_OVER_TCP == true
 
     % Send data to server
     commHandler.WriteBuffer(dataBufferToWrite);
-
     if SEND_SHUTDOWN == true
         return;
     end
-
     % Test function to read data buffer
     % [recvBytes, recvDataBuffer, commManager] = ReadBuffer(commManager)
     [recvBytes, recvDataBuffer] = commHandler.ReadBuffer();
-    
     % Convert received bytes stream into matrix
     dataBufferReceived = typecast(recvDataBuffer, 'single');
-    
     fprintf('\nReceived data length: %d. \nData vector: ', recvBytes);
     disp(dataBufferReceived);
 
@@ -196,5 +185,38 @@ else
 end
 
 
+%% TEST using Simulink model
+modelName = 'testTorchTCP';
+load_system(modelName);
+open(modelName);
 
+finalTime = 10;
+timeStep = 1;
+
+
+if bRUN_SIMULINK_SIM == true                        
+
+    % Prepare input bus
+    inputDataStruct.ui8flattenedWindow  = flattenedWindow;
+    inputDataStruct.dRmoonDEM           = datastruct.metadata.dRmoonDEM;
+    inputDataStruct.dSunDir_PixCoords   = datastruct.metadata.dSunDir_PixCoords;
+    inputDataStruct.dAttDCM_fromTFtoCAM = quat2mrp( DCM2quat(reshape(datastruct.metadata.dAttDCM_fromTFtoCAM, 3, 3), false) );
+    inputDataStruct.dPosCam_TF          = datastruct.metadata.dPosCam_TF;
+    inputDataStruct.ui8coarseLimbPixelsdataBufferToWrite = coarseLimbPixels;
+
+    timeGrid = 1:timeStep:finalTime;
+    inputBusStruct = Simulink.Bus.createObject(inputDataStruct); %#ok<NASGU>
+    InputTorchModelBus = slBus1;
+    clear('inputBusStruct');
+
+    % Create simulation object
+    simInputObj = Simulink.SimulationInput(modelName);
+    % Set model parameters
+    simInputObj = simInputObj.setModelParameter('StopTime', num2str(finalTime));
+    simInputObj = simInputObj.setModelParameter('FixedStep', num2str(timeStep));
+    % Open model and simulate single run
+    simOutputObj = sim(simInputObj);
+    simOutputObj.SimulationMetadata.TimingInfo
+
+end
 
