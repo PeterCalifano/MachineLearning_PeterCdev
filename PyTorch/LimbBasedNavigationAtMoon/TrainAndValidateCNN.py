@@ -42,21 +42,23 @@ def main():
 
     exportTracedModel = True
 
+    # Options to restart training from checkpoint
+    modelSavePath = './checkpoints/HorizonPixCorrector_CNN_run10'
+    
     options = {'taskType': 'regression', 
                'device': device, 
                'epochs': 5, 
                'Tensorboard':True,
                'saveCheckpoints':True,
-               'checkpointsOutDir': './checkpoints/HorizonPixCorrector_CNN_run10',
+               'checkpointsOutDir': modelSavePath,
                'modelName': 'trainedModel',
                'loadCheckpoint': False,
-               'checkpointsInDir': './checkpoints/HorizonPixCorrector_CNN_run10',
+               'checkpointsInDir': modelSavePath,
                'lossLogName': 'Loss_MoonHorizonExtraction',
                'logDirectory': './tensorboardLog',
                'epochStart': 0}
 
-    # Options to restart training from checkpoint
-    modelSavePath = './checkpoints/HorizonPixCorrector_CNN_run10'
+
 
     if options['epochStart'] == 0:
         restartTraining = False
@@ -176,7 +178,7 @@ def main():
     dataDict = {'labelsDataArray': labelsDataArray, 'inputDataArray': inputDataArray}
     
     # INITIALIZE DATASET OBJECT # TEMPORARY from one single dataset
-    dataset = customTorch.MoonLimbPixCorrector_Dataset(dataDict)
+    dataset = limbPixelExtraction_CNN_NN.MoonLimbPixCorrector_Dataset(dataDict)
 
     if exportTracedModel:
         # Save sample dataset for ONNx use
@@ -197,7 +199,7 @@ def main():
 
     # LOSS FUNCTION DEFINITION
     # Custom EvalLoss function: MoonLimbPixConvEnhancer_LossFcn(predictCorrection, labelVector, params:list=None)
-    lossFcn = customTorch.CustomLossFcn(customTorch.MoonLimbPixConvEnhancer_LossFcn)
+    lossFcn = customTorch.CustomLossFcn(limbPixelExtraction_CNN_NN.MoonLimbPixConvEnhancer_LossFcn)
 
     # MODEL DEFINITION
     if restartTraining:
