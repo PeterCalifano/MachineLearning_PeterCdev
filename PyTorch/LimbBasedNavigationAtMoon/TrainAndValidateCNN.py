@@ -32,9 +32,9 @@ def main():
     # SETTINGS and PARAMETERS 
     batch_size = 16 # Defines batch size in dataset
     TRAINING_PERC = 0.75
-    outChannelsSizes = [16, 32, 75, 15]
+    outChannelsSizes = [16, 32, 55, 15] # TODO: update this according to new model
     kernelSizes = [3, 1]
-    learnRate = 5E-3
+    learnRate = 9E-8
     momentumValue = 0.001
 
     optimizerID = 1 # 0
@@ -43,21 +43,23 @@ def main():
 
     exportTracedModel = True
 
+    # Options to restart training from checkpoint
+    modelSavePath = './checkpoints/HorizonPixCorrector_CNNv2_run1'
+    
     options = {'taskType': 'regression', 
                'device': device, 
-               'epochs': 5, 
+               'epochs': 30, 
                'Tensorboard':True,
                'saveCheckpoints':True,
-               'checkpointsOutDir': './checkpoints/HorizonPixCorrector_CNN_run10',
+               'checkpointsOutDir': modelSavePath,
                'modelName': 'trainedModel',
                'loadCheckpoint': False,
-               'checkpointsInDir': './checkpoints/HorizonPixCorrector_CNN_run10',
+               'checkpointsInDir': modelSavePath,
                'lossLogName': 'Loss_MoonHorizonExtraction',
                'logDirectory': './tensorboardLog',
                'epochStart': 0}
 
-    # Options to restart training from checkpoint
-    modelSavePath = './checkpoints/HorizonPixCorrector_CNN_run10'
+
 
     if options['epochStart'] == 0:
         restartTraining = False
@@ -128,7 +130,7 @@ def main():
     # Initialize dataset building variables
     saveID = 0
     
-    inputDataArray  = np.zeros((60, nSamples), dtype=np.float32)
+    inputDataArray  = np.zeros((56, nSamples), dtype=np.float32)
     labelsDataArray = np.zeros((11, nSamples), dtype=np.float32)
 
     for dataPair in dataFilenames:
@@ -137,11 +139,11 @@ def main():
 
         metadataDict = tmpdataDict['metadata']
 
-        dPosCam_TF           = np.array(metadataDict['dPosCam_TF'], dtype=np.float32)
+        #dPosCam_TF           = np.array(metadataDict['dPosCam_TF'], dtype=np.float32)
         dAttDCM_fromTFtoCAM  = np.array(metadataDict['dAttDCM_fromTFtoCAM'], dtype=np.float32)
         dSunDir_PixCoords    = np.array(metadataDict['dSunDir_PixCoords'], dtype=np.float32)
-        dLimbConic_PixCoords = np.array(metadataDict['dLimbConic_PixCoords'], dtype=np.float32)
-        dRmoonDEM            = np.array(metadataDict['dRmoonDEM'], dtype=np.float32)
+        dLimbConicCoeffs_PixCoords = np.array(metadataDict['dLimbConic_PixCoords'], dtype=np.float32)
+        #dRmoonDEM            = np.array(metadataDict['dRmoonDEM'], dtype=np.float32)
 
         ui16coarseLimbPixels = np.array(tmpdataDict['ui16coarseLimbPixels'], dtype=np.float32)
         ui8flattenedWindows  = np.array(tmpdataDict['ui8flattenedWindows'], dtype=np.float32)
@@ -149,27 +151,52 @@ def main():
         for sampleID in range(ui16coarseLimbPixels.shape[1]):
             # Get flattened patch
             flattenedWindow = ui8flattenedWindows[:, sampleID]
-
+            flattenedWindSize = len(flattenedWindow)
             # Validate patch counting how many pixels are completely black or white
-            #pathIsValid = customTorch.IsPatchValid(flattenedWindow, lowerIntensityThr=5)
-            pathIsValid = True
+
+            pathIsValid = limbPixelExtraction_CNN_NN.IsPatchValid(flattenedWindow, lowerIntensityThr=8)
+
+            #pathIsValid = True
 
             if pathIsValid:
-                inputDataArray[0:49, saveID]  = flattenedWindow
-                inputDataArray[49, saveID]    = dRmoonDEM
-                inputDataArray[50:52, saveID] = dSunDir_PixCoords
-                inputDataArray[52:55, saveID] = (Rotation.from_matrix(np.array(dAttDCM_fromTFtoCAM))).as_mrp() # Convert Attitude matrix to MRP parameters
-                inputDataArray[55:58, saveID] = dPosCam_TF
-                inputDataArray[58::, saveID] = ui16coarseLimbPixels[:, sampleID]
+                ptrToInput = 0
+                
+                # Assign flattened window to input data array
+                inputDataArray[ptrToInput:ptrToInput+flattenedWindSize, saveID]  = flattenedWindow
 
-                labelsDataArray[0:9, saveID] = np.ravel(dLimbConic_PixCoords)
+                ptrToInput += flattenedWindSize # Update index
+
+                #inputDataArray[49, saveID]    = dRmoonDEM
+
+                # Assign Sun direction to input data array
+                inputDataArray[ptrToInput:ptrToInput+len(dSunDir_PixCoords), saveID] = dSunDir_PixCoords
+
+                ptrToInput += len(dSunDir_PixCoords) # Update index
+
+                # Assign Attitude matrix as Modified Rodrigues Parameters to input data array
+                tmpVal = (Rotation.from_matrix(np.array(dAttDCM_fromTFtoCAM))).as_mrp() # Convert Attitude matrix to MRP parameters
+                
+                inputDataArray[ptrToInput:ptrToInput+len(tmpVal), saveID] = tmpVal
+
+                ptrToInput += len(tmpVal) # Update index
+
+                #inputDataArray[55:58, saveID] = dPosCam_TF
+
+                # Assign coarse Limb pixels to input data array
+                inputDataArray[ptrToInput::, saveID] = ui16coarseLimbPixels[:, sampleID]
+
+                # Assign labels to labels data array
+                labelsDataArray[0:9, saveID] = np.ravel(dLimbConicCoeffs_PixCoords)
                 labelsDataArray[9:, saveID] = ui16coarseLimbPixels[:, sampleID]
 
                 saveID += 1
 
 
     # Shrink dataset remove entries which have not been filled due to invalid path
-    print('Number of removed invalid patches:', nSamples - saveID)
+    print('Number of images loaded from dataset: ', nImages)
+    print('Number of samples in dataset: ', nSamples)
+    print('Number of removed invalid patches from validity check:', nSamples - saveID)
+
     inputDataArray = inputDataArray[:, 0:saveID]           
     labelsDataArray = labelsDataArray[:, 0:saveID]
 
@@ -178,7 +205,7 @@ def main():
     dataDict = {'labelsDataArray': labelsDataArray, 'inputDataArray': inputDataArray}
     
     # INITIALIZE DATASET OBJECT # TEMPORARY from one single dataset
-    dataset = customTorch.MoonLimbPixCorrector_Dataset(dataDict)
+    dataset = limbPixelExtraction_CNN_NN.MoonLimbPixCorrector_Dataset(dataDict)
 
     if exportTracedModel:
         # Save sample dataset for ONNx use
@@ -199,7 +226,7 @@ def main():
 
     # LOSS FUNCTION DEFINITION
     # Custom EvalLoss function: MoonLimbPixConvEnhancer_LossFcn(predictCorrection, labelVector, params:list=None)
-    lossFcn = customTorch.CustomLossFcn(customTorch.MoonLimbPixConvEnhancer_LossFcn)
+    lossFcn = customTorch.CustomLossFcn(limbPixelExtraction_CNN_NN.MoonLimbPixConvEnhancer_LossFcn)
 
     # MODEL DEFINITION
     if restartTraining:

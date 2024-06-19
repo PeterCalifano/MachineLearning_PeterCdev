@@ -142,29 +142,6 @@ class CustomLossFcn(nn.Module):
         lossBatch = self.LossFcnObj(predictVector, labelVector, params)
         return lossBatch.mean()
    
-# %% Custom loss function for Moon Limb pixel extraction CNN enhancer - 01-06-2024
-def MoonLimbPixConvEnhancer_LossFcn(predictCorrection, labelVector, params:list=None):
-    # Alternative loss: alfa*||xCorrT * ConicMatr* xCorr||^2 + (1-alfa)*MSE(label, prediction)
-    # Get parameters and labels for computation of the loss
-    coeff = 0.98 # TODO: convert params to dict
-    LimbConicMatrixImg = (labelVector[:, 0:9].T).reshape(3, 3, labelVector.size()[0]).T
-    patchCentre = labelVector[:, 9:]
-
-    # Evaluate loss
-    conicLoss = 0.0 # Weighting violation of Horizon conic equation
-    for idBatch in range(labelVector.size()[0]):
-
-        # Compute corrected pixel
-        correctedPix = torch.tensor([0,0,1], dtype=torch.float32, device=GetDevice()).reshape(3,1)
-        correctedPix[0:2] = patchCentre[idBatch, :].reshape(2,1) + predictCorrection[idBatch, :].reshape(2,1)
-
-        conicLoss += torch.matmul(correctedPix.T, torch.matmul(LimbConicMatrixImg[idBatch, :, :].reshape(3,3), correctedPix))
-
-    L2regLoss = torch.norm(predictCorrection)**2 # Weighting the norm of the correction to keep it as small as possible
-    # Total loss function
-    lossValue = coeff * torch.norm(conicLoss)**2 + (1-coeff) * L2regLoss
-    return lossValue
-
 
 # %% Function to save model state - 04-05-2024, updated 11-06-2024
 def SaveTorchModel(model:nn.Module, modelName:str="trainedModel", saveAsTraced:bool=False, exampleInput=None, targetDevice:str='cpu') -> None:
@@ -309,48 +286,6 @@ class GenericSupervisedDataset(Dataset, metaclass=ABCMeta):
         raise NotImplementedError()
         return inputVec, label
 
-# %% Custom Dataset class for Moon Limb pixel extraction CNN enhancer - 01-06-2024
-# First prototype completed by PC - 04-06-2024 --> to move to new module
-class MoonLimbPixCorrector_Dataset():
-
-    def __init__(self, dataDict:dict, datasetType:str='train', transform=None, target_transform=None):
-            # Store input and labels sources
-            self.labelsDataArray = dataDict['labelsDataArray']
-            self.inputDataArray = dataDict['inputDataArray']
-
-            # Initialize transform objects
-            self.transform = transform
-            self.target_transform = target_transform
-
-            # Set the dataset type (train, test, validation)
-            self.datasetType = datasetType
-
-    def __len__(self):
-        return np.shape(self.labelsDataArray)[1]
-
-    # def __getLabelsData__(self):
-    #     self.labelsDataArray
-
-    def __getitem__(self, index):
-        label   = self.labelsDataArray[:, index]
-        inputVec = self.inputDataArray[:, index]
-
-        return inputVec, label
-    
-# %% Function to validate path (check it is not completely black or white)
-def IsPatchValid(patchFlatten, lowerIntensityThr=5):
-    
-    # Count how many pixels are below threshold
-    howManyBelowThreshold = np.sum(patchFlatten <= lowerIntensityThr)
-    howManyPixels = len(patchFlatten)
-    width = np.sqrt(howManyPixels)
-    lowerThreshold = width/2
-    upperThreshold = howManyPixels - lowerThreshold
-    if howManyBelowThreshold <  lowerThreshold or howManyBelowThreshold > upperThreshold:
-        return False
-    else:
-        return True
-    
 
 # %% TENSORBOARD functions - 04-06-2024
 # Function to check if Tensorboard is running

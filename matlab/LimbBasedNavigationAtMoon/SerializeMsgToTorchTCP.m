@@ -46,21 +46,36 @@ end
 % -------------------------------------------------------------------------------------------------------------
 %% Function code
 % ui8flattenedWindow
-% dRmoonDEM
+% dRmoonDEM --> REMOVED
 % dSunDir_PixCoords
 % dAttDCM_fromTFtoCAM
-% dPosCam_TF
+% dPosCam_TF --> REMOVED
 % ui8coarseLimbPixels
 
+inputDataSample = zeros(56, 1, 'single');
+ptrToInput = 1;
 
-inputDataSample = zeros(60, 1, 'single');
+flattenedWindSize = length(flattenedWindow);
 
-inputDataSample(1:49)  = single(ui8flattenedWindow);
-inputDataSample(50)    = single(dRmoonDEM);
-inputDataSample(51:52) = single(dSunDir_PixCoords);
-inputDataSample(53:55) = single(dAttMRP_fromTFtoCAM); % Convert Attitude matrix to MRP parameters
-inputDataSample(56:58) = single(dPosCam_TF);
-inputDataSample(59:60) = single(ui8coarseLimbPixels);
+inputDataSample(ptrToInput:ptrToInput+flattenedWindSize-1)  = single(flattenedWindow);
+
+% Update index
+ptrToInput = ptrToInput + flattenedWindSize; 
+
+inputDataSample(ptrToInput:ptrToInput+length(datastruct.metadata.dSunDir_PixCoords)-1) = single(datastruct.metadata.dSunDir_PixCoords);
+
+% Update index
+ptrToInput = ptrToInput + length(datastruct.metadata.dSunDir_PixCoords); % Update index
+
+tmpVal = quat2mrp( DCM2quat(reshape(datastruct.metadata.dAttDCM_fromTFtoCAM, 3, 3), false) );
+
+inputDataSample(ptrToInput : ptrToInput + length(tmpVal)-1) = single(tmpVal); % Convert Attitude matrix to MRP parameters
+
+% Update index
+ptrToInput = ptrToInput + length(tmpVal); % Update index
+
+inputDataSample(ptrToInput:end) = single(coarseLimbPixels);
+
 
 % dataBufferSize = uint16(60*8);
 

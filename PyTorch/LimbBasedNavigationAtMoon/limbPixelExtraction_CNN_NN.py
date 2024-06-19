@@ -31,7 +31,6 @@ from torch.utils.tensorboard import SummaryWriter
 import torch.optim as optim
 import torch.nn.functional as torchFunc # Module to apply activation functions in forward pass instead of defining them in the model class
 
-
 # Possible option: X given as input to the model is just one, but managed internally to the class, thus splitting the input as appropriate and only used in the desired layers.
 # Alternatively, forward() method can accept multiple inputs based on the definition.
 
@@ -43,6 +42,74 @@ import torch.nn.functional as torchFunc # Module to apply activation functions i
 # labels = torch.randint(0, 10, (1000,))
 # dataset = TensorDataset(main_inputs, additional_inputs, labels)
 
+# %% Custom Dataset class for Moon Limb pixel extraction CNN enhancer - 01-06-2024
+# First prototype completed by PC - 04-06-2024 --> to move to new module
+class MoonLimbPixCorrector_Dataset():
+
+    def __init__(self, dataDict:dict, datasetType:str='train', transform=None, target_transform=None):
+            # Store input and labels sources
+            self.labelsDataArray = dataDict['labelsDataArray']
+            self.inputDataArray = dataDict['inputDataArray']
+
+            # Initialize transform objects
+            self.transform = transform
+            self.target_transform = target_transform
+
+            # Set the dataset type (train, test, validation)
+            self.datasetType = datasetType
+
+    def __len__(self):
+        return np.shape(self.labelsDataArray)[1]
+
+    # def __getLabelsData__(self):
+    #     self.labelsDataArray
+
+    def __getitem__(self, index):
+        label   = self.labelsDataArray[:, index]
+        inputVec = self.inputDataArray[:, index]
+
+        return inputVec, label
+
+
+# %% Custom loss function for Moon Limb pixel extraction CNN enhancer - 01-06-2024
+def MoonLimbPixConvEnhancer_LossFcn(predictCorrection, labelVector, params:list=None):
+    # Alternative loss: alfa*||xCorrT * ConicMatr* xCorr||^2 + (1-alfa)*MSE(label, prediction)
+    # Get parameters and labels for computation of the loss
+    coeff = 0.98 # TODO: convert params to dict
+    LimbConicMatrixImg = (labelVector[:, 0:9].T).reshape(3, 3, labelVector.size()[0]).T
+    patchCentre = labelVector[:, 9:]
+
+    # Evaluate loss
+    conicLoss = 0.0 # Weighting violation of Horizon conic equation
+    for idBatch in range(labelVector.size()[0]):
+
+        # Compute corrected pixel
+        correctedPix = torch.tensor([0,0,1], dtype=torch.float32, device=customTorch.GetDevice()).reshape(3,1)
+        correctedPix[0:2] = patchCentre[idBatch, :].reshape(2,1) + predictCorrection[idBatch, :].reshape(2,1)
+
+        conicLoss += torch.matmul(correctedPix.T, torch.matmul(LimbConicMatrixImg[idBatch, :, :].reshape(3,3), correctedPix))
+
+    L2regLoss = torch.norm(predictCorrection)**2 # Weighting the norm of the correction to keep it as small as possible
+    # Total loss function
+    lossValue = coeff * torch.norm(conicLoss)**2 + (1-coeff) * L2regLoss
+    return lossValue
+
+
+# %% Function to validate path (check it is not completely black or white)
+def IsPatchValid(patchFlatten, lowerIntensityThr=3):
+    
+    # Count how many pixels are below threshold
+    howManyBelowThreshold = np.sum(patchFlatten <= lowerIntensityThr)
+    howManyPixels = len(patchFlatten)
+    width = np.sqrt(howManyPixels)
+    lowerThreshold = width/2
+    upperThreshold = howManyPixels - lowerThreshold
+    if howManyBelowThreshold <  lowerThreshold or howManyBelowThreshold > upperThreshold:
+        return False
+    else:
+        return True
+
+# %% Custom CNN-NN model for Moon limb pixel extraction enhancer - 01-06-2024
 class HorizonExtractionEnhancerCNN(nn.Module):
     def __init__(self, outChannelsSizes:list, kernelSizes, poolingSize=2, alphaDropCoeff=0.1, alphaLeaky=0.01, patchSize=7) -> None:
         super().__init__()
@@ -53,8 +120,8 @@ class HorizonExtractionEnhancerCNN(nn.Module):
         self.imagePixSize = self.patchSize**2
         self.numOfConvLayers = 2
         #self.LinearInputFeaturesSize = (patchSize - self.numOfConvLayers * np.floor(float(kernelSizes[-1])/2.0)) * self.outChannelsSizes[-1] # Number of features arriving as input to FC layer
-        self.LinearInputFeaturesSize = 32 # Need to make this automatic..
-        self.LinearInputSkipSize = 11
+        self.LinearInputFeaturesSize = 32 # Need to make this automatic... computing the number of features from the last convolutional layer (flatten of the volume)
+        self.LinearInputSkipSize = 7 #11 # CHANGE TO 7 removing R_DEM and PosTF
         self.LinearInputSize = self.LinearInputSkipSize + self.LinearInputFeaturesSize
 
         self.alphaLeaky = alphaLeaky
