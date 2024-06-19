@@ -31,9 +31,9 @@ def main():
     # SETTINGS and PARAMETERS 
     batch_size = 16 # Defines batch size in dataset
     TRAINING_PERC = 0.75
-    outChannelsSizes = [16, 32, 75, 15] # TODO: update this according to new model
+    outChannelsSizes = [16, 32, 55, 15] # TODO: update this according to new model
     kernelSizes = [3, 1]
-    learnRate = 5E-3
+    learnRate = 9E-8
     momentumValue = 0.001
 
     optimizerID = 1 # 0
@@ -43,11 +43,11 @@ def main():
     exportTracedModel = True
 
     # Options to restart training from checkpoint
-    modelSavePath = './checkpoints/HorizonPixCorrector_CNN_run10'
+    modelSavePath = './checkpoints/HorizonPixCorrector_CNNv2_run1'
     
     options = {'taskType': 'regression', 
                'device': device, 
-               'epochs': 5, 
+               'epochs': 30, 
                'Tensorboard':True,
                'saveCheckpoints':True,
                'checkpointsOutDir': modelSavePath,
@@ -151,8 +151,10 @@ def main():
             flattenedWindow = ui8flattenedWindows[:, sampleID]
             flattenedWindSize = len(flattenedWindow)
             # Validate patch counting how many pixels are completely black or white
-            #pathIsValid = customTorch.IsPatchValid(flattenedWindow, lowerIntensityThr=5)
-            pathIsValid = True
+
+            pathIsValid = limbPixelExtraction_CNN_NN.IsPatchValid(flattenedWindow, lowerIntensityThr=8)
+
+            #pathIsValid = True
 
             if pathIsValid:
                 ptrToInput = 0
@@ -189,7 +191,10 @@ def main():
 
 
     # Shrink dataset remove entries which have not been filled due to invalid path
-    print('Number of removed invalid patches:', nSamples - saveID)
+    print('Number of images loaded from dataset: ', nImages)
+    print('Number of samples in dataset: ', nSamples)
+    print('Number of removed invalid patches from validity check:', nSamples - saveID)
+
     inputDataArray = inputDataArray[:, 0:saveID]           
     labelsDataArray = labelsDataArray[:, 0:saveID]
 

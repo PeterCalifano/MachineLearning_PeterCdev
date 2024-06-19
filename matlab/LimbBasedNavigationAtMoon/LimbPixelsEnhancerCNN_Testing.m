@@ -18,6 +18,7 @@ addpath('/home/peterc/devDir/robots-api/matlab/CommManager')
 % 09-06-2024    Pietro Califano     Script initialized. Model loading code added.
 % 10-06-2024    Pietro Califano     First version of script completed.
 % 15-06-2024    Pietro Califano     Added code to use Torch over TCP server. Test passed.
+% 19-06-2024    Pietro Califano     Updated Torch Model to v2.0
 % -------------------------------------------------------------------------------------------------------------
 % DEPENDENCIES
 % Deep Learning toolbox
@@ -53,14 +54,32 @@ coarseLimbPixels = datastruct.ui16coarseLimbPixels(:, sampleID);
 % 2) Input image should be normalized wrt to the maximum. This tip applies to all the inputs.
 
 % Compose input sample
-inputDataSample = zeros(60, 1, 'single');
+inputDataSample = zeros(56, 1, 'single');
 
-inputDataSample(1:49)  = single(flattenedWindow);
-inputDataSample(50)    = single(datastruct.metadata.dRmoonDEM);
-inputDataSample(51:52) = single(datastruct.metadata.dSunDir_PixCoords);
-inputDataSample(53:55) = single(quat2mrp( DCM2quat(reshape(datastruct.metadata.dAttDCM_fromTFtoCAM, 3, 3), false) )); % Convert Attitude matrix to MRP parameters
-inputDataSample(56:58) = single(datastruct.metadata.dPosCam_TF);
-inputDataSample(59:60) = single(coarseLimbPixels);
+
+% Assign labels to labels data array
+ptrToInput = 1;
+
+flattenedWindSize = length(flattenedWindow);
+
+inputDataSample(ptrToInput:ptrToInput+flattenedWindSize-1)  = single(flattenedWindow);
+
+% Update index
+ptrToInput = ptrToInput + flattenedWindSize; 
+
+inputDataSample(ptrToInput:ptrToInput+length(datastruct.metadata.dSunDir_PixCoords)-1) = single(datastruct.metadata.dSunDir_PixCoords);
+
+% Update index
+ptrToInput = ptrToInput + length(datastruct.metadata.dSunDir_PixCoords); % Update index
+
+tmpVal = quat2mrp( DCM2quat(reshape(datastruct.metadata.dAttDCM_fromTFtoCAM, 3, 3), false) );
+
+inputDataSample(ptrToInput : ptrToInput + length(tmpVal)-1) = single(tmpVal); % Convert Attitude matrix to MRP parameters
+
+% Update index
+ptrToInput = ptrToInput + length(tmpVal); % Update index
+
+inputDataSample(ptrToInput:end) = single(coarseLimbPixels);
 
 
 if bUSE_TORCH_OVER_TCP == true
@@ -198,10 +217,10 @@ if bRUN_SIMULINK_SIM == true
 
     % Prepare input bus
     inputDataStruct.ui8flattenedWindow  = flattenedWindow;
-    inputDataStruct.dRmoonDEM           = datastruct.metadata.dRmoonDEM;
+    % inputDataStruct.dRmoonDEM           = datastruct.metadata.dRmoonDEM;
     inputDataStruct.dSunDir_PixCoords   = datastruct.metadata.dSunDir_PixCoords;
     inputDataStruct.dAttDCM_fromTFtoCAM = quat2mrp( DCM2quat(reshape(datastruct.metadata.dAttDCM_fromTFtoCAM, 3, 3), false) );
-    inputDataStruct.dPosCam_TF          = datastruct.metadata.dPosCam_TF;
+    % inputDataStruct.dPosCam_TF          = datastruct.metadata.dPosCam_TF;
     inputDataStruct.ui8coarseLimbPixelsdataBufferToWrite = coarseLimbPixels;
 
     timeGrid = 1:timeStep:finalTime;

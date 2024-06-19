@@ -94,6 +94,21 @@ def MoonLimbPixConvEnhancer_LossFcn(predictCorrection, labelVector, params:list=
     lossValue = coeff * torch.norm(conicLoss)**2 + (1-coeff) * L2regLoss
     return lossValue
 
+
+# %% Function to validate path (check it is not completely black or white)
+def IsPatchValid(patchFlatten, lowerIntensityThr=3):
+    
+    # Count how many pixels are below threshold
+    howManyBelowThreshold = np.sum(patchFlatten <= lowerIntensityThr)
+    howManyPixels = len(patchFlatten)
+    width = np.sqrt(howManyPixels)
+    lowerThreshold = width/2
+    upperThreshold = howManyPixels - lowerThreshold
+    if howManyBelowThreshold <  lowerThreshold or howManyBelowThreshold > upperThreshold:
+        return False
+    else:
+        return True
+
 # %% Custom CNN-NN model for Moon limb pixel extraction enhancer - 01-06-2024
 class HorizonExtractionEnhancerCNN(nn.Module):
     def __init__(self, outChannelsSizes:list, kernelSizes, poolingSize=2, alphaDropCoeff=0.1, alphaLeaky=0.01, patchSize=7) -> None:

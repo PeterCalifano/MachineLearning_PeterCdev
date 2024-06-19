@@ -287,22 +287,6 @@ class GenericSupervisedDataset(Dataset, metaclass=ABCMeta):
         return inputVec, label
 
 
-    
-# %% Function to validate path (check it is not completely black or white)
-def IsPatchValid(patchFlatten, lowerIntensityThr=5):
-    
-    # Count how many pixels are below threshold
-    howManyBelowThreshold = np.sum(patchFlatten <= lowerIntensityThr)
-    howManyPixels = len(patchFlatten)
-    width = np.sqrt(howManyPixels)
-    lowerThreshold = width/2
-    upperThreshold = howManyPixels - lowerThreshold
-    if howManyBelowThreshold <  lowerThreshold or howManyBelowThreshold > upperThreshold:
-        return False
-    else:
-        return True
-    
-
 # %% TENSORBOARD functions - 04-06-2024
 # Function to check if Tensorboard is running
 def IsTensorboardRunning() -> bool:
