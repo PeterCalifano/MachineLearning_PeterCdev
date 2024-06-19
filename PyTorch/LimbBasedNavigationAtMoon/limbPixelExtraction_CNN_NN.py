@@ -105,8 +105,8 @@ class HorizonExtractionEnhancerCNN(nn.Module):
         self.imagePixSize = self.patchSize**2
         self.numOfConvLayers = 2
         #self.LinearInputFeaturesSize = (patchSize - self.numOfConvLayers * np.floor(float(kernelSizes[-1])/2.0)) * self.outChannelsSizes[-1] # Number of features arriving as input to FC layer
-        self.LinearInputFeaturesSize = 32 # Need to make this automatic..
-        self.LinearInputSkipSize = 11
+        self.LinearInputFeaturesSize = 32 # Need to make this automatic... computing the number of features from the last convolutional layer (flatten of the volume)
+        self.LinearInputSkipSize = 7 #11 # CHANGE TO 7 removing R_DEM and PosTF
         self.LinearInputSize = self.LinearInputSkipSize + self.LinearInputFeaturesSize
 
         self.alphaLeaky = alphaLeaky
