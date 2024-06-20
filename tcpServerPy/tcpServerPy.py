@@ -101,7 +101,8 @@ class pytcp_requestHandler(socketserver.BaseRequestHandler):
 
                 # Send the serialized output data
                 self.request.sendall(outputDataSerialized)
-                break
+                
+                # break 
 
         except Exception as e:
             print(f"Error occurred while handling request: {e}")
