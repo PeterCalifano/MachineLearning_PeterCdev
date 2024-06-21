@@ -27,7 +27,7 @@ addpath('/home/peterc/devDir/robots-api/matlab/CommManager')
 %% OPTIONS
 bUSE_TORCH_OVER_TCP = true;
 bUSE_PYENV = true;
-bRUN_SIMULINK_SIM = true;
+bRUN_SIMULINK_SIM = false;
 
 datasetID = 1;
 fileID   = 1;
@@ -55,7 +55,6 @@ coarseLimbPixels = datastruct.ui16coarseLimbPixels(:, sampleID);
 
 % Compose input sample
 inputDataSample = zeros(56, 1, 'single');
-
 
 % Assign labels to labels data array
 ptrToInput = 1;
@@ -239,3 +238,4 @@ if bRUN_SIMULINK_SIM == true
 
 end
 
+commHandler.Disconnect();

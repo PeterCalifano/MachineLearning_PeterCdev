@@ -26,7 +26,8 @@ def main():
     # %% TORCH MODEL LOADING
     # Model path
     tracedModelSavePath = '/home/peterc/devDir/MachineLearning_PeterCdev'
-    tracedModelName = 'trainedTracedModel' + customTorch.AddZerosPadding(75, 3)
+    modelID = 30
+    tracedModelName = 'trainedTracedModel' + customTorch.AddZerosPadding(modelID, 3) + '_cpu'
 
     # Parameters
 
@@ -37,7 +38,7 @@ def main():
     HOST, PORT = "127.0.0.1", 50000 # Define host and port (random is ok)
 
     # Define DataProcessor object for RequestHandler
-    numOfBytes = 60*4 # Length of input * number of bytes in double
+    numOfBytes = 56*4 # Length of input * number of bytes in double
     dataProcessorObj = tcpServerPy.DataProcessor(torchWrapper.forward, np.float32, numOfBytes)
 
     # Initialize TCP server and keep it running
