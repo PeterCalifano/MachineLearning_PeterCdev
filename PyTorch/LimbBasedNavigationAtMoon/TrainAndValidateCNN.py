@@ -26,14 +26,14 @@ import numpy as np
 from torch.utils.tensorboard import SummaryWriter # Key class to use tensorboard with PyTorch. VSCode will automatically ask if you want to load tensorboard in the current session.
 import torch.optim as optim
 
-def main():
+def main(id):
 
     # SETTINGS and PARAMETERS 
-    batch_size = 16 # Defines batch size in dataset
+    batch_size = 16*5 # Defines batch size in dataset
     TRAINING_PERC = 0.75
-    outChannelsSizes = [16, 32, 55, 15] # TODO: update this according to new model
+    outChannelsSizes = [16, 32, 45, 15] # TODO: update this according to new model
     kernelSizes = [3, 1]
-    learnRate = 9E-8
+    learnRate = 1E-7
     momentumValue = 0.001
 
     optimizerID = 1 # 0
@@ -43,19 +43,29 @@ def main():
     exportTracedModel = True
 
     # Options to restart training from checkpoint
-    modelSavePath = './checkpoints/HorizonPixCorrector_CNNv2_run1'
-    
+    if id == 0:
+        #modelSavePath = './checkpoints/HorizonPixCorrector_CNNv2_run3'
+
+        modelSavePath = './checkpoints/HorizonPixCorrector_CNNv2_run4'
+        tensorboardLogDir = './tensorboardLog_v2'
+        modelArchName = 'HorizonPixCorrector_CNNv2'
+    elif id == 1:
+        modelSavePath = './checkpoints/HorizonPixCorrector_CNNv3_run0'
+        tensorboardLogDir = './tensorboardLog_v3'
+        modelArchName = 'HorizonPixCorrector_CNNv3'
+
+
     options = {'taskType': 'regression', 
                'device': device, 
-               'epochs': 30, 
+               'epochs': 10, 
                'Tensorboard':True,
                'saveCheckpoints':True,
                'checkpointsOutDir': modelSavePath,
-               'modelName': 'trainedModel',
+               'modelName': modelArchName,
                'loadCheckpoint': False,
                'checkpointsInDir': modelSavePath,
                'lossLogName': 'Loss_MoonHorizonExtraction',
-               'logDirectory': './tensorboardLog',
+               'logDirectory': tensorboardLogDir,
                'epochStart': 0}
 
 
@@ -101,8 +111,9 @@ def main():
     dirNamesRoot = os.listdir(dataPath)
 
     # Select one of the available datapairs folders (each corresponding to a labels generation pipeline output)
-    datapairsID = 0 # ACHTUNG! paths from listdir are randomly ordered! --> TODO: modify
-    dataDirPath = os.path.join(dataPath, dirNamesRoot[datapairsID])
+    datasetID = 6 # ACHTUNG! paths from listdir are randomly ordered! --> TODO: modify
+    dataDirPath = os.path.join(dataPath, dirNamesRoot[datasetID])
+
     dataFilenames = os.listdir(dataDirPath)
 
     nImages = len(dataFilenames)
@@ -128,7 +139,7 @@ def main():
     # Initialize dataset building variables
     saveID = 0
     
-    inputDataArray  = np.zeros((56, nSamples), dtype=np.float32)
+    inputDataArray  = np.zeros((57, nSamples), dtype=np.float32)
     labelsDataArray = np.zeros((11, nSamples), dtype=np.float32)
 
     for dataPair in dataFilenames:
@@ -146,13 +157,16 @@ def main():
         ui16coarseLimbPixels = np.array(tmpdataDict['ui16coarseLimbPixels'], dtype=np.float32)
         ui8flattenedWindows  = np.array(tmpdataDict['ui8flattenedWindows'], dtype=np.float32)
 
+        if id == 1:
+            targetAvgRadiusInPix = np.array(metadataDict['dTargetPixAvgRadius'], dtype=np.float32)
+
         for sampleID in range(ui16coarseLimbPixels.shape[1]):
             # Get flattened patch
             flattenedWindow = ui8flattenedWindows[:, sampleID]
             flattenedWindSize = len(flattenedWindow)
             # Validate patch counting how many pixels are completely black or white
 
-            pathIsValid = limbPixelExtraction_CNN_NN.IsPatchValid(flattenedWindow, lowerIntensityThr=8)
+            pathIsValid = limbPixelExtraction_CNN_NN.IsPatchValid(flattenedWindow, lowerIntensityThr=10)
 
             #pathIsValid = True
 
@@ -179,6 +193,9 @@ def main():
                 ptrToInput += len(tmpVal) # Update index
 
                 #inputDataArray[55:58, saveID] = dPosCam_TF
+                if id == 1:
+                    inputDataArray[ptrToInput, saveID] = targetAvgRadiusInPix
+                    ptrToInput += targetAvgRadiusInPix.size # Update index
 
                 # Assign coarse Limb pixels to input data array
                 inputDataArray[ptrToInput::, saveID] = ui16coarseLimbPixels[:, sampleID]
@@ -226,19 +243,27 @@ def main():
     # Custom EvalLoss function: MoonLimbPixConvEnhancer_LossFcn(predictCorrection, labelVector, params:list=None)
     lossFcn = customTorch.CustomLossFcn(limbPixelExtraction_CNN_NN.MoonLimbPixConvEnhancer_LossFcn)
 
+    # MODEL CLASS TYPE
+    if id == 0:
+        modelClass = limbPixelExtraction_CNN_NN.HorizonExtractionEnhancerCNN
+    elif id == 1:
+        modelClass = limbPixelExtraction_CNN_NN.HorizonExtractionEnhancerCNNv2
+
     # MODEL DEFINITION
     if restartTraining:
         checkPointPath = os.path.join(modelSavePath, modelName)
         if os.path.isfile(checkPointPath):
 
             print('RESTART training from checkpoint: ', checkPointPath)
-            modelEmpty = limbPixelExtraction_CNN_NN.HorizonExtractionEnhancerCNN(outChannelsSizes, kernelSizes)
+            modelEmpty = modelClass(outChannelsSizes, kernelSizes)
             modelCNN_NN = customTorch.LoadTorchModel(modelEmpty, modelName, modelSavePath)
 
         else:
             raise ValueError('Specified model state file not found. Check input path.')    
     else:
-        modelCNN_NN = limbPixelExtraction_CNN_NN.HorizonExtractionEnhancerCNN(outChannelsSizes, kernelSizes)
+            modelCNN_NN = modelClass(outChannelsSizes, kernelSizes)
+
+
 
     # Define optimizer object specifying model instance parameters and optimizer parameters
     if optimizerID == 0:
@@ -267,9 +292,13 @@ def main():
         customTorch.ExportTorchModelToONNx(trainedModel, inputSample, onnxExportPath='./checkpoints',
                                             onnxSaveName='trainedModelONNx', modelID=options['epochStart']+options['epochs'], onnx_version=14)
 
-        customTorch.SaveTorchModel(trainedModel, modelName='trainedTracedModel'+customTorch.AddZerosPadding(options['epochStart']+options['epochs'], 3), 
+        customTorch.SaveTorchModel(trainedModel, modelName=modelArchName+'_'+customTorch.AddZerosPadding(options['epochStart']+options['epochs'], 3), 
                                    saveAsTraced=True, exampleInput=inputSample)
 
 # %% MAIN SCRIPT
 if __name__ == '__main__':
-    main()
+
+    for id in range(1):
+        print('\n\n----------------------------------- RUNNING: TrainAndValidateCNN.py -----------------------------------\n')
+        print("MAIN script operations: load dataset --> split dataset --> define dataloaders --> define model --> define loss function --> train and validate model --> export trained model\n")
+        main(1)

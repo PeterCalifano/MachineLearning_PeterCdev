@@ -423,7 +423,7 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
 
 
     # Training and validation loop
-    input('\n-------- PRESS ENTER TO START TRAINING LOOP --------\n')
+    #input('\n-------- PRESS ENTER TO START TRAINING LOOP --------\n')
     trainLossHistory = np.zeros(numOfEpochs)
     validationLossHistory = np.zeros(numOfEpochs)
 

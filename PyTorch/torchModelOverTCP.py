@@ -26,8 +26,9 @@ def main():
     # %% TORCH MODEL LOADING
     # Model path
     tracedModelSavePath = '/home/peterc/devDir/MachineLearning_PeterCdev'
-    modelID = 30
-    tracedModelName = 'trainedTracedModel' + customTorch.AddZerosPadding(modelID, 3) + '_cpu'
+    modelID = 5
+    tracedModelName = 'HorizonPixCorrector_CNNv2_' + customTorch.AddZerosPadding(modelID, 3) + '_cpu'
+    tracedModelName = 'HorizonPixCorrector_CNNv2_005_cpu' + '.pt'
 
     # Parameters
 
