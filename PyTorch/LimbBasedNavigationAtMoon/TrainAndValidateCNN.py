@@ -2,7 +2,7 @@
 # Reference works:
 
 # Import modules
-import sys, os
+import sys, os, multiprocessing
 # Append paths of custom modules
 sys.path.append(os.path.join('/home/peterc/devDir/MachineLearning_PeterCdev/PyTorch'))
 sys.path.append(os.path.join('/home/peterc/devDir/MachineLearning_PeterCdev/PyTorch/LimbBasedNavigationAtMoon'))
@@ -29,11 +29,11 @@ import torch.optim as optim
 def main(id):
 
     # SETTINGS and PARAMETERS 
-    batch_size = 16*5 # Defines batch size in dataset
-    TRAINING_PERC = 0.75
-    outChannelsSizes = [16, 32, 45, 15] # TODO: update this according to new model
+    batch_size = 16*2 # Defines batch size in dataset
+    TRAINING_PERC = 0.80
+    outChannelsSizes = [16, 32, 75, 15] # TODO: update this according to new model
     kernelSizes = [3, 1]
-    learnRate = 1E-7
+    learnRate = 1E-12
     momentumValue = 0.001
 
     optimizerID = 1 # 0
@@ -45,19 +45,27 @@ def main(id):
     # Options to restart training from checkpoint
     if id == 0:
         #modelSavePath = './checkpoints/HorizonPixCorrector_CNNv2_run3'
+        modelSavePath = './checkpoints/HorizonPixCorrector_CNNv2_largerNNl1_run0'
+        tensorboardLogDir = './tensorboardLog_v2_largerNNl1_run0'
+        modelArchName = 'HorizonPixCorrector_CNNv2_largerNNl1'
+        inputSize = 56 # TODO: update this according to new model
 
-        modelSavePath = './checkpoints/HorizonPixCorrector_CNNv2_run4'
-        tensorboardLogDir = './tensorboardLog_v2'
-        modelArchName = 'HorizonPixCorrector_CNNv2'
+        sys.stdout = open("stdout_log_" + modelArchName, 'w') # Redirect print outputs
+
+
     elif id == 1:
-        modelSavePath = './checkpoints/HorizonPixCorrector_CNNv3_run0'
-        tensorboardLogDir = './tensorboardLog_v3'
-        modelArchName = 'HorizonPixCorrector_CNNv3'
+        inputSize = 57 # TODO: update this according to new model
+        modelSavePath = './checkpoints/HorizonPixCorrector_CNNv3_largerNNl1_run0'
+        tensorboardLogDir = './tensorboardLog_v3_largerNNl1_run0'
+        modelArchName = 'HorizonPixCorrector_CNNv3_largerNNl1'
+
+        sys.stdout = open("stdout_log_" + modelArchName, 'w') # Redirect print outputs
+
 
 
     options = {'taskType': 'regression', 
                'device': device, 
-               'epochs': 10, 
+               'epochs': 5, 
                'Tensorboard':True,
                'saveCheckpoints':True,
                'checkpointsOutDir': modelSavePath,
@@ -139,7 +147,8 @@ def main(id):
     # Initialize dataset building variables
     saveID = 0
     
-    inputDataArray  = np.zeros((57, nSamples), dtype=np.float32)
+
+    inputDataArray  = np.zeros((inputSize, nSamples), dtype=np.float32)
     labelsDataArray = np.zeros((11, nSamples), dtype=np.float32)
 
     for dataPair in dataFilenames:
@@ -295,10 +304,28 @@ def main(id):
         customTorch.SaveTorchModel(trainedModel, modelName=modelArchName+'_'+customTorch.AddZerosPadding(options['epochStart']+options['epochs'], 3), 
                                    saveAsTraced=True, exampleInput=inputSample)
 
+    # Close stdout log stream
+    sys.stdout.close()
+
 # %% MAIN SCRIPT
 if __name__ == '__main__':
 
-    for id in range(1):
-        print('\n\n----------------------------------- RUNNING: TrainAndValidateCNN.py -----------------------------------\n')
-        print("MAIN script operations: load dataset --> split dataset --> define dataloaders --> define model --> define loss function --> train and validate model --> export trained model\n")
-        main(1)
+    #for id in range(1):
+    #    print('\n\n----------------------------------- RUNNING: TrainAndValidateCNN.py -----------------------------------\n')
+    #    print("MAIN script operations: load dataset --> split dataset --> define dataloaders --> define model --> define loss function --> train and validate model --> export trained model\n")
+    #    main(id)
+
+    # Setup multiprocessing for training the two models in parallel
+        # Create two processes for training two networks in parallel
+    process1 = multiprocessing.Process(target=main, args=(0))
+    process2 = multiprocessing.Process(target=main, args=(1))
+
+    # Start the processes
+    process1.start()
+    process2.start()
+
+    # Wait for both processes to finish
+    process1.join()
+    process2.join()
+
+    print("Training complete for both network classes. Check tjhe logs for more information.")
