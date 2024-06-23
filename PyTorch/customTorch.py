@@ -447,8 +447,9 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
             if not(os.path.isdir(checkpointDir)):
                 os.mkdir(checkpointDir)
 
+            exampleInput = GetSamplesFromDataset(validationDataset, 1)[0][0].reshape(1, -1) # Get single input sample for model saving
             modelSaveName = os.path.join(checkpointDir, modelName + '_' + AddZerosPadding(epochID + epochStart, stringLength=4))
-            SaveTorchModel(model, modelSaveName)
+            SaveTorchModel(model, modelSaveName, saveAsTraced=True, exampleInput=exampleInput, targetDevice=device)
         
         # %% MODEL PREDICTION EXAMPLES
         examplePrediction, exampleLosses, inputSampleList = EvaluateModel(validationDataset, model, lossFcn, device, 10)
@@ -647,9 +648,60 @@ class TorchModel_MATLABwrap():
 
 
 
-# %% TORCH to ONNX format model converter - TODO 11-06-2024
+# %% Training and validation manager class - 22-06-2024 (WIP)
+# TODO: Features to include: 
+# 1) Multi-process/multi-threading support for training and validation of multiple models in parallel
+# 2) Logging of all relevat options and results to file (either csv or text from std output)
+# 3) Main training logbook to store all data to be used for model selection and hyperparameter tuning, this should be "per project"
 
+class TrainAndValidationManager():
+    '''Class to manage training and validation of PyTorch models using specified datasets and loss functions.'''
 
+    def __init__(self, model:nn.Module, lossFcn: nn.Module, optimizer, options:dict={'taskType': 'classification', 
+                                                                                     'device': GetDevice(), 
+                                                                                     'epochs': 10, 
+                                                                                     'Tensorboard':True,
+                                                                                     'saveCheckpoints':True,
+                                                                                     'checkpointsOutDir': './checkpoints',      
+                                                                                     'modelName': 'trainedModel',
+                                                                                     'loadCheckpoint': False,
+                                                                                     'lossLogName': 'Loss-value',
+                                                                                     'epochStart': 0}):
+        
+        '''Constructor for TrainAndValidationManager class. Initializes model, loss function, optimizer and training/validation options.'''
+
+        # Define manager parameters
+        self.model = model
+        self.lossFcn = lossFcn
+
+        # Optimizer --> # TODO: check how to modify learning rate and momentum while training
+        if isinstance(optimizer, optim.Optimizer):
+            self.optimizer = optimizer
+
+        elif isinstance(optimizer, int):
+                if optimizer == 0:
+                    optimizer = torch.optim.SGD(self.model.parameters(), lr=learnRate, momentum=momentumValue) 
+                elif optimizer == 1:
+                    optimizer = torch.optim.Adam(self.model.parameters(), lr=learnRate)
+                else:
+                    raise ValueError('Optimizer type not recognized. Use either 0 for SGD or 1 for Adam.')
+        else:
+            raise ValueError('Optimizer must be either an instance of torch.optim.Optimizer or an integer representing the optimizer type.')
+        
+        # Define training and validation options
+    
+    def LoadDatasets(self, dataloaderIndex:dict):
+        '''Method to load datasets from dataloaderIndex and use them depending on the specified criterion (e.g. "order", "merge)'''
+        # TODO: Load all datasets from dataloaderIndex and use them depending on the specified criterion (e.g. "order", "merge)
+        pass
+
+    def TrainAndValidateModel(self):
+        '''Method to train and validate model using loaded datasets and specified options'''
+        pass
+
+    def GetTracedModel(self):
+        pass
+    
 
 
 # %% MAIN 
