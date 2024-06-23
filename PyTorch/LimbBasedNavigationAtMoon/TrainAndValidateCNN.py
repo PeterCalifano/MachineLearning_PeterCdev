@@ -46,11 +46,11 @@ def main(id):
     if id == 0:
         #modelSavePath = './checkpoints/HorizonPixCorrector_CNNv2_run3'
         modelSavePath = './checkpoints/HorizonPixCorrector_CNNv2_largerNNl1_run0'
-        tensorboardLogDir = './tensorboardLog_v2_largerNNl1_run0'
+        tensorboardLogDir = './tensorboardLog_v2_largerNNl1_run1'
         modelArchName = 'HorizonPixCorrector_CNNv2_largerNNl1'
         inputSize = 56 # TODO: update this according to new model
 
-        sys.stdout = open("stdout_log_" + modelArchName, 'w') # Redirect print outputs
+        sys.stdout = open("stdout_log_" + modelArchName + '.txt', 'w') # Redirect print outputs
 
 
     elif id == 1:
@@ -59,7 +59,7 @@ def main(id):
         tensorboardLogDir = './tensorboardLog_v3_largerNNl1_run0'
         modelArchName = 'HorizonPixCorrector_CNNv3_largerNNl1'
 
-        sys.stdout = open("stdout_log_" + modelArchName, 'w') # Redirect print outputs
+        sys.stdout = open("stdout_log_" + modelArchName + '.txt', 'w') # Redirect print outputs
 
 
 
@@ -316,9 +316,12 @@ if __name__ == '__main__':
     #    main(id)
 
     # Setup multiprocessing for training the two models in parallel
-        # Create two processes for training two networks in parallel
-    process1 = multiprocessing.Process(target=main, args=(0))
-    process2 = multiprocessing.Process(target=main, args=(1))
+
+    # Use the "spawn" start method (REQUIRED by CUDA)
+    multiprocessing.set_start_method('spawn')
+
+    process1 = multiprocessing.Process(target=main, args=(0,))
+    process2 = multiprocessing.Process(target=main, args=(1,))
 
     # Start the processes
     process1.start()
@@ -328,4 +331,4 @@ if __name__ == '__main__':
     process1.join()
     process2.join()
 
-    print("Training complete for both network classes. Check tjhe logs for more information.")
+    print("Training complete for both network classes. Check the logs for more information.")
