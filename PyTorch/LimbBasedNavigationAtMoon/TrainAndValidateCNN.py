@@ -26,18 +26,22 @@ import numpy as np
 from torch.utils.tensorboard import SummaryWriter # Key class to use tensorboard with PyTorch. VSCode will automatically ask if you want to load tensorboard in the current session.
 import torch.optim as optim
 
+# EXECUTION MODE
+USE_MULTIPROCESS = False
+
 def main(id):
 
     # SETTINGS and PARAMETERS 
     batch_size = 16*2 # Defines batch size in dataset
     TRAINING_PERC = 0.80
     #outChannelsSizes = [16, 32, 75, 15] 
-    outChannelsSizes = [16, 32, 75, 15] 
-    kernelSizes = [3, 1]
+    outChannelsSizes = [64, 32, 75, 15] 
+    kernelSizes = [3, 3]
     learnRate = 1E-10
     momentumValue = 0.001
 
     optimizerID = 1 # 0
+    UseMaxPooling = True
 
     device = customTorchTools.GetDevice()
 
@@ -52,7 +56,7 @@ def main(id):
         modelArchName = 'HorizonPixCorrector_CNNv2max_largerCNN_run' + runID
         inputSize = 56 # TODO: update this according to new model
 
-        sys.stdout = open("stdout_log_" + modelArchName + '.txt', 'w') # Redirect print outputs
+
 
 
     elif id == 1:
@@ -62,9 +66,9 @@ def main(id):
         tensorboardLogDir = './tensorboardLog_v3max_largerCNN_run'   + runID
         modelArchName = 'HorizonPixCorrector_CNNv3max_largerCNN_run' + runID
 
+
+    if USE_MULTIPROCESS == True:
         sys.stdout = open("stdout_log_" + modelArchName + '.txt', 'w') # Redirect print outputs
-
-
 
     options = {'taskType': 'regression', 
                'device': device, 
@@ -256,10 +260,16 @@ def main(id):
     lossFcn = customTorchTools.CustomLossFcn(limbPixelExtraction_CNN_NN.MoonLimbPixConvEnhancer_LossFcn)
 
     # MODEL CLASS TYPE
-    if id == 0:
-        modelClass = limbPixelExtraction_CNN_NN.HorizonExtractionEnhancerCNN
-    elif id == 1:
-        modelClass = limbPixelExtraction_CNN_NN.HorizonExtractionEnhancerCNNv2
+    if UseMaxPooling == False:
+        if id == 0:
+            modelClass = limbPixelExtraction_CNN_NN.HorizonExtractionEnhancerCNNv1avg
+        elif id == 1:
+            modelClass = limbPixelExtraction_CNN_NN.HorizonExtractionEnhancerCNNv2avg
+    else:
+        if id == 0:
+            modelClass = limbPixelExtraction_CNN_NN.HorizonExtractionEnhancerCNNv1max
+        elif id == 1:
+            modelClass = limbPixelExtraction_CNN_NN.HorizonExtractionEnhancerCNNv2max
 
     # MODEL DEFINITION
     if restartTraining:
@@ -308,30 +318,32 @@ def main(id):
                                    saveAsTraced=True, exampleInput=inputSample)
 
     # Close stdout log stream
-    sys.stdout.close()
+    if USE_MULTIPROCESS == True:
+        sys.stdout.close()
 
 # %% MAIN SCRIPT
 if __name__ == '__main__':
 
-    #for id in range(1):
-    #    print('\n\n----------------------------------- RUNNING: TrainAndValidateCNN.py -----------------------------------\n')
-    #    print("MAIN script operations: load dataset --> split dataset --> define dataloaders --> define model --> define loss function --> train and validate model --> export trained model\n")
-    #    main(id)
+
 
     # Setup multiprocessing for training the two models in parallel
+    if USE_MULTIPROCESS == True:
+        # Use the "spawn" start method (REQUIRED by CUDA)
+        multiprocessing.set_start_method('spawn')
+        process1 = multiprocessing.Process(target=main, args=(0,))
+        process2 = multiprocessing.Process(target=main, args=(1,))
 
-    # Use the "spawn" start method (REQUIRED by CUDA)
-    multiprocessing.set_start_method('spawn')
+        # Start the processes
+        process1.start()
+        process2.start()
 
-    process1 = multiprocessing.Process(target=main, args=(0,))
-    process2 = multiprocessing.Process(target=main, args=(1,))
+        # Wait for both processes to finish
+        process1.join()
+        process2.join()
 
-    # Start the processes
-    process1.start()
-    process2.start()
-
-    # Wait for both processes to finish
-    process1.join()
-    process2.join()
-
-    print("Training complete for both network classes. Check the logs for more information.")
+        print("Training complete for both network classes. Check the logs for more information.")
+    else:
+        for id in range(1):
+            print('\n\n----------------------------------- RUNNING: TrainAndValidateCNN.py -----------------------------------\n')
+            print("MAIN script operations: load dataset --> split dataset --> define dataloaders --> define model --> define loss function --> train and validate model --> export trained model\n")
+            main(id)
