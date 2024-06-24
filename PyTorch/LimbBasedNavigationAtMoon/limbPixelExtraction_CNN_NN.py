@@ -182,12 +182,29 @@ def IsPatchValid(patchFlatten, lowerIntensityThr=3):
 
 # %% ARCHITECTURES ############################################################################################################
 
+def AutoComputeConvBlocksOutput(self, kernelSizes, poolingKernelSize):
+        # NOTE: stride and padding are HARDCODED in this version
+        # Automatically compute the number of features from the last convolutional layer (flatten of the volume)
+        outputMapSize = [self.patchSize, self.patchSize]
+        for idL in range(self.numOfConvLayers):
+
+            convBlockOutputSize = customTorchTools.ComputeConvBlockOutputSize(outputMapSize, kernelSizes[idL], poolingKernelSize, 
+                                                                            convStrideSize=1, poolingStrideSize=1, 
+                                                                            convPaddingSize=0, poolingPaddingSize=0)
+            
+            print(('Output size of ConvBlock ID: {ID}: {outSize}').format(ID=idL, outSize=convBlockOutputSize))
+            # Get size from previous convolutional block
+            outputMapSize[0] = convBlockOutputSize[0][0]
+            outputMapSize[1] = convBlockOutputSize[0][1]
+
+        return convBlockOutputSize
+
 # %% Custom CNN-NN model for Moon limb pixel extraction enhancer - 01-06-2024
 class HorizonExtractionEnhancerCNN(nn.Module):
     '''Architecture characteristics: Conv. layers, average pooling, fully connected layers, dropout, leaky ReLU activation, batch normalization.
     Input: Image patch with Moon limb, contextual information: relative attitude, sun direction in pixels, patch centre coordinates.
     '''
-    def __init__(self, outChannelsSizes:list, kernelSizes, poolingSize=2, alphaDropCoeff=0.1, alphaLeaky=0.01, patchSize=7) -> None:
+    def __init__(self, outChannelsSizes:list, kernelSizes, poolingKernelSize=2, alphaDropCoeff=0.1, alphaLeaky=0.01, patchSize=7) -> None:
         super().__init__()
 
         # Model parameters
@@ -195,8 +212,10 @@ class HorizonExtractionEnhancerCNN(nn.Module):
         self.patchSize = patchSize
         self.imagePixSize = self.patchSize**2
         self.numOfConvLayers = 2
-        #self.LinearInputFeaturesSize = (patchSize - self.numOfConvLayers * np.floor(float(kernelSizes[-1])/2.0)) * self.outChannelsSizes[-1] # Number of features arriving as input to FC layer
-        self.LinearInputFeaturesSize = 32 # Need to make this automatic... computing the number of features from the last convolutional layer (flatten of the volume)
+
+        convBlockOutputSize = AutoComputeConvBlocksOutput(self, kernelSizes, poolingKernelSize)
+        self.LinearInputFeaturesSize = convBlockOutputSize[1]
+
         self.LinearInputSkipSize = 7 #11 # CHANGE TO 7 removing R_DEM and PosTF
         self.LinearInputSize = self.LinearInputSkipSize + self.LinearInputFeaturesSize
 
@@ -205,10 +224,10 @@ class HorizonExtractionEnhancerCNN(nn.Module):
         # Model architecture
         # Convolutional Features extractor
         self.conv2dL1 = nn.Conv2d(1, self.outChannelsSizes[0], kernelSizes[0]) 
-        self.avgPoolL1 = nn.AvgPool2d(poolingSize, poolingSize)
+        self.avgPoolL1 = nn.AvgPool2d(poolingKernelSize, 1)
 
         self.conv2dL2 = nn.Conv2d(self.outChannelsSizes[0], self.outChannelsSizes[1], kernelSizes[1]) 
-        self.avgPoolL2 = nn.AvgPool2d(poolingSize, poolingSize) 
+        self.avgPoolL2 = nn.AvgPool2d(poolingKernelSize, 1) 
 
         # Fully Connected predictor
         # NOTE: Add batch normalization here
@@ -270,7 +289,7 @@ Architecture characteristics: Conv. layers, average pooling, fully connected lay
     Input: Image patch with Moon limb, contextual information: relative attitude, sun direction in pixels, patch centre coordinates, target average radius in pixels.
 '''
 class HorizonExtractionEnhancerCNNv2(nn.Module):
-    def __init__(self, outChannelsSizes:list, kernelSizes, poolingSize=2, alphaDropCoeff=0.1, alphaLeaky=0.01, patchSize=7) -> None:
+    def __init__(self, outChannelsSizes:list, kernelSizes, poolingKernelSize=2, alphaDropCoeff=0.1, alphaLeaky=0.01, patchSize=7) -> None:
         super().__init__()
 
         # Model parameters
@@ -278,8 +297,10 @@ class HorizonExtractionEnhancerCNNv2(nn.Module):
         self.patchSize = patchSize
         self.imagePixSize = self.patchSize**2
         self.numOfConvLayers = 2
-        #self.LinearInputFeaturesSize = (patchSize - self.numOfConvLayers * np.floor(float(kernelSizes[-1])/2.0)) * self.outChannelsSizes[-1] # Number of features arriving as input to FC layer
-        self.LinearInputFeaturesSize = 32 # Need to make this automatic... computing the number of features from the last convolutional layer (flatten of the volume)
+
+        convBlockOutputSize = AutoComputeConvBlocksOutput(self, kernelSizes, poolingKernelSize)
+        self.LinearInputFeaturesSize = convBlockOutputSize[1]
+        
         self.LinearInputSkipSize = 8 #11 # CHANGE TO 7 removing R_DEM and PosTF
         self.LinearInputSize = self.LinearInputSkipSize + self.LinearInputFeaturesSize
 
@@ -288,10 +309,10 @@ class HorizonExtractionEnhancerCNNv2(nn.Module):
         # Model architecture
         # Convolutional Features extractor
         self.conv2dL1 = nn.Conv2d(1, self.outChannelsSizes[0], kernelSizes[0]) 
-        self.avgPoolL1 = nn.AvgPool2d(poolingSize, poolingSize)
+        self.avgPoolL1 = nn.AvgPool2d(poolingKernelSize, 1)
 
         self.conv2dL2 = nn.Conv2d(self.outChannelsSizes[0], self.outChannelsSizes[1], kernelSizes[1]) 
-        self.avgPoolL2 = nn.AvgPool2d(poolingSize, poolingSize) 
+        self.avgPoolL2 = nn.AvgPool2d(poolingKernelSize, 1) 
 
         # Fully Connected predictor
         # NOTE: Add batch normalization here
@@ -351,7 +372,7 @@ class HorizonExtractionEnhancerCNN(nn.Module):
     '''Architecture characteristics: Conv. layers, max pooling, fully connected layers, dropout, leaky ReLU activation, batch normalization.
     Input: Image patch with Moon limb, contextual information: relative attitude, sun direction in pixels, patch centre coordinates.
     '''
-    def __init__(self, outChannelsSizes:list, kernelSizes, poolingSize=2, alphaDropCoeff=0.1, alphaLeaky=0.01, patchSize=7) -> None:
+    def __init__(self, outChannelsSizes:list, kernelSizes, poolingKernelSize=2, alphaDropCoeff=0.1, alphaLeaky=0.01, patchSize=7) -> None:
         super().__init__()
 
         # Model parameters
@@ -359,8 +380,10 @@ class HorizonExtractionEnhancerCNN(nn.Module):
         self.patchSize = patchSize
         self.imagePixSize = self.patchSize**2
         self.numOfConvLayers = 2
-        #self.LinearInputFeaturesSize = (patchSize - self.numOfConvLayers * np.floor(float(kernelSizes[-1])/2.0)) * self.outChannelsSizes[-1] # Number of features arriving as input to FC layer
-        self.LinearInputFeaturesSize = 32 # Need to make this automatic... computing the number of features from the last convolutional layer (flatten of the volume)
+
+        convBlockOutputSize = AutoComputeConvBlocksOutput(self, kernelSizes, poolingKernelSize)
+        self.LinearInputFeaturesSize = convBlockOutputSize[1]
+
         self.LinearInputSkipSize = 7 #11 # CHANGE TO 7 removing R_DEM and PosTF
         self.LinearInputSize = self.LinearInputSkipSize + self.LinearInputFeaturesSize
 
@@ -369,10 +392,10 @@ class HorizonExtractionEnhancerCNN(nn.Module):
         # Model architecture
         # Convolutional Features extractor
         self.conv2dL1 = nn.Conv2d(1, self.outChannelsSizes[0], kernelSizes[0]) 
-        self.maxPoolL1 = nn.MaxPool2d(poolingSize, poolingSize)
+        self.maxPoolL1 = nn.MaxPool2d(poolingKernelSize, 1)
 
         self.conv2dL2 = nn.Conv2d(self.outChannelsSizes[0], self.outChannelsSizes[1], kernelSizes[1]) 
-        self.maxPoolL2 = nn.MaxPool2d(poolingSize, poolingSize) 
+        self.maxPoolL2 = nn.MaxPool2d(poolingKernelSize, 1) 
 
         # Fully Connected predictor
         # NOTE: Add batch normalization here
@@ -390,8 +413,6 @@ class HorizonExtractionEnhancerCNN(nn.Module):
         self.DenseOutput = nn.Linear(self.outChannelsSizes[3], 2, bias=True)
 
     def forward(self, inputSample):
-        
-        
         # Extract image and contextual information from inputSample
         # ACHTUNG: transpose, reshape, transpose operation assumes that input vector was reshaped column-wise (FORTRAN style)
         #img2Dinput = (((inputSample[:, 0:self.imagePixSize]).T).reshape(int(np.sqrt(float(self.imagePixSize))), -1, 1, inputSample.size(0))).T # First portion of the input vector reshaped to 2D
@@ -434,7 +455,7 @@ Architecture characteristics: Conv. layers, max pooling, fully connected layers,
     Input: Image patch with Moon limb, contextual information: relative attitude, sun direction in pixels, patch centre coordinates, target average radius in pixels.
 '''
 class HorizonExtractionEnhancerCNNv2(nn.Module):
-    def __init__(self, outChannelsSizes:list, kernelSizes, poolingSize=2, alphaDropCoeff=0.1, alphaLeaky=0.01, patchSize=7) -> None:
+    def __init__(self, outChannelsSizes:list, kernelSizes, poolingKernelSize=2, alphaDropCoeff=0.1, alphaLeaky=0.01, patchSize=7) -> None:
         super().__init__()
 
         # Model parameters
@@ -442,8 +463,12 @@ class HorizonExtractionEnhancerCNNv2(nn.Module):
         self.patchSize = patchSize
         self.imagePixSize = self.patchSize**2
         self.numOfConvLayers = 2
+
+        convBlockOutputSize = AutoComputeConvBlocksOutput(self, kernelSizes, poolingKernelSize)
+
         #self.LinearInputFeaturesSize = (patchSize - self.numOfConvLayers * np.floor(float(kernelSizes[-1])/2.0)) * self.outChannelsSizes[-1] # Number of features arriving as input to FC layer
-        self.LinearInputFeaturesSize = 32 # Need to make this automatic... computing the number of features from the last convolutional layer (flatten of the volume)
+        self.LinearInputFeaturesSize = convBlockOutputSize[1] 
+        
         self.LinearInputSkipSize = 8 #11 # CHANGE TO 7 removing R_DEM and PosTF
         self.LinearInputSize = self.LinearInputSkipSize + self.LinearInputFeaturesSize
 
@@ -452,10 +477,10 @@ class HorizonExtractionEnhancerCNNv2(nn.Module):
         # Model architecture
         # Convolutional Features extractor
         self.conv2dL1 = nn.Conv2d(1, self.outChannelsSizes[0], kernelSizes[0]) 
-        self.maxPoolL1 = nn.MaxPool2d(poolingSize, poolingSize)
+        self.maxPoolL1 = nn.MaxPool2d(poolingKernelSize, poolingKernelSize)
 
         self.conv2dL2 = nn.Conv2d(self.outChannelsSizes[0], self.outChannelsSizes[1], kernelSizes[1]) 
-        self.maxPoolL2 = nn.MaxPool2d(poolingSize, poolingSize) 
+        self.maxPoolL2 = nn.MaxPool2d(poolingKernelSize, poolingKernelSize) 
 
         # Fully Connected predictor
         # NOTE: Add batch normalization here
@@ -516,7 +541,7 @@ class HorizonExtractionEnhancerCNN(nn.Module):
     '''Architecture characteristics: Increased size of Conv. layers, max pooling, fully connected layers, dropout, leaky ReLU activation, batch normalization.
     Input: Image patch with Moon limb, contextual information: relative attitude, sun direction in pixels, patch centre coordinates.
     '''
-    def __init__(self, outChannelsSizes:list, kernelSizes, poolingSize=2, alphaDropCoeff=0.1, alphaLeaky=0.01, patchSize=7) -> None:
+    def __init__(self, outChannelsSizes:list, kernelSizes, poolingKernelSize=2, alphaDropCoeff=0.1, alphaLeaky=0.01, patchSize=7) -> None:
         super().__init__()
 
         # Model parameters
@@ -524,8 +549,10 @@ class HorizonExtractionEnhancerCNN(nn.Module):
         self.patchSize = patchSize
         self.imagePixSize = self.patchSize**2
         self.numOfConvLayers = 2
-        #self.LinearInputFeaturesSize = (patchSize - self.numOfConvLayers * np.floor(float(kernelSizes[-1])/2.0)) * self.outChannelsSizes[-1] # Number of features arriving as input to FC layer
-        self.LinearInputFeaturesSize = 32 # Need to make this automatic... computing the number of features from the last convolutional layer (flatten of the volume)
+
+        convBlockOutputSize = AutoComputeConvBlocksOutput(self, kernelSizes, poolingKernelSize)
+        self.LinearInputFeaturesSize = convBlockOutputSize[1]
+
         self.LinearInputSkipSize = 7 #11 # CHANGE TO 7 removing R_DEM and PosTF
         self.LinearInputSize = self.LinearInputSkipSize + self.LinearInputFeaturesSize
 
@@ -534,10 +561,10 @@ class HorizonExtractionEnhancerCNN(nn.Module):
         # Model architecture
         # Convolutional Features extractor
         self.conv2dL1 = nn.Conv2d(1, self.outChannelsSizes[0], kernelSizes[0]) 
-        self.avgPoolL1 = nn.AvgPool2d(poolingSize, poolingSize)
+        self.avgPoolL1 = nn.AvgPool2d(poolingKernelSize, 1)
 
         self.conv2dL2 = nn.Conv2d(self.outChannelsSizes[0], self.outChannelsSizes[1], kernelSizes[1]) 
-        self.avgPoolL2 = nn.AvgPool2d(poolingSize, poolingSize) 
+        self.avgPoolL2 = nn.AvgPool2d(poolingKernelSize, 1) 
 
         # Fully Connected predictor
         # NOTE: Add batch normalization here
@@ -555,8 +582,7 @@ class HorizonExtractionEnhancerCNN(nn.Module):
         self.DenseOutput = nn.Linear(self.outChannelsSizes[3], 2, bias=True)
 
     def forward(self, inputSample):
-        
-        
+    
         # Extract image and contextual information from inputSample
         # ACHTUNG: transpose, reshape, transpose operation assumes that input vector was reshaped column-wise (FORTRAN style)
         #img2Dinput = (((inputSample[:, 0:self.imagePixSize]).T).reshape(int(np.sqrt(float(self.imagePixSize))), -1, 1, inputSample.size(0))).T # First portion of the input vector reshaped to 2D
