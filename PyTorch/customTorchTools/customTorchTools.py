@@ -657,14 +657,25 @@ class TorchModel_MATLABwrap():
         self.trainedModel = trainedModel.to(self.device)
 
 
-    def forward(self, inputSample:np.array):
+    def forward(self, inputSample:np.array, inputSize:int=None):
         '''Forward method to perform inference for ONE sample input using trainedModel'''
         if inputSample.dtype is not np.float32:
             inputSample = np.float32(inputSample)
 
         # TODO: check the input is exactly identical to what the model receives using EvaluateModel() loading from dataset!        
         # Convert numpy array into torch.tensor for model inference
-        X = torch.tensor(inputSample).reshape(1, -1)
+        if inputSize == None:
+            X = torch.tensor(inputSample).reshape(1, -1)
+        else:
+            # Compute number of batches
+            inputVecLen = inputSample.size()
+            numBatches = inputVecLen / inputSize
+
+            # Check if numBatches is an integer
+            if not(numBatches.is_integer()):
+                raise ValueError('Specified input size causes number of batches to be fractional. Check input sample size.')
+            
+            X = torch.tensor(inputSample).reshape(numBatches, -1)
 
         # ########### DEBUG ######################: 
         print('Evaluating model using batch input: ', X)
