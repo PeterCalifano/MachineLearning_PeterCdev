@@ -37,7 +37,7 @@ def main(id):
     #outChannelsSizes = [16, 32, 75, 15] 
     outChannelsSizes = [64, 64, 75, 15] 
     kernelSizes = [3, 3]
-    learnRate = 1E-10
+    learnRate = 1E-5
     momentumValue = 0.001
 
     optimizerID = 1 # 0
@@ -51,20 +51,18 @@ def main(id):
     if id == 0:
         runID = str(0)
         #modelSavePath = './checkpoints/HorizonPixCorrector_CNNv2_run3'
-        modelSavePath = './checkpoints/HorizonPixCorrector_CNNv2max_largerCNN_run' + runID
-        tensorboardLogDir = './tensorboardLog_v2max_largerCNN_run' + runID
-        modelArchName = 'HorizonPixCorrector_CNNv2max_largerCNN_run' + runID
+        modelSavePath = './checkpoints/HorizonPixCorrector_CNNv1max_largerCNN_run' + runID
+        tensorboardLogDir = './tensorboardLog_v1max_largerCNN_run' + runID
+        modelArchName = 'HorizonPixCorrector_CNNv1max_largerCNN_run' + runID
         inputSize = 56 # TODO: update this according to new model
-
-
 
 
     elif id == 1:
         runID = str(0)
         inputSize = 57 # TODO: update this according to new model
-        modelSavePath = './checkpoints/HorizonPixCorrector_CNNv3max_largerCNN_run' + runID
-        tensorboardLogDir = './tensorboardLog_v3max_largerCNN_run'   + runID
-        modelArchName = 'HorizonPixCorrector_CNNv3max_largerCNN_run' + runID
+        modelSavePath = './checkpoints/HorizonPixCorrector_CNNv2max_largerCNN_run' + runID
+        tensorboardLogDir = './tensorboardLog_v2max_largerCNN_run'   + runID
+        modelArchName = 'HorizonPixCorrector_CNNv2max_largerCNN_run' + runID
 
 
     if USE_MULTIPROCESS == True:
@@ -344,7 +342,7 @@ if __name__ == '__main__':
 
         print("Training complete for both network classes. Check the logs for more information.")
     else:
-        for id in range(1):
+        for id in range(2):
             print('\n\n----------------------------------- RUNNING: TrainAndValidateCNN.py -----------------------------------\n')
             print("MAIN script operations: load dataset --> split dataset --> define dataloaders --> define model --> define loss function --> train and validate model --> export trained model\n")
             main(id)

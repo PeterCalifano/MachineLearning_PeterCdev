@@ -477,10 +477,10 @@ class HorizonExtractionEnhancerCNNv2max(nn.Module):
         # Model architecture
         # Convolutional Features extractor
         self.conv2dL1 = nn.Conv2d(1, self.outChannelsSizes[0], kernelSizes[0]) 
-        self.maxPoolL1 = nn.MaxPool2d(poolingKernelSize, poolingKernelSize)
+        self.maxPoolL1 = nn.MaxPool2d(poolingKernelSize, 1)
 
         self.conv2dL2 = nn.Conv2d(self.outChannelsSizes[0], self.outChannelsSizes[1], kernelSizes[1]) 
-        self.maxPoolL2 = nn.MaxPool2d(poolingKernelSize, poolingKernelSize) 
+        self.maxPoolL2 = nn.MaxPool2d(poolingKernelSize, 1) 
 
         # Fully Connected predictor
         # NOTE: Add batch normalization here
