@@ -47,12 +47,23 @@ def main():
 
     print('Output size of ConvBlock:', convBlockOutputSize)
 
-    outputMapSize = [7,7]
+    outputMapSize      = [7,7]
+
+    convkernelSizes    = [3, 3]
+    convStrideSize     = [1, 1]
+    convPaddingSize    = [0, 0]
+    poolingkernelSize  = [2, 2]
+    poolingStrideSize  = [1, 1]
+    poolingPaddingSize = [0, 0]
+
     print('\n')
     # Test recursive computation for all defined ConvBlocks (PASSED)
     for idBlock in range(2):
 
-        convBlockOutputSize = customTorchTools.ComputeConvBlockOutputSize(outputMapSize, outChannelsSizes[idBlock])
+        convBlockOutputSize = customTorchTools.ComputeConvBlockOutputSize(outputMapSize, outChannelsSizes[idBlock], 
+                                                                          convkernelSizes[idBlock], poolingkernelSize[idBlock], 
+                                                                          convStrideSize[idBlock], poolingStrideSize[idBlock], 
+                                                                          convPaddingSize[idBlock], poolingPaddingSize[idBlock])
         print(('Output size of ConvBlock ID: {ID}: {outSize}').format(ID=idBlock, outSize=convBlockOutputSize))
 
         # Get size from previous convolutional block
