@@ -31,6 +31,7 @@ class DataProcessor():
                 dataArray = np.array(np.frombuffer(inputData, dtype=self.inputTargetType), dtype=self.inputTargetType)
                 print(f"Received data array:\t{dataArray}")
                 
+                # REsh
             except Exception as errMsg:
                 raise TypeError('Data conversion from raw data array to specified target type {targetType} failed with error: \n'.format(targetType=self.inputTargetType) + str(errMsg))
         return dataArray

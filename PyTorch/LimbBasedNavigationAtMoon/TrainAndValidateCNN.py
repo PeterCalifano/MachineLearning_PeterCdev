@@ -31,6 +31,7 @@ def main(id):
     # SETTINGS and PARAMETERS 
     batch_size = 16*2 # Defines batch size in dataset
     TRAINING_PERC = 0.80
+    #outChannelsSizes = [16, 32, 75, 15] 
     outChannelsSizes = [16, 32, 75, 15] 
     kernelSizes = [3, 1]
     learnRate = 1E-10
@@ -46,9 +47,9 @@ def main(id):
     if id == 0:
         runID = str(0)
         #modelSavePath = './checkpoints/HorizonPixCorrector_CNNv2_run3'
-        modelSavePath = './checkpoints/HorizonPixCorrector_CNNv2max_largerNNl1_run' + runID
-        tensorboardLogDir = './tensorboardLog_v2max_largerNNl1_run' + runID
-        modelArchName = 'HorizonPixCorrector_CNNv2max_largerNNl1_run' + runID
+        modelSavePath = './checkpoints/HorizonPixCorrector_CNNv2max_largerCNN_run' + runID
+        tensorboardLogDir = './tensorboardLog_v2max_largerCNN_run' + runID
+        modelArchName = 'HorizonPixCorrector_CNNv2max_largerCNN_run' + runID
         inputSize = 56 # TODO: update this according to new model
 
         sys.stdout = open("stdout_log_" + modelArchName + '.txt', 'w') # Redirect print outputs
@@ -57,9 +58,9 @@ def main(id):
     elif id == 1:
         runID = str(0)
         inputSize = 57 # TODO: update this according to new model
-        modelSavePath = './checkpoints/HorizonPixCorrector_CNNv3max_largerNNl1_run' + runID
-        tensorboardLogDir = './tensorboardLog_v3max_largerNNl1_run'   + runID
-        modelArchName = 'HorizonPixCorrector_CNNv3max_largerNNl1_run' + runID
+        modelSavePath = './checkpoints/HorizonPixCorrector_CNNv3max_largerCNN_run' + runID
+        tensorboardLogDir = './tensorboardLog_v3max_largerCNN_run'   + runID
+        modelArchName = 'HorizonPixCorrector_CNNv3max_largerCNN_run' + runID
 
         sys.stdout = open("stdout_log_" + modelArchName + '.txt', 'w') # Redirect print outputs
 

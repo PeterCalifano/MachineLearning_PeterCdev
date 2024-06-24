@@ -28,7 +28,10 @@ def main():
     tracedModelSavePath = '/home/peterc/devDir/MachineLearning_PeterCdev'
     modelID = 5
     tracedModelName = 'HorizonPixCorrector_CNNv2_' + customTorch.AddZerosPadding(modelID, 3) + '_cpu'
-    tracedModelName = 'HorizonPixCorrector_CNNv2_005_cpu' + '.pt'
+    tracedModelName = 'HorizonPixCorrector_CNNv2_025_cpu' + '.pt'
+    #tracedModelName = 'trainedTracedModel005_cpu' + '.pt'
+
+
 
     # Parameters
 
