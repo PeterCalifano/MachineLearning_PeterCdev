@@ -35,18 +35,18 @@ def main():
     convKernelSize = 3
     convStrideSize = 1
     convPaddingSize = 0
-    conv2dOutputSize = ComputeConv2dOutputSize(patchSize, convKernelSize, convStrideSize, convPaddingSize)
+    conv2dOutputSize = customTorchTools.ComputeConv2dOutputSize(patchSize, convKernelSize, convStrideSize, convPaddingSize)
 
     # Test computation of output size of Pooling2d using default settings
     poolingkernelSize = 2
     poolingStrideSize = 1
-    poolingOutputSize = ComputePooling2dOutputSize([5,5], poolingkernelSize, poolingStrideSize)
+    poolingOutputSize = customTorchTools.ComputePooling2dOutputSize([5,5], poolingkernelSize, poolingStrideSize)
 
     print('Output size of Conv2d:', conv2dOutputSize)
     print('Output size of Pooling2d:', poolingOutputSize)
 
     # Test computation of number of features after ConvBlock using default settings
-    convBlockOutputSize = ComputeConvBlockOutputSize([7,7], outChannelsSizes[0])
+    convBlockOutputSize = customTorchTools.ComputeConvBlockOutputSize([7,7], outChannelsSizes[0])
 
     print('Output size of ConvBlock:', convBlockOutputSize)
 
