@@ -1,6 +1,3 @@
-'''
-Test Script created by PeterC 04-06-2024 to verify the correct implementation of the utility functions for the CNNs and NNs in the customTorch module.
-'''
 
 # Import modules
 import sys, os
@@ -30,14 +27,14 @@ def main():
     # Test definition of ConvBlock
     outChannelsSizes = [16, 32, 75, 15] 
 
-    # Test computation of output size of Conv2d using default settings
+    # %% Test computation of output size of Conv2d using default settings
     patchSize = [7, 7]
     convKernelSize = 3
     convStrideSize = 1
     convPaddingSize = 0
     conv2dOutputSize = customTorchTools.ComputeConv2dOutputSize(patchSize, convKernelSize, convStrideSize, convPaddingSize)
 
-    # Test computation of output size of Pooling2d using default settings
+    # %% Test computation of output size of Pooling2d using default settings
     poolingkernelSize = 2
     poolingStrideSize = 1
     poolingOutputSize = customTorchTools.ComputePooling2dOutputSize([5,5], poolingkernelSize, poolingStrideSize)
@@ -45,12 +42,22 @@ def main():
     print('Output size of Conv2d:', conv2dOutputSize)
     print('Output size of Pooling2d:', poolingOutputSize)
 
-    # Test computation of number of features after ConvBlock using default settings
+    # %% Test computation of number of features after ConvBlock using default settings
     convBlockOutputSize = customTorchTools.ComputeConvBlockOutputSize([7,7], outChannelsSizes[0])
 
     print('Output size of ConvBlock:', convBlockOutputSize)
 
+    outputMapSize = [7,7]
+    print('\n')
+    # Test recursive computation for all defined ConvBlocks (PASSED)
+    for idBlock in range(2):
 
+        convBlockOutputSize = customTorchTools.ComputeConvBlockOutputSize(outputMapSize, outChannelsSizes[idBlock])
+        print(('Output size of ConvBlock ID: {ID}: {outSize}').format(ID=idBlock, outSize=convBlockOutputSize))
+
+        # Get size from previous convolutional block
+        outputMapSize[0] = convBlockOutputSize[0][0]
+        outputMapSize[1] = convBlockOutputSize[0][1]
 
 if __name__ == '__main__':
     main()
