@@ -188,7 +188,7 @@ def AutoComputeConvBlocksOutput(self, kernelSizes, poolingKernelSize):
         outputMapSize = [self.patchSize, self.patchSize]
         for idL in range(self.numOfConvLayers):
 
-            convBlockOutputSize = customTorchTools.ComputeConvBlockOutputSize(outputMapSize, kernelSizes[idL], poolingKernelSize, 
+            convBlockOutputSize = customTorchTools.ComputeConvBlockOutputSize(outputMapSize, self.outChannelsSizes[idL], kernelSizes[idL], poolingKernelSize, 
                                                                             convStrideSize=1, poolingStrideSize=1, 
                                                                             convPaddingSize=0, poolingPaddingSize=0)
             

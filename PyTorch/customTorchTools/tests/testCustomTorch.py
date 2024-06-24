@@ -21,7 +21,6 @@ from torchvision import datasets # Import vision default datasets from torchvisi
 from torchvision.transforms import ToTensor # Utils
 
 
-
 def main():
 
     # Define inputs

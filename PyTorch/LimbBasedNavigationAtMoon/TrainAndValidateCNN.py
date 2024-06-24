@@ -35,7 +35,7 @@ def main(id):
     batch_size = 16*2 # Defines batch size in dataset
     TRAINING_PERC = 0.80
     #outChannelsSizes = [16, 32, 75, 15] 
-    outChannelsSizes = [64, 32, 75, 15] 
+    outChannelsSizes = [64, 64, 75, 15] 
     kernelSizes = [3, 3]
     learnRate = 1E-10
     momentumValue = 0.001
@@ -140,7 +140,9 @@ def main(id):
     # Get nPatches from the first datapairs files
     dataFileID = 0
     dataFilePath = os.path.join(dataDirPath, dataFilenames[dataFileID])
+    print('Loading data from:', dataFilePath)
     tmpdataDict, tmpdataKeys = datasetPreparation.LoadJSONdata(dataFilePath)
+    print('All data loaded correctly.')
 
     # TODO: add printing of loaded dataset information
 
@@ -284,7 +286,6 @@ def main(id):
             raise ValueError('Specified model state file not found. Check input path.')    
     else:
             modelCNN_NN = modelClass(outChannelsSizes, kernelSizes)
-
 
 
     # Define optimizer object specifying model instance parameters and optimizer parameters

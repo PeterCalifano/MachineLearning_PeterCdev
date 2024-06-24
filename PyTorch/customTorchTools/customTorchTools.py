@@ -623,7 +623,7 @@ def ComputePooling2dOutputSize(inputSize:Union[list, np.array, torch.tensor], ke
        Input size must be a list, numpy array or a torch tensor with 2 elements: [height, width].'''
     return int(( (inputSize[0] + 2*paddingSize - (kernelSize-1)-1) / strideSize) + 1), int(( (inputSize[1] + 2*paddingSize - (kernelSize-1)-1) / strideSize) + 1)
 
-# ConvBlock 2D and flatten sizes computation
+# ConvBlock 2D and flatten sizes computation (SINGLE BLOCK)
 def ComputeConvBlockOutputSize(inputSize:Union[list, np.array, torch.tensor], outChannelsSize:int, 
                                convKernelSize:int=3, poolingkernelSize:int=2, 
                                convStrideSize:int=1, poolingStrideSize:int=1, 
