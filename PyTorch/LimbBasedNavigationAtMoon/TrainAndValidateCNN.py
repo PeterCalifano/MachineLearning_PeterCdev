@@ -4,7 +4,7 @@
 # Import modules
 import sys, os, multiprocessing
 # Append paths of custom modules
-sys.path.append(os.path.join('/home/peterc/devDir/MachineLearning_PeterCdev/PyTorch/customTorchToolsTools'))
+sys.path.append(os.path.join('/home/peterc/devDir/MachineLearning_PeterCdev/PyTorch/customTorchTools'))
 sys.path.append(os.path.join('/home/peterc/devDir/MachineLearning_PeterCdev/PyTorch/LimbBasedNavigationAtMoon'))
 
 import customTorchTools # Custom torch tools

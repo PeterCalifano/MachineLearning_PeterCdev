@@ -11,7 +11,7 @@ import numpy as np
 import matplotlib as mpl
 
 # Torch modules
-import customTorch
+import customTorchTools
 
 
 def parse_args():

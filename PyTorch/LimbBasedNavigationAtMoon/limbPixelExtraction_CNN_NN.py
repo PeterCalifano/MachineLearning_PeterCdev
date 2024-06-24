@@ -16,8 +16,10 @@
 # 4) Concatenate the removed data with the new inputs from the preceding layers as input to where they need to go.
 
 # Import modules
-import torch
+import torch, sys, os
+sys.path.append(os.path.join('/home/peterc/devDir/MachineLearning_PeterCdev/PyTorch/customTorchTools'))
 import customTorchTools
+
 import datetime
 from torch import nn
 from math import sqrt
@@ -135,6 +137,7 @@ def outOfPatchoutLoss_RectExp(predictCorrection, patchSize=7, slopeMultiplier=2)
 
     return lossValue/2.0 # Return the average of the two losses
 
+#######################################################################################################
 # %% Custom normalized loss function for Moon Limb pixel extraction CNN enhancer - 23-06-2024
 def MoonLimbPixConvEnhancer_NormalizedLossFcn(predictCorrection, labelVector, params:list=None):
     
@@ -162,6 +165,7 @@ def MoonLimbPixConvEnhancer_NormalizedLossFcn(predictCorrection, labelVector, pa
 
     return lossValue
 
+#######################################################################################################
 # %% Function to validate path (check it is not completely black or white)
 def IsPatchValid(patchFlatten, lowerIntensityThr=3):
     
