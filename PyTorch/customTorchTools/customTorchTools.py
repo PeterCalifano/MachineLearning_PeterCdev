@@ -17,6 +17,7 @@ import psutil
 import inspect
 import onnx
 from onnx import version_converter
+from typing import Union
 
 from torch.utils.tensorboard import SummaryWriter # Key class to use tensorboard with PyTorch. VSCode will automatically ask if you want to load tensorboard in the current session.
 import torch.optim as optim
@@ -153,6 +154,9 @@ def SaveTorchModel(model:nn.Module, modelName:str="trainedModel", saveAsTraced:b
     else:
         extension = '.pth'
         
+    # Format target device string to remove ':' from name
+    targetDevice = targetDevice.replace(':', '') 
+
     if modelName == 'trainedModel': 
         if not(os.path.isdir('./testModels')):
             os.mkdir('testModels')
@@ -312,7 +316,7 @@ def StartTensorboard(logDir:str) -> None:
         #print('Tensorboard session successfully started using logDir:', logDir)
 
 # Function to stop TensorBoard process
-def kill_tensorboard():
+def KillTensorboard():
     """Kill all running TensorBoard instances."""
     for process in psutil.process_iter(['pid', 'name', 'cmdline']):
         if 'tensorboard' in process.info['name']:
@@ -607,8 +611,38 @@ def AddZerosPadding(intNum:int, stringLength:str=4):
 
 
 #inputImageSize:list, kernelSizes:list, OutputChannelsSizes:list, PoolingLayersSizes:list, inputChannelSize:int=1, withBiases=True
-def ComputeConvLayerOutputSize(modelDescriptionDict: dict):
-    raise NotImplementedError('TODO') # Returns length of output of CNN as flatten
+
+# Auxiliar functions
+def ComputeConv2dOutputSize(inputSize:Union[list, np.array, torch.tensor], kernelSize=3, strideSize=1, paddingSize=0):
+    '''Compute output size and number of features maps (channels, i.e. volume) of a 2D convolutional layer. 
+       Input size must be a list, numpy array or a torch tensor with 2 elements: [height, width].'''
+    return int((inputSize[0] + 2*paddingSize - (kernelSize-1)-1) / strideSize + 1), int((inputSize[1] + 2*paddingSize - (kernelSize-1)-1) / strideSize + 1)
+
+def ComputePooling2dOutputSize(inputSize:Union[list, np.array, torch.tensor], kernelSize=2, strideSize=2, paddingSize=0):
+    '''Compute output size and number of features maps (channels, i.e. volume) of a 2D max/avg pooling layer. 
+       Input size must be a list, numpy array or a torch tensor with 2 elements: [height, width].'''
+    return int(( (inputSize[0] + 2*paddingSize - (kernelSize-1)-1) / strideSize) + 1), int(( (inputSize[1] + 2*paddingSize - (kernelSize-1)-1) / strideSize) + 1)
+
+# ConvBlock 2D and flatten sizes computation
+def ComputeConvBlockOutputSize(inputSize:Union[list, np.array, torch.tensor], outChannelsSize:int, 
+                               convKernelSize:int=3, poolingkernelSize:int=2, 
+                               convStrideSize:int=1, poolingStrideSize:int=1, 
+                               convPaddingSize:int=0, poolingPaddingSize:int=0):
+    
+    # TODO: modify interface to use something like a dictionary with the parameters, to make it more fexible and avoid the need to pass all the parameters
+
+    '''Compute output size and number of features maps (channels, i.e. volume) of a ConvBlock layer. 
+       Input size must be a list, numpy array or a torch tensor with 2 elements: [height, width].'''
+
+    # Compute output size of Conv2d and Pooling2d layers
+    conv2dOutputSize = ComputeConv2dOutputSize(inputSize, convKernelSize, convStrideSize, convPaddingSize)
+    convBlockOutputSize = ComputePooling2dOutputSize(conv2dOutputSize, poolingkernelSize, poolingStrideSize, poolingPaddingSize)
+
+    # Compute total number of features after ConvBlock as required for the fully connected layers
+    conv2dFlattenOutputSize = convBlockOutputSize[0] * convBlockOutputSize[1] * outChannelsSize
+
+    return convBlockOutputSize, conv2dFlattenOutputSize
+
 
 # %% MATLAB wrapper class for Torch models evaluation - 11-06-2024
 class TorchModel_MATLABwrap():
@@ -645,8 +679,6 @@ class TorchModel_MATLABwrap():
         return Y.detach().cpu().numpy() # Move to cpu and convert to numpy
     
         
-
-
 
 # %% Training and validation manager class - 22-06-2024 (WIP)
 # TODO: Features to include: 
