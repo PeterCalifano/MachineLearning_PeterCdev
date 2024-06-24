@@ -4,10 +4,10 @@
 # Import modules
 import sys, os, multiprocessing
 # Append paths of custom modules
-sys.path.append(os.path.join('/home/peterc/devDir/MachineLearning_PeterCdev/PyTorch'))
+sys.path.append(os.path.join('/home/peterc/devDir/MachineLearning_PeterCdev/PyTorch/customTorchToolsTools'))
 sys.path.append(os.path.join('/home/peterc/devDir/MachineLearning_PeterCdev/PyTorch/LimbBasedNavigationAtMoon'))
 
-import customTorch # Custom torch tools
+import customTorchTools # Custom torch tools
 import limbPixelExtraction_CNN_NN
 import datasetPreparation
 
@@ -39,7 +39,7 @@ def main(id):
 
     optimizerID = 1 # 0
 
-    device = customTorch.GetDevice()
+    device = customTorchTools.GetDevice()
 
     exportTracedModel = True
 
@@ -236,7 +236,7 @@ def main(id):
 
     if exportTracedModel:
         # Save sample dataset for ONNx use
-        customTorch.SaveTorchDataset(dataset, modelSavePath, datasetName='sampleDatasetToONNx')
+        customTorchTools.SaveTorchDataset(dataset, modelSavePath, datasetName='sampleDatasetToONNx')
 
     # Define the split ratio
     trainingSize = int(TRAINING_PERC * len(dataset))  
@@ -253,7 +253,7 @@ def main(id):
 
     # LOSS FUNCTION DEFINITION
     # Custom EvalLoss function: MoonLimbPixConvEnhancer_LossFcn(predictCorrection, labelVector, params:list=None)
-    lossFcn = customTorch.CustomLossFcn(limbPixelExtraction_CNN_NN.MoonLimbPixConvEnhancer_LossFcn)
+    lossFcn = customTorchTools.CustomLossFcn(limbPixelExtraction_CNN_NN.MoonLimbPixConvEnhancer_LossFcn)
 
     # MODEL CLASS TYPE
     if id == 0:
@@ -268,7 +268,7 @@ def main(id):
 
             print('RESTART training from checkpoint: ', checkPointPath)
             modelEmpty = modelClass(outChannelsSizes, kernelSizes)
-            modelCNN_NN = customTorch.LoadTorchModel(modelEmpty, modelName, modelSavePath)
+            modelCNN_NN = customTorchTools.LoadTorchModel(modelEmpty, modelName, modelSavePath)
 
         else:
             raise ValueError('Specified model state file not found. Check input path.')    
@@ -297,14 +297,14 @@ def main(id):
                                                                                                               'loadCheckpoint': False,
                                                                                                               'epochStart': 150}):
     '''
-    (trainedModel, trainingLosses, validationLosses, inputSample) = customTorch.TrainAndValidateModel(dataloaderIndex, modelCNN_NN, lossFcn, optimizer, options)
+    (trainedModel, trainingLosses, validationLosses, inputSample) = customTorchTools.TrainAndValidateModel(dataloaderIndex, modelCNN_NN, lossFcn, optimizer, options)
 
     # %% Export trained model to ONNx and traced Pytorch format 
     if exportTracedModel:
-        customTorch.ExportTorchModelToONNx(trainedModel, inputSample, onnxExportPath='./checkpoints',
+        customTorchTools.ExportTorchModelToONNx(trainedModel, inputSample, onnxExportPath='./checkpoints',
                                             onnxSaveName='trainedModelONNx', modelID=options['epochStart']+options['epochs'], onnx_version=14)
 
-        customTorch.SaveTorchModel(trainedModel, modelName=modelArchName+'_'+customTorch.AddZerosPadding(options['epochStart']+options['epochs'], 3), 
+        customTorchTools.SaveTorchModel(trainedModel, modelName=modelArchName+'_'+customTorchTools.AddZerosPadding(options['epochStart']+options['epochs'], 3), 
                                    saveAsTraced=True, exampleInput=inputSample)
 
     # Close stdout log stream

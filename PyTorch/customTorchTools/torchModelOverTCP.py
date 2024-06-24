@@ -13,9 +13,8 @@ sys.path.append(os.path.join('/home/peterc/devDir/MachineLearning_PeterCdev/PyTo
 import numpy as np
 
 # Custom imports
-import customTorch
+import customTorchTools
 import tcpServerPy
-
 
 
 # MAIN SCRIPT
@@ -27,7 +26,7 @@ def main():
     # Model path
     tracedModelSavePath = '/home/peterc/devDir/MachineLearning_PeterCdev'
     modelID = 5
-    tracedModelName = 'HorizonPixCorrector_CNNv2_' + customTorch.AddZerosPadding(modelID, 3) + '_cpu'
+    tracedModelName = 'HorizonPixCorrector_CNNv2_' + customTorchTools.AddZerosPadding(modelID, 3) + '_cpu'
     tracedModelName = 'HorizonPixCorrector_CNNv2_025_cpu' + '.pt'
     #tracedModelName = 'trainedTracedModel005_cpu' + '.pt'
 
@@ -36,7 +35,7 @@ def main():
     # Parameters
 
     # Load torch traced model from file
-    torchWrapper = customTorch.TorchModel_MATLABwrap(tracedModelName, tracedModelSavePath)
+    torchWrapper = customTorchTools.TorchModel_MATLABwrap(tracedModelName, tracedModelSavePath)
 
     # %% TCP SERVER INITIALIZATION
     HOST, PORT = "127.0.0.1", 50000 # Define host and port (random is ok)

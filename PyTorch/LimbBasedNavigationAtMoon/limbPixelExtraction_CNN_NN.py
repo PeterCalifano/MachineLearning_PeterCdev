@@ -17,7 +17,7 @@
 
 # Import modules
 import torch
-import customTorch
+import customTorchTools
 import datetime
 from torch import nn
 from math import sqrt
@@ -84,7 +84,7 @@ def MoonLimbPixConvEnhancer_LossFcn(predictCorrection, labelVector, params:list=
     for idBatch in range(labelVector.size()[0]):
 
         # Compute corrected pixel
-        correctedPix = torch.tensor([0,0,1], dtype=torch.float32, device=customTorch.GetDevice()).reshape(3,1)
+        correctedPix = torch.tensor([0,0,1], dtype=torch.float32, device=customTorchTools.GetDevice()).reshape(3,1)
         correctedPix[0:2] = patchCentre[idBatch, :].reshape(2,1) + predictCorrection[idBatch, :].reshape(2,1)
 
         conicLoss += torch.matmul(correctedPix.T, torch.matmul(LimbConicMatrixImg[idBatch, :, :].reshape(3,3), correctedPix))
@@ -107,7 +107,7 @@ def MoonLimbPixConvEnhancer_LossFcnWithOutOfPatchTerm(predictCorrection, labelVe
     for idBatch in range(labelVector.size()[0]):
 
         # Compute corrected pixel
-        correctedPix = torch.tensor([0,0,1], dtype=torch.float32, device=customTorch.GetDevice()).reshape(3,1)
+        correctedPix = torch.tensor([0,0,1], dtype=torch.float32, device=customTorchTools.GetDevice()).reshape(3,1)
         correctedPix[0:2] = patchCentre[idBatch, :].reshape(2,1) + predictCorrection[idBatch, :].reshape(2,1)
 
         conicLoss += torch.matmul(correctedPix.T, torch.matmul(LimbConicMatrixImg[idBatch, :, :].reshape(3,3), correctedPix))
@@ -151,7 +151,7 @@ def MoonLimbPixConvEnhancer_NormalizedLossFcn(predictCorrection, labelVector, pa
     for idBatch in range(labelVector.size()[0]):
 
         # Compute corrected pixel
-        correctedPix = torch.tensor([0,0,1], dtype=torch.float32, device=customTorch.GetDevice()).reshape(3,1)
+        correctedPix = torch.tensor([0,0,1], dtype=torch.float32, device=customTorchTools.GetDevice()).reshape(3,1)
         correctedPix[0:2] = patchCentre[idBatch, :].reshape(2,1) + predictCorrection[idBatch, :].reshape(2,1)
 
         #conicLoss += torch.matmul(correctedPix.T, torch.matmul(LimbConicMatrixImg[idBatch, :, :].reshape(3,3), correctedPix))
