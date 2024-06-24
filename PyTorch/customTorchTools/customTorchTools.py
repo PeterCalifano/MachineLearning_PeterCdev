@@ -155,7 +155,8 @@ def SaveTorchModel(model:nn.Module, modelName:str="trainedModel", saveAsTraced:b
         extension = '.pth'
         
     # Format target device string to remove ':' from name
-    targetDevice = targetDevice.replace(':', '') 
+    targetDeviceName = targetDevice
+    targetDeviceName = targetDeviceName.replace(':', '') 
 
     if modelName == 'trainedModel': 
         if not(os.path.isdir('./testModels')):
@@ -171,9 +172,9 @@ def SaveTorchModel(model:nn.Module, modelName:str="trainedModel", saveAsTraced:b
                 gitignoreFile.write("\ntestModels/*")
                 gitignoreFile.close()
 
-        filename = "testModels/" + modelName + '_' + targetDevice + extension 
+        filename = "testModels/" + modelName + '_' + targetDeviceName + extension 
     else:
-        filename = modelName  + '_' + targetDevice + extension 
+        filename = modelName  + '_' + targetDeviceName + extension 
     
     # Attach timetag to model checkpoint
     #currentTime = datetime.datetime.now()
