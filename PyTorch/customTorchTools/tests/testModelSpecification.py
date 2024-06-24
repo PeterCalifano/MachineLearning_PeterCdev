@@ -6,6 +6,7 @@ sys.path.append(os.path.join('/home/peterc/devDir/MachineLearning_PeterCdev/PyTo
 sys.path.append(os.path.join('/home/peterc/devDir/MachineLearning_PeterCdev/PyTorch/LimbBasedNavigationAtMoon'))
 
 import customTorchTools  # Custom torch tools
+import limbPixelExtraction_CNN_NN
 
 import torch
 import datetime
@@ -37,7 +38,16 @@ def main():
     device = customTorchTools.GetDevice()
     exportTracedModel = True
 
+    # MODEL CLASS TYPE
+    classID = 0
 
+    if classID == 0:
+        modelClass = limbPixelExtraction_CNN_NN.HorizonExtractionEnhancerCNN
+    elif classID == 1:
+        modelClass = limbPixelExtraction_CNN_NN.HorizonExtractionEnhancerCNNv2
+
+    modelCNN_NN = modelClass(outChannelsSizes, kernelSizes)
+    print(modelCNN_NN)
 
 if __name__ == '__main__':
     main()
