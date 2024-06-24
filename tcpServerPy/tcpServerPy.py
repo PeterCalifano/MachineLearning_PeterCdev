@@ -18,9 +18,10 @@ class DataProcessor():
         '''Processing method running specified processing function'''
 
         # Decode inputData
-        decodedData = self.decode(inputData)
+        decodedData, numBatches = self.decode(inputData)
         # Execute processing function
-        processedData = self.processDataFcn(decodedData)
+        processedData = self.processDataFcn(decodedData, numBatches) 
+        # TODO: replace temporary input with a structured type like a dict to avoid multiple inputs and keep the function interface generic
 
         return self.encode(processedData)
     
@@ -28,13 +29,15 @@ class DataProcessor():
         '''Data conversion function from raw bytes stream to specified target numpy type'''
         if not isinstance(inputData, self.inputTargetType):
             try:
+                numBatches = int.from_bytes(inputData[:4], self.ENDIANNESS)
+                print(f"Received number of batches:\t{numBatches}")
                 dataArray = np.array(np.frombuffer(inputData, dtype=self.inputTargetType), dtype=self.inputTargetType)
                 print(f"Received data array:\t{dataArray}")
                 
                 # REsh
             except Exception as errMsg:
                 raise TypeError('Data conversion from raw data array to specified target type {targetType} failed with error: \n'.format(targetType=self.inputTargetType) + str(errMsg))
-        return dataArray
+        return dataArray, numBatches
     
     def encode(self, processedData):
         '''Data conversion function from numpy array to raw bytes stream'''
