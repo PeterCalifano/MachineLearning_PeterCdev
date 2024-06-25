@@ -133,7 +133,7 @@ def ValidateModel(dataloader:DataLoader, model:nn.Module, lossFcn:nn.Module, dev
 
 class CustomLossFcn(nn.Module):
     '''Custom loss function based class, instantiated by specifiying a loss function (callable object) and optionally, a dictionary containing parameters required for the evaluation'''
-    def __init__(self, EvalLossFcn:callable, params:dict = None) -> None:
+    def __init__(self, EvalLossFcn:callable, paramsTrain:dict = None, paramsEval:dict = None) -> None:
         '''Constructor for CustomLossFcn class'''
         super(CustomLossFcn, self).__init__() # Call constructor of nn.Module
         if len((inspect.signature(EvalLossFcn)).parameters) >= 2:
@@ -142,11 +142,15 @@ class CustomLossFcn(nn.Module):
             raise ValueError('Custom EvalLossFcn must take at least two inputs: inputVector, labelVector')    
 
         # Store loss function parameters dictionary
-        self.params = params 
+        self.paramsTrain = paramsTrain 
+
+        if paramsEval == None:
+            # Assign training parameters to evaluation parameters if not specified
+            self.paramsEval = self.paramsTrain 
 
     def forward(self, predictVector, labelVector):
         ''''Forward pass method to evaluate loss function on input and label vectors using EvalLossFcn'''
-        lossBatch = self.LossFcnObj(predictVector, labelVector, self.params)
+        lossBatch = self.LossFcnObj(predictVector, labelVector, self.paramsTrain, self.paramsEval)
         return lossBatch.mean()
    
 
