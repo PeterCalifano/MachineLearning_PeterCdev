@@ -37,7 +37,7 @@ def main(id):
     #outChannelsSizes = [16, 32, 75, 15] 
     outChannelsSizes = [256, 128, 75, 50] 
     kernelSizes = [3, 3]
-    learnRate = 1E-7
+    learnRate = 1E-8
     momentumValue = 0.001
 
     LOSS_TYPE = 2 # 0: Conic + L2, # 1: Conic + L2 + Quadratic OutOfPatch, # 2: Normalized Conic + L2 + OutOfPatch
@@ -74,7 +74,7 @@ def main(id):
 
     options = {'taskType': 'regression', 
                'device': device, 
-               'epochs': 5, 
+               'epochs': 3, 
                'Tensorboard':True,
                'saveCheckpoints':True,
                'checkpointsOutDir': modelSavePath,
@@ -83,7 +83,7 @@ def main(id):
                'checkpointsInDir': modelSavePath,
                'lossLogName': 'LossOutOfPatch_MoonHorizonExtraction',
                'logDirectory': tensorboardLogDir,
-               'epochStart': 0}
+               'epochStart': 5}
 
 
 
@@ -128,7 +128,7 @@ def main(id):
     dirNamesRoot = os.listdir(dataPath)
 
     # Select one of the available datapairs folders (each corresponding to a labels generation pipeline output)
-    datasetID = 6 # ACHTUNG! paths from listdir are randomly ordered! --> TODO: modify
+    datasetID = 0 # ACHTUNG! paths from listdir are randomly ordered! --> TODO: modify
     dataDirPath = os.path.join(dataPath, dirNamesRoot[datasetID])
 
     dataFilenames = os.listdir(dataDirPath)
@@ -301,6 +301,11 @@ def main(id):
     else:
             modelCNN_NN = modelClass(outChannelsSizes, kernelSizes)
 
+    try:
+        modelCNN_NN = torch.compile(modelCNN_NN)
+        print('Model compiled successfully.')
+    except:
+        print('Model compilation failed. Using eager mode.')
 
     # Define optimizer object specifying model instance parameters and optimizer parameters
     if optimizerID == 0:
