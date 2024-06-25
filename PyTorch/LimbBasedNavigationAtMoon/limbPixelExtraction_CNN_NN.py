@@ -136,7 +136,7 @@ def MoonLimbPixConvEnhancer_LossFcnWithOutOfPatchTerm(predictCorrection, labelVe
         conicLoss += torch.matmul(correctedPix.T, torch.matmul(LimbConicMatrixImg[idBatch, :, :].reshape(3,3), correctedPix))
 
         # Add average of the two coordinates to the total cost term
-        outOfPatchoutLoss += outOfPatchoutLoss_RectExp(predictCorrection[idBatch, :].reshape(2,1), halfPatchSize=halfPatchSize, slopeMultiplier=slopeMultiplier)
+        outOfPatchoutLoss += outOfPatchoutLoss_Quadratic(predictCorrection[idBatch, :].reshape(2,1), halfPatchSize=halfPatchSize, slopeMultiplier=slopeMultiplier)
 
     L2regLoss = torch.norm(predictCorrection)**2 # Weighting the norm of the correction to keep it as small as possible
 
@@ -166,6 +166,29 @@ def outOfPatchoutLoss_RectExp(predictCorrection, halfPatchSize=3.5, slopeMultipl
         if tmpOutOfPatchoutLoss.isinf():
             tmpOutOfPatchoutLoss = 1E4
 
+    return tmpOutOfPatchoutLoss/numOfCoordsOutOfPatch # Return the average of the two losses
+
+# %% Additional Loss term for out-of-patch predictions based on quadratic function - 25-06-2024
+def outOfPatchoutLoss_Quadratic(predictCorrection, halfPatchSize=3.5, slopeMultiplier=0.2):
+    if predictCorrection.size()[0] != 2:
+        raise ValueError('predictCorrection must have 2 rows for x and y pixel correction')
+    
+    # Compute the out-of-patch loss 
+    numOfCoordsOutOfPatch = 1
+    tmpOutOfPatchoutLoss = 0.0
+
+    # Compute the out-of-patch loss
+    if abs(predictCorrection[0]) > halfPatchSize:
+        tmpOutOfPatchoutLoss += torch.square(slopeMultiplier*(predictCorrection[0] - halfPatchSize)**2)
+
+    if abs(predictCorrection[1]) > halfPatchSize:
+        tmpOutOfPatchoutLoss += torch.square(slopeMultiplier*(predictCorrection[1] - halfPatchSize)**2)
+        numOfCoordsOutOfPatch += 1
+
+    if tmpOutOfPatchoutLoss > 0:
+        if tmpOutOfPatchoutLoss.isinf():
+            raise ValueError('tmpOutOfPatchoutLoss is infinite')
+        
     return tmpOutOfPatchoutLoss/numOfCoordsOutOfPatch # Return the average of the two losses
 
 #######################################################################################################

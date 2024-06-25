@@ -44,7 +44,7 @@ def TrainModel(dataloader:DataLoader, model:nn.Module, lossFcn:nn.Module, optimi
     size=len(dataloader.dataset) # Get size of dataloader dataset object
     model.train() # Set model instance in training mode ("informing" backend that the training is going to start)
 
-    batchValueForPrint = np.floor(len(dataloader)/10)
+    batchValueForPrint = np.floor(len(dataloader)/100)
 
     for batchCounter, (X, Y) in enumerate(dataloader): # Recall that enumerate gives directly both ID and value in iterable object
 
