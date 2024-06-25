@@ -8,11 +8,13 @@ import numpy as np
 # %% Data processing function wrapper as generic interface in RequestHandler for TCP servers - PeterC - 15-06-2024
 class DataProcessor():
     '''Data processing function wrapper as generic interface in RequestHandler for TCP servers'''
-    def __init__(self, processDataFcn:callable, inputTargetType, BufferSizeInBytes:int):
+    def __init__(self, processDataFcn:callable, inputTargetType, BufferSizeInBytes:int, ENDIANNESS:str='little', DYNAMIC_BUFFER_MODE=False):
         '''Constructor'''
         self.processDataFcn = processDataFcn
         self.inputTargetType = inputTargetType
         self.BufferSizeInBytes = BufferSizeInBytes
+        self.DYNAMIC_BUFFER_MODE = DYNAMIC_BUFFER_MODE
+        self.ENDIANNESS = ENDIANNESS
 
     def process(self, inputData):
         '''Processing method running specified processing function'''
@@ -31,7 +33,7 @@ class DataProcessor():
             try:
                 numBatches = int.from_bytes(inputData[:4], self.ENDIANNESS)
                 print(f"Received number of batches:\t{numBatches}")
-                dataArray = np.array(np.frombuffer(inputData, dtype=self.inputTargetType), dtype=self.inputTargetType)
+                dataArray = np.array(np.frombuffer(inputData[4:], dtype=self.inputTargetType), dtype=self.inputTargetType)
                 print(f"Received data array:\t{dataArray}")
                 
                 # REsh
@@ -50,7 +52,17 @@ class pytcp_requestHandler(socketserver.BaseRequestHandler):
         ''''Constructor'''
         self.DataProcessor = DataProcessor # Initialize DataProcessing object for handle
         self.BufferSizeInBytes = DataProcessor.BufferSizeInBytes
-        self.ENDIANNESS = ENDIANNESS
+
+        if hasattr(DataProcessor, 'DYNAMIC_BUFFER_MODE'):
+            self.DYNAMIC_BUFFER_MODE = DataProcessor.DYNAMIC_BUFFER_MODE
+        else:
+            self.DYNAMIC_BUFFER_MODE = False
+
+        if hasattr(DataProcessor, 'ENDIANNESS'):
+            self.ENDIANNESS = DataProcessor.ENDIANNESS
+        else:
+            self.ENDIANNESS = ENDIANNESS
+
         super().__init__(request, client_address, server)
 
     def handle(self) -> None:
@@ -85,12 +97,13 @@ class pytcp_requestHandler(socketserver.BaseRequestHandler):
                     print('Server is now OFF.')
                     exit()
 
-                
-                print("Expected data buffer size from client:", bufferSizeExpected, "bytes")
-                if not(len(dataBuffer) == bufferSizeExpected):
-                    raise BufferError('Data buffer size does not match buffer size by Data Processor! Received message contains {nBytesReceived}'.format(nBytesReceived=len(dataBuffer)) )
-                else:
-                    print('Message size matches expected size. Calling data processor...')
+                # Check if the received data buffer size matches the expected size
+                if not(self.DYNAMIC_BUFFER_MODE):
+                    print("Expected data buffer size from client:", bufferSizeExpected, "bytes")
+                    if not(len(dataBuffer) == bufferSizeExpected):
+                        raise BufferError('Data buffer size does not match buffer size by Data Processor! Received message contains {nBytesReceived}'.format(nBytesReceived=len(dataBuffer)) )
+                    else:
+                        print('Message size matches expected size. Calling data processor...')
 
                 # Move the data to DataProcessor and process according to specified function
                 outputDataSerialized = self.DataProcessor.process(dataBuffer)
@@ -100,7 +113,7 @@ class pytcp_requestHandler(socketserver.BaseRequestHandler):
                 outputDataSizeInBytes = len(outputDataSerialized)
                 print('Sending number of bytes to client:', outputDataSizeInBytes+4)
 
-                # Send the length of the processed data - CURRENTLY NOT IN USE 
+                # Send the length of the processed data
                 self.request.sendall(outputDataSizeInBytes.to_bytes(4, self.ENDIANNESS))
 
                 # Send the serialized output data

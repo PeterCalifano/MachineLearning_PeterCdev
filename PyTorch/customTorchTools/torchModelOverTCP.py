@@ -24,12 +24,11 @@ def main():
     
     # %% TORCH MODEL LOADING
     # Model path
-    tracedModelSavePath = '/home/peterc/devDir/MachineLearning_PeterCdev'
+    tracedModelSavePath = '/home/peterc/devDir/MachineLearning_PeterCdev/tracedModelsArchive/'
     modelID = 5
-    tracedModelName = 'HorizonPixCorrector_CNNv2_' + customTorchTools.AddZerosPadding(modelID, 3) + '_cpu'
-    tracedModelName = 'HorizonPixCorrector_CNNv2_025_cpu' + '.pt'
-    #tracedModelName = 'trainedTracedModel005_cpu' + '.pt'
+    #tracedModelName = 'HorizonPixCorrector_CNNv2_' + customTorchTools.AddZerosPadding(modelID, 3) + '_cpu'
 
+    tracedModelName = 'HorizonPixCorrector_CNNv1max_largerCNN_run3_005_cpu' + '.pt'
 
 
     # Parameters
@@ -41,8 +40,8 @@ def main():
     HOST, PORT = "127.0.0.1", 50000 # Define host and port (random is ok)
 
     # Define DataProcessor object for RequestHandler
-    numOfBytes = 56*4 # Length of input * number of bytes in double
-    dataProcessorObj = tcpServerPy.DataProcessor(torchWrapper.forward, np.float32, numOfBytes)
+    numOfBytes = 56*4 # Length of input * number of bytes in double --> not used if DYNAMIC_BUFFER_MODE is True
+    dataProcessorObj = tcpServerPy.DataProcessor(torchWrapper.forward, np.float32, numOfBytes, ENDIANNESS='little', DYNAMIC_BUFFER_MODE=True)
 
     # Initialize TCP server and keep it running
     with tcpServerPy.pytcp_server((HOST, PORT), tcpServerPy.pytcp_requestHandler, dataProcessorObj, bindAndActivate=True) as server:

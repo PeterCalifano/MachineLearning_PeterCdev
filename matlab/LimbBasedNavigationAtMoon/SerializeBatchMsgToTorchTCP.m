@@ -99,6 +99,8 @@ end
 
 % Cast and serialize message string
 dataBuffer = typecast(dataMessage, 'uint8');
+dataBuffer = [typecast(uint32(i_ui32Nbatches), 'uint8'), dataBuffer];
+
 dataLength = typecast(uint32(length(dataBuffer)), 'uint8');
 dataBufferToWrite = [dataLength, dataBuffer];
 

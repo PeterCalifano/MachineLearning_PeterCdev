@@ -27,7 +27,7 @@ from torch.utils.tensorboard import SummaryWriter # Key class to use tensorboard
 import torch.optim as optim
 
 # EXECUTION MODE
-USE_MULTIPROCESS = False
+USE_MULTIPROCESS = True
 
 def main(id):
 
@@ -71,11 +71,11 @@ def main(id):
 
 
     if USE_MULTIPROCESS == True:
-        sys.stdout = open("stdout_log_" + modelArchName + '.txt', 'w') # Redirect print outputs
+        sys.stdout = open("multiprocessShellLog/stdout_log_" + modelArchName + '.txt', 'w') # Redirect print outputs
 
     options = {'taskType': 'regression', 
                'device': device, 
-               'epochs': 3, 
+               'epochs': 2, 
                'Tensorboard':True,
                'saveCheckpoints':True,
                'checkpointsOutDir': modelSavePath,
@@ -302,11 +302,11 @@ def main(id):
     else:
             modelCNN_NN = modelClass(outChannelsSizes, kernelSizes)
 
-    try:
-        modelCNN_NN = torch.compile(modelCNN_NN)
-        print('Model compiled successfully.')
-    except:
-        print('Model compilation failed. Using eager mode.')
+    #try:
+    #    modelCNN_NN = torch.compile(modelCNN_NN) # ACHTUNG: compile is not compatible with jit.trace required to save traced model.
+    #    print('Model compiled successfully.')
+    #except:
+    #    print('Model compilation failed. Using eager mode.')
 
     # Define optimizer object specifying model instance parameters and optimizer parameters
     if optimizerID == 0:
@@ -344,8 +344,6 @@ def main(id):
 
 # %% MAIN SCRIPT
 if __name__ == '__main__':
-
-
 
     # Setup multiprocessing for training the two models in parallel
     if USE_MULTIPROCESS == True:

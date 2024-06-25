@@ -125,17 +125,27 @@ if bUSE_TORCH_OVER_TCP == true
 
         for idB = 1:i_ui32Nbatches
 
-            i_strInputSamplesBatchStruct(idB).i_ui8flattenedWindow   = datastruct.ui8flattenedWindows(:, sampleID);
+            i_strInputSamplesBatchStruct(idB).i_ui8flattenedWindow   = datastruct.ui8flattenedWindows(:, idB);
             i_strInputSamplesBatchStruct(idB).i_dSunDir_PixCoords    = datastruct.metadata.dSunDir_PixCoords;
             i_strInputSamplesBatchStruct(idB).i_dAttMRP_fromTFtoCAM  = quat2mrp( DCM2quat(reshape(datastruct.metadata.dAttDCM_fromTFtoCAM, 3, 3), false) );
-            i_strInputSamplesBatchStruct(idB).i_ui16coarseLimbPixels = datastruct.ui16coarseLimbPixels(:, sampleID);
+            i_strInputSamplesBatchStruct(idB).i_ui16coarseLimbPixels = datastruct.ui16coarseLimbPixels(:, idB);
 
         end
 
-        
+           
+        % Serialize message
         [dataLength, dataBufferToWrite] = SerializeBatchMsgToTorchTCP(i_strInputSamplesBatchStruct, ...
             i_ui32Nbatches, ...
             i_ui32InputSize);
+
+        % Send buffer to server
+        commHandler.WriteBuffer(dataBufferToWrite);
+
+        % Read buffer from server
+        [recvBytes, recvDataBuffer] = commHandler.ReadBuffer();
+
+        % Deserialize data from server to get CNN prediction
+        [dPredictedPixCorrection] = DeserializeMsgFromTorchTCP(recvBytes, recvDataBuffer);
 
     end
 

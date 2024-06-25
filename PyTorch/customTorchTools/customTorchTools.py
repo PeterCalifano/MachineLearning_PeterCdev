@@ -484,6 +484,7 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
     return model, trainLossHistory, validationLossHistory, inputSampleList
 
 # %% Model evaluation function on a random number of samples from dataset - 06-06-2024
+# Possible way to solve the issue of having different cost function terms for training and validation --> add setTrain and setEval methods to switch between the two
 
 def EvaluateModel(dataloader:DataLoader, model:nn.Module, lossFcn: nn.Module, device=GetDevice(), numOfSamples:int=10, inputSample:torch.tensor=None) -> np.array:
     '''Torch model evaluation function to perform inference using either specified input samples or input dataloader'''
@@ -667,26 +668,17 @@ class TorchModel_MATLABwrap():
         self.trainedModel = trainedModel.to(self.device)
 
 
-    def forward(self, inputSample:np.array, inputSize:int=None):
+    def forward(self, inputSample:np.array, numBatches:int=1):
         '''Forward method to perform inference for ONE sample input using trainedModel'''
         if inputSample.dtype is not np.float32:
             inputSample = np.float32(inputSample)
 
+        print('Performing formatting of input array to pass to model...')
+
         # TODO: check the input is exactly identical to what the model receives using EvaluateModel() loading from dataset!        
         # Convert numpy array into torch.tensor for model inference
-        if inputSize == None:
-            X = torch.tensor(inputSample).reshape(1, -1)
-        else:
-            # Compute number of batches
-            inputVecLen = inputSample.size()
-            numBatches = inputVecLen / inputSize
-
-            # Check if numBatches is an integer
-            if not(numBatches.is_integer()):
-                raise ValueError('Specified input size causes number of batches to be fractional. Check input sample size.')
-            
-            X = torch.tensor(inputSample).reshape(numBatches, -1)
-
+        X = torch.tensor(inputSample).reshape(numBatches, -1)
+                        
         # ########### DEBUG ######################: 
         print('Evaluating model using batch input: ', X)
         ############################################
