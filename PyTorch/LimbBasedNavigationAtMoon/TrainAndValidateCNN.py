@@ -49,14 +49,15 @@ def main(id):
 
     device = customTorchTools.GetDevice()
 
-    exportTracedModel = True
+    exportTracedModel = True    
+    tracedModelSavePath = 'tracedModelsArchive' 
 
     # Options to restart training from checkpoint
     if id == 0:
         runID = str(3)
         #modelSavePath = './checkpoints/HorizonPixCorrector_CNNv2_run3'
         modelSavePath = './checkpoints/HorizonPixCorrector_CNNv1max_largerCNN_run' + runID
-        tensorboardLogDir = './tensorboardLog_v1max_largerCNN_run' + runID
+        tensorboardLogDir = './tensorboardLogs/tensorboardLog_v1max_largerCNN_run' + runID
         modelArchName = 'HorizonPixCorrector_CNNv1max_largerCNN_run' + runID
         inputSize = 56 # TODO: update this according to new model
 
@@ -65,7 +66,7 @@ def main(id):
         runID = str(3)
         inputSize = 57 # TODO: update this according to new model
         modelSavePath = './checkpoints/HorizonPixCorrector_CNNv2max_largerCNN_run' + runID
-        tensorboardLogDir = './tensorboardLog_v2max_largerCNN_run'   + runID
+        tensorboardLogDir = './tensorboardLogs/tensorboardLog_v2max_largerCNN_run'   + runID
         modelArchName = 'HorizonPixCorrector_CNNv2max_largerCNN_run' + runID
 
 
@@ -334,7 +335,7 @@ def main(id):
        #customTorchTools.ExportTorchModelToONNx(trainedModel, inputSample, onnxExportPath='./checkpoints',
        #                                    onnxSaveName='trainedModelONNx', modelID=options['epochStart']+options['epochs'], onnx_version=14)
 
-        customTorchTools.SaveTorchModel(trainedModel, modelName=modelArchName+'_'+customTorchTools.AddZerosPadding(options['epochStart']+options['epochs'], 3), 
+        customTorchTools.SaveTorchModel(trainedModel, modelName=os.path.join(tracedModelSavePath, modelArchName+'_'+customTorchTools.AddZerosPadding(options['epochStart']+options['epochs']), 3), 
                                    saveAsTraced=True, exampleInput=inputSample)
 
     # Close stdout log stream
