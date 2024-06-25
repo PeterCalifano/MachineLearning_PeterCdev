@@ -33,14 +33,16 @@ def main(id):
 
     # SETTINGS and PARAMETERS 
     batch_size = 16*2 # Defines batch size in dataset
-    TRAINING_PERC = 0.80
+    TRAINING_PERC = 0.85
     #outChannelsSizes = [16, 32, 75, 15] 
     outChannelsSizes = [64, 64, 75, 15] 
     kernelSizes = [3, 3]
-    learnRate = 1E-10
+    learnRate = 1E-8
     momentumValue = 0.001
 
-    LOSS_TYPE = 1 # 0: Conic + L2, # 1: Conic + L2 + Rect. Exp., # 2: Normalized Conic + L2 + OutOfPatch
+    LOSS_TYPE = 1 # 0: Conic + L2, # 1: Conic + L2 + Quadratic OutOfPatch, # 2: Normalized Conic + L2 + OutOfPatch
+    # Loss function parameters
+    params = {'ConicLossWeightCoeff': 1, 'RectExpWeightCoeff': 1}
 
     optimizerID = 1 # 0
     UseMaxPooling = True
@@ -81,7 +83,7 @@ def main(id):
                'checkpointsInDir': modelSavePath,
                'lossLogName': 'LossOutOfPatch_MoonHorizonExtraction',
                'logDirectory': tensorboardLogDir,
-               'epochStart': 0}
+               'epochStart': 2}
 
 
 
@@ -260,8 +262,6 @@ def main(id):
     # LOSS FUNCTION DEFINITION
     # Custom EvalLoss function: MoonLimbPixConvEnhancer_LossFcn(predictCorrection, labelVector, params:list=None)
 
-    # Loss function parameters
-    params = {'ConicLossWeightCoeff': 1, 'RectExpWeightCoeff': 1}
 
     if LOSS_TYPE == 0:
         lossFcn = customTorchTools.CustomLossFcn(limbPixelExtraction_CNN_NN.MoonLimbPixConvEnhancer_LossFcn, params)
@@ -289,8 +289,9 @@ def main(id):
         if os.path.isfile(checkPointPath):
 
             print('RESTART training from checkpoint: ', checkPointPath)
-            modelEmpty = modelClass(outChannelsSizes, kernelSizes)
-            modelCNN_NN = customTorchTools.LoadTorchModel(modelEmpty, modelName, modelSavePath)
+            #modelEmpty = modelClass(outChannelsSizes, kernelSizes)
+            modelCNN_NN = customTorchTools.LoadTorchModel(None, modelName, modelSavePath, loadAsTraced=True)
+            #modelCNN_NN = customTorchTools.LoadTorchModel(modelCNN_NN, modelName)
 
         else:
             raise ValueError('Specified model state file not found. Check input path.')    
@@ -322,8 +323,8 @@ def main(id):
 
     # %% Export trained model to ONNx and traced Pytorch format 
     if exportTracedModel:
-        customTorchTools.ExportTorchModelToONNx(trainedModel, inputSample, onnxExportPath='./checkpoints',
-                                            onnxSaveName='trainedModelONNx', modelID=options['epochStart']+options['epochs'], onnx_version=14)
+       #customTorchTools.ExportTorchModelToONNx(trainedModel, inputSample, onnxExportPath='./checkpoints',
+       #                                    onnxSaveName='trainedModelONNx', modelID=options['epochStart']+options['epochs'], onnx_version=14)
 
         customTorchTools.SaveTorchModel(trainedModel, modelName=modelArchName+'_'+customTorchTools.AddZerosPadding(options['epochStart']+options['epochs'], 3), 
                                    saveAsTraced=True, exampleInput=inputSample)
