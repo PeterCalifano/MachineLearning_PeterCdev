@@ -12,6 +12,8 @@ testModels
 modelZoo
 checkpoints/*
 slprj
+*.sarif
+tracedModelsArchive
 
 # PyTorch folders
 PyTorch/__pycache__
