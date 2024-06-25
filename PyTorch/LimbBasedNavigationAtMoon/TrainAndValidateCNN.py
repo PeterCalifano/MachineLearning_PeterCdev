@@ -37,8 +37,10 @@ def main(id):
     #outChannelsSizes = [16, 32, 75, 15] 
     outChannelsSizes = [64, 64, 75, 15] 
     kernelSizes = [3, 3]
-    learnRate = 1E-5
+    learnRate = 1E-10
     momentumValue = 0.001
+
+    LOSS_TYPE = 1 # 0: Conic + L2, # 1: Conic + L2 + Rect. Exp.
 
     optimizerID = 1 # 0
     UseMaxPooling = True
@@ -49,7 +51,7 @@ def main(id):
 
     # Options to restart training from checkpoint
     if id == 0:
-        runID = str(0)
+        runID = str(2)
         #modelSavePath = './checkpoints/HorizonPixCorrector_CNNv2_run3'
         modelSavePath = './checkpoints/HorizonPixCorrector_CNNv1max_largerCNN_run' + runID
         tensorboardLogDir = './tensorboardLog_v1max_largerCNN_run' + runID
@@ -58,7 +60,7 @@ def main(id):
 
 
     elif id == 1:
-        runID = str(0)
+        runID = str(2)
         inputSize = 57 # TODO: update this according to new model
         modelSavePath = './checkpoints/HorizonPixCorrector_CNNv2max_largerCNN_run' + runID
         tensorboardLogDir = './tensorboardLog_v2max_largerCNN_run'   + runID
@@ -70,14 +72,14 @@ def main(id):
 
     options = {'taskType': 'regression', 
                'device': device, 
-               'epochs': 5, 
+               'epochs': 2, 
                'Tensorboard':True,
                'saveCheckpoints':True,
                'checkpointsOutDir': modelSavePath,
                'modelName': modelArchName,
                'loadCheckpoint': False,
                'checkpointsInDir': modelSavePath,
-               'lossLogName': 'Loss_MoonHorizonExtraction',
+               'lossLogName': 'LossOutOfPatch_MoonHorizonExtraction',
                'logDirectory': tensorboardLogDir,
                'epochStart': 0}
 
@@ -257,7 +259,15 @@ def main(id):
 
     # LOSS FUNCTION DEFINITION
     # Custom EvalLoss function: MoonLimbPixConvEnhancer_LossFcn(predictCorrection, labelVector, params:list=None)
-    lossFcn = customTorchTools.CustomLossFcn(limbPixelExtraction_CNN_NN.MoonLimbPixConvEnhancer_LossFcn)
+
+    # Loss function parameters
+    params = {'ConicLossWeightCoeff': 1}
+
+    if LOSS_TYPE == 0:
+        lossFcn = customTorchTools.CustomLossFcn(limbPixelExtraction_CNN_NN.MoonLimbPixConvEnhancer_LossFcn, params)
+    elif LOSS_TYPE == 1:
+        lossFcn = customTorchTools.CustomLossFcn(limbPixelExtraction_CNN_NN.MoonLimbPixConvEnhancer_LossFcnWithOutOfPatchTerm, params)
+        
 
     # MODEL CLASS TYPE
     if UseMaxPooling == False:

@@ -130,17 +130,21 @@ def ValidateModel(dataloader:DataLoader, model:nn.Module, lossFcn:nn.Module, dev
 # NOTE: Function EvalLossFcn must be implemented using Torch operations to work!
 
 class CustomLossFcn(nn.Module):
-    # Class constructor
-    def __init__(self, EvalLossFcn:callable) -> None:
+    '''Custom loss function based class, instantiated by specifiying a loss function (callable object) and optionally, a dictionary containing parameters required for the evaluation'''
+    def __init__(self, EvalLossFcn:callable, params:dict = None) -> None:
+        '''Constructor for CustomLossFcn class'''
         super(CustomLossFcn, self).__init__() # Call constructor of nn.Module
         if len((inspect.signature(EvalLossFcn)).parameters) >= 2:
             self.LossFcnObj = EvalLossFcn
         else: 
             raise ValueError('Custom EvalLossFcn must take at least two inputs: inputVector, labelVector')    
 
-    # Forward Pass evaluation method using defined EvalLossFcn
-    def forward(self, predictVector, labelVector, params=None):
-        lossBatch = self.LossFcnObj(predictVector, labelVector, params)
+        # Store loss function parameters dictionary
+        self.params = params 
+
+    def forward(self, predictVector, labelVector):
+        ''''Forward pass method to evaluate loss function on input and label vectors using EvalLossFcn'''
+        lossBatch = self.LossFcnObj(predictVector, labelVector, self.params)
         return lossBatch.mean()
    
 

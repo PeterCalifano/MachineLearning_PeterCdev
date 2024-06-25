@@ -100,7 +100,8 @@ def MoonLimbPixConvEnhancer_LossFcn(predictCorrection, labelVector, params:list=
 def MoonLimbPixConvEnhancer_LossFcnWithOutOfPatchTerm(predictCorrection, labelVector, params:list=None):
     # Alternative loss: alfa*||xCorrT * ConicMatr* xCorr||^2 + (1-alfa)*MSE(label, prediction)
     # Get parameters and labels for computation of the loss
-    coeff = 0.98 # TODO: convert params to dict
+
+    coeff = params['ConicLossWeightCoeff']
     LimbConicMatrixImg = (labelVector[:, 0:9].T).reshape(3, 3, labelVector.size()[0]).T
     patchCentre = labelVector[:, 9:]
 
@@ -130,10 +131,10 @@ def outOfPatchoutLoss_RectExp(predictCorrection, patchSize=7, slopeMultiplier=2)
 
     # Compute the out-of-patch loss 
     if predictCorrection[0] > halfPatchSize:
-        lossValue += torch.exp(2*(predictCorrection[0] - halfPatchSize))
+        lossValue += torch.exp(slopeMultiplier*(predictCorrection[0] - halfPatchSize))
 
     if predictCorrection[1] > halfPatchSize:
-        lossValue += torch.exp(2*(predictCorrection[1] - halfPatchSize))
+        lossValue += torch.exp(slopeMultiplier*(predictCorrection[1] - halfPatchSize))
 
     return lossValue/2.0 # Return the average of the two losses
 
@@ -145,7 +146,7 @@ def MoonLimbPixConvEnhancer_NormalizedLossFcn(predictCorrection, labelVector, pa
 
     # Alternative loss: alfa*||xCorrT * ConicMatr* xCorr||^2 + (1-alfa)*MSE(label, prediction)
     # Get parameters and labels for computation of the loss
-    coeff = 0.98 # TODO: convert params to dict
+    coeff = params['ConicLossWeightCoeff']
     LimbConicMatrixImg = (labelVector[:, 0:9].T).reshape(3, 3, labelVector.size()[0]).T
     patchCentre = labelVector[:, 9:]
 
