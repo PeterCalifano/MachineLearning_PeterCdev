@@ -35,12 +35,12 @@ def main(id):
     batch_size = 16*2 # Defines batch size in dataset
     TRAINING_PERC = 0.85
     #outChannelsSizes = [16, 32, 75, 15] 
-    outChannelsSizes = [64, 64, 75, 15] 
+    outChannelsSizes = [256, 128, 75, 50] 
     kernelSizes = [3, 3]
-    learnRate = 1E-8
+    learnRate = 1E-7
     momentumValue = 0.001
 
-    LOSS_TYPE = 1 # 0: Conic + L2, # 1: Conic + L2 + Quadratic OutOfPatch, # 2: Normalized Conic + L2 + OutOfPatch
+    LOSS_TYPE = 2 # 0: Conic + L2, # 1: Conic + L2 + Quadratic OutOfPatch, # 2: Normalized Conic + L2 + OutOfPatch
     # Loss function parameters
     params = {'ConicLossWeightCoeff': 1, 'RectExpWeightCoeff': 1}
 
@@ -53,7 +53,7 @@ def main(id):
 
     # Options to restart training from checkpoint
     if id == 0:
-        runID = str(2)
+        runID = str(3)
         #modelSavePath = './checkpoints/HorizonPixCorrector_CNNv2_run3'
         modelSavePath = './checkpoints/HorizonPixCorrector_CNNv1max_largerCNN_run' + runID
         tensorboardLogDir = './tensorboardLog_v1max_largerCNN_run' + runID
@@ -62,7 +62,7 @@ def main(id):
 
 
     elif id == 1:
-        runID = str(2)
+        runID = str(3)
         inputSize = 57 # TODO: update this according to new model
         modelSavePath = './checkpoints/HorizonPixCorrector_CNNv2max_largerCNN_run' + runID
         tensorboardLogDir = './tensorboardLog_v2max_largerCNN_run'   + runID
@@ -74,7 +74,7 @@ def main(id):
 
     options = {'taskType': 'regression', 
                'device': device, 
-               'epochs': 2, 
+               'epochs': 5, 
                'Tensorboard':True,
                'saveCheckpoints':True,
                'checkpointsOutDir': modelSavePath,
@@ -83,7 +83,7 @@ def main(id):
                'checkpointsInDir': modelSavePath,
                'lossLogName': 'LossOutOfPatch_MoonHorizonExtraction',
                'logDirectory': tensorboardLogDir,
-               'epochStart': 2}
+               'epochStart': 0}
 
 
 
@@ -160,7 +160,7 @@ def main(id):
     
 
     inputDataArray  = np.zeros((inputSize, nSamples), dtype=np.float32)
-    labelsDataArray = np.zeros((11, nSamples), dtype=np.float32)
+    labelsDataArray = np.zeros((12, nSamples), dtype=np.float32)
 
     for dataPair in dataFilenames:
         # Data dict for ith image
@@ -176,6 +176,8 @@ def main(id):
 
         ui16coarseLimbPixels = np.array(tmpdataDict['ui16coarseLimbPixels'], dtype=np.float32)
         ui8flattenedWindows  = np.array(tmpdataDict['ui8flattenedWindows'], dtype=np.float32)
+
+        centreBaseCost2 = np.array(tmpdataDict['dPatchesCentreBaseCost2'], dtype=np.float32)
 
         if id == 1:
             targetAvgRadiusInPix = np.array(metadataDict['dTargetPixAvgRadius'], dtype=np.float32)
@@ -222,7 +224,8 @@ def main(id):
 
                 # Assign labels to labels data array
                 labelsDataArray[0:9, saveID] = np.ravel(dLimbConicCoeffs_PixCoords)
-                labelsDataArray[9:, saveID] = ui16coarseLimbPixels[:, sampleID]
+                labelsDataArray[9:11, saveID] = ui16coarseLimbPixels[:, sampleID]
+                labelsDataArray[11, saveID] = centreBaseCost2[sampleID]
 
                 saveID += 1
 
