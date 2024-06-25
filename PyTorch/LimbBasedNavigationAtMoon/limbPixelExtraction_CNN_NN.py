@@ -74,13 +74,13 @@ class MoonLimbPixCorrector_Dataset():
 
 
 # %% Custom loss function for Moon Limb pixel extraction CNN enhancer - 01-06-2024
-def MoonLimbPixConvEnhancer_LossFcn(predictCorrection, labelVector, params:dict=None):
+def MoonLimbPixConvEnhancer_LossFcn(predictCorrection, labelVector, paramsTrain:dict=None, paramsEval:dict=None):
     # Alternative loss: alfa*||xCorrT * ConicMatr* xCorr||^2 + (1-alfa)*MSE(label, prediction)
     # Get parameters and labels for computation of the loss
-    if params is None:
+    if paramsTrain is None:
         coeff = 0.5
     else:
-        coeff = params['ConicLossWeightCoeff']
+        coeff = paramsTrain['ConicLossWeightCoeff']
         
     LimbConicMatrixImg = (labelVector[:, 0:9].T).reshape(3, 3, labelVector.size()[0]).T
     patchCentre = labelVector[:, 9:]
@@ -109,16 +109,16 @@ def MoonLimbPixConvEnhancer_LossFcn(predictCorrection, labelVector, params:dict=
     return lossValue
 
 # %% Custom loss function for Moon Limb pixel extraction CNN enhancer with strong loss for out-of-patch predictions - 23-06-2024
-def MoonLimbPixConvEnhancer_LossFcnWithOutOfPatchTerm(predictCorrection, labelVector, params:dict=None):
+def MoonLimbPixConvEnhancer_LossFcnWithOutOfPatchTerm(predictCorrection, labelVector, paramsTrain:dict=None, paramsEval:dict=None):
     # Alternative loss: alfa*||xCorrT * ConicMatr* xCorr||^2 + (1-alfa)*MSE(label, prediction)
     # Get parameters and labels for computation of the loss
 
-    if params is None:
+    if paramsTrain is None:
         coeff = 0.5
     else:
-        coeff = params['ConicLossWeightCoeff']
+        coeff = paramsTrain['ConicLossWeightCoeff']
 
-    # Temporary --> should come from params dictionary
+    # Temporary --> should come from paramsTrain dictionary
     patchSize = 7
     halfPatchSize = patchSize/2
     slopeMultiplier = 2
@@ -126,8 +126,8 @@ def MoonLimbPixConvEnhancer_LossFcnWithOutOfPatchTerm(predictCorrection, labelVe
     LimbConicMatrixImg = (labelVector[:, 0:9].T).reshape(3, 3, labelVector.size()[0]).T
     patchCentre = labelVector[:, 9:]
 
-    if 'RectExpWeightCoeff' in params.keys():
-        RectExpWeightCoeff = params['RectExpWeightCoeff']
+    if 'RectExpWeightCoeff' in paramsTrain.keys():
+        RectExpWeightCoeff = paramsTrain['RectExpWeightCoeff']
     else:
         RectExpWeightCoeff = 1
 
@@ -207,16 +207,16 @@ def outOfPatchoutLoss_Quadratic(predictCorrection, halfPatchSize=3.5, slopeMulti
 
 #######################################################################################################
 # %% Custom normalized loss function for Moon Limb pixel extraction CNN enhancer - 23-06-2024
-def MoonLimbPixConvEnhancer_NormalizedLossFcnWithOutOfPatchTerm(predictCorrection, labelVector, params:dict=None):
+def MoonLimbPixConvEnhancer_NormalizedLossFcnWithOutOfPatchTerm(predictCorrection, labelVector, paramsTrain:dict=None, paramsEval:dict=None):
 
     # Get parameters and labels for computation of the loss
-    if params is None:
+    if paramsTrain is None:
         coeff = 1
     else:
-        coeff = params['ConicLossWeightCoeff']
+        coeff = paramsTrain['ConicLossWeightCoeff']
 
-    if 'RectExpWeightCoeff' in params.keys():
-        RectExpWeightCoeff = params['RectExpWeightCoeff']
+    if 'RectExpWeightCoeff' in paramsTrain.keys():
+        RectExpWeightCoeff = paramsTrain['RectExpWeightCoeff']
     else:
         RectExpWeightCoeff = 1
 
@@ -273,16 +273,16 @@ def IsPatchValid(patchFlatten, lowerIntensityThr=3):
 
 
 # %% Custom loss function for Moon Limb pixel extraction enhancer with vectorized computation modified from GPT code - 25-06-2024
-def MoonLimbPixConvEnhancer_VectorizedLossFcnWithOutOfPatchTerm(predictCorrection, labelVector, params:dict=None):
+def MoonLimbPixConvEnhancer_VectorizedLossFcnWithOutOfPatchTerm(predictCorrection, labelVector, paramsTrain:dict=None, paramsEval:dict=None):
     # Alternative loss: alfa*||xCorrT * ConicMatr* xCorr||^2 + (1-alfa)*MSE(label, prediction)
     # Get parameters and labels for computation of the loss
 
     # TODO: Check code and test 
 
-    if params is None:
+    if paramsTrain is None:
         coeff = 0.5
     else:
-        coeff = params['ConicLossWeightCoeff']
+        coeff = paramsTrain['ConicLossWeightCoeff']
 
     # Temporary --> should come from params dictionary
     patchSize = 7
@@ -292,7 +292,7 @@ def MoonLimbPixConvEnhancer_VectorizedLossFcnWithOutOfPatchTerm(predictCorrectio
     LimbConicMatrixImg = labelVector[:, 0:9].reshape(-1, 3, 3)
     patchCentre = labelVector[:, 9:]
 
-    RectExpWeightCoeff = params.get('RectExpWeightCoeff', 1)
+    RectExpWeightCoeff = paramsTrain.get('RectExpWeightCoeff', 1)
 
     # Compute corrected pixel positions
     correctedPix = torch.cat([patchCentre + predictCorrection, torch.ones(patchCentre.size(0), 1, device=patchCentre.device)], dim=1).reshape(-1, 3, 1)
