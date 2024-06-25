@@ -40,7 +40,7 @@ def main(id):
     learnRate = 1E-10
     momentumValue = 0.001
 
-    LOSS_TYPE = 1 # 0: Conic + L2, # 1: Conic + L2 + Rect. Exp.
+    LOSS_TYPE = 1 # 0: Conic + L2, # 1: Conic + L2 + Rect. Exp., # 2: Normalized Conic + L2 + OutOfPatch
 
     optimizerID = 1 # 0
     UseMaxPooling = True
@@ -261,12 +261,14 @@ def main(id):
     # Custom EvalLoss function: MoonLimbPixConvEnhancer_LossFcn(predictCorrection, labelVector, params:list=None)
 
     # Loss function parameters
-    params = {'ConicLossWeightCoeff': 1}
+    params = {'ConicLossWeightCoeff': 1, 'RectExpWeightCoeff': 1}
 
     if LOSS_TYPE == 0:
         lossFcn = customTorchTools.CustomLossFcn(limbPixelExtraction_CNN_NN.MoonLimbPixConvEnhancer_LossFcn, params)
     elif LOSS_TYPE == 1:
         lossFcn = customTorchTools.CustomLossFcn(limbPixelExtraction_CNN_NN.MoonLimbPixConvEnhancer_LossFcnWithOutOfPatchTerm, params)
+    elif LOSS_TYPE == 2:
+        lossFcn = customTorchTools.CustomLossFcn(limbPixelExtraction_CNN_NN.MoonLimbPixConvEnhancer_NormalizedLossFcnWithOutOfPatchTerm, params)
         
 
     # MODEL CLASS TYPE

@@ -44,6 +44,8 @@ def TrainModel(dataloader:DataLoader, model:nn.Module, lossFcn:nn.Module, optimi
     size=len(dataloader.dataset) # Get size of dataloader dataset object
     model.train() # Set model instance in training mode ("informing" backend that the training is going to start)
 
+    batchValueForPrint = np.floor(len(dataloader)/10)
+
     for batchCounter, (X, Y) in enumerate(dataloader): # Recall that enumerate gives directly both ID and value in iterable object
 
         # Get input and labels and move to target device memory
@@ -58,7 +60,7 @@ def TrainModel(dataloader:DataLoader, model:nn.Module, lossFcn:nn.Module, optimi
         optimizer.step()      # Apply gradients from the loss
         optimizer.zero_grad() # Reset gradients for next iteration
 
-        if batchCounter % 100 == 0: # Print loss value every 100 steps
+        if batchCounter % batchValueForPrint == 0: # Print loss value 
             trainLoss, currentStep = trainLoss.item(), (batchCounter + 1) * len(X)
             print(f"Training loss value: {trainLoss:>7f}  [{currentStep:>5d}/{size:>5d}]")
 
