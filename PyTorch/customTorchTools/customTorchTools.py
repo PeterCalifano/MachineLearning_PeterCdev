@@ -39,7 +39,7 @@ def GetDevice():
 # %% Function to perform one step of training of a model using dataset and specified loss function - 04-05-2024
 # Updated by PC 04-06-2024
 
-def TrainModel(dataloader:DataLoader, model:nn.Module, lossFcn:nn.Module, optimizer, device=GetDevice(), taskType:str='classification'):
+def TrainModel(dataloader:DataLoader, model:nn.Module, lossFcn:nn.Module, optimizer, device=GetDevice(), taskType:str='classification', lr_scheduler=None):
 
     size=len(dataloader.dataset) # Get size of dataloader dataset object
     model.train() # Set model instance in training mode ("informing" backend that the training is going to start)
@@ -63,6 +63,10 @@ def TrainModel(dataloader:DataLoader, model:nn.Module, lossFcn:nn.Module, optimi
         if batchCounter % batchValueForPrint == 0: # Print loss value 
             trainLoss, currentStep = trainLoss.item(), (batchCounter + 1) * len(X)
             print(f"Training loss value: {trainLoss:>7f}  [{currentStep:>5d}/{size:>5d}]")
+    
+    # Update learning rate if scheduler is provided
+    if lr_scheduler is not None:
+        lr_scheduler.step()
 
     return trainLoss
     
@@ -421,12 +425,17 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
     lossLogName         = options['lossLogName']
     epochStart          = options['epochStart']
 
+    if 'lr_scheduler' in options.keys():
+        lr_scheduler = options['lr_scheduler']
+    else:
+        lr_scheduler = None        
+    
     if 'enableAddImageToTensorboard' in options.keys():
         ADD_IMAGE_TO_TENSORBOARD = options['enableAddImageToTensorboard']
     else: 
         ADD_IMAGE_TO_TENSORBOARD = True
 
-    if enableTensorBoard and 'tensorBoardPortNum' in options.keys():
+    if ('tensorBoardPortNum' in options.keys()):
         tensorBoardPortNum = options['tensorBoardPortNum']
     else:
         tensorBoardPortNum = 6006
@@ -478,7 +487,7 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
 
         print(f"\n\t\t\tTRAINING EPOCH: {epochID + epochStart} of {epochStart + numOfEpochs-1}\n-------------------------------")
         # Do training over all batches
-        trainLossHistory[epochID] = TrainModel(trainingDataset, model, lossFcn, optimizer, device, taskType) 
+        trainLossHistory[epochID] = TrainModel(trainingDataset, model, lossFcn, optimizer, device, taskType, lr_scheduler) 
         # Do validation over all batches
         validationLossHistory[epochID] = ValidateModel(validationDataset, model, lossFcn, device, taskType) 
 

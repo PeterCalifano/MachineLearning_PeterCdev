@@ -61,7 +61,7 @@ def main(id):
         modelSavePath = './checkpoints/HorizonPixCorrector_CNNv1max_largerCNN_run' + runID
 
         tensorboardLogDir = './tensorboardLogs/tensorboardLog_v1max_largerCNN_run' + runID
-        tensorBoardPortNum = 6006
+        tensorBoardPortNum = 6008
         
         modelArchName = 'HorizonPixCorrector_CNNv1max_largerCNN_run' + runID
         inputSize = 56 # TODO: update this according to new model
@@ -72,7 +72,7 @@ def main(id):
         modelSavePath = './checkpoints/HorizonPixCorrector_CNNv2max_largerCNN_run' + runID
 
         tensorboardLogDir = './tensorboardLogs/tensorboardLog_v2max_largerCNN_run'   + runID
-        tensorBoardPortNum = 6007
+        tensorBoardPortNum = 6009
 
         modelArchName = 'HorizonPixCorrector_CNNv2max_largerCNN_run' + runID
         inputSize = 57 # TODO: update this according to new model
@@ -324,13 +324,13 @@ def main(id):
 
             print('RESTART training from checkpoint: ', checkPointPath)
             #modelEmpty = modelClass(outChannelsSizes, kernelSizes)
-            modelCNN_NN = customTorchTools.LoadTorchModel(None, modelName, modelSavePath, loadAsTraced=True)
+            modelCNN_NN = customTorchTools.LoadTorchModel(None, modelName, modelSavePath, loadAsTraced=True).to(device=device)
             #modelCNN_NN = customTorchTools.LoadTorchModel(modelCNN_NN, modelName)
 
         else:
             raise ValueError('Specified model state file not found. Check input path.')    
     else:
-            modelCNN_NN = modelClass(outChannelsSizes, kernelSizes)
+            modelCNN_NN = modelClass(outChannelsSizes, kernelSizes).to(device=device)
 
 
     # ######### TEST DEBUG ############
@@ -351,10 +351,12 @@ def main(id):
     
     elif optimizerID == 1:
         optimizer = torch.optim.Adam(modelCNN_NN.parameters(), lr=initialLearnRate, betas=(0.9, 0.999), 
-                                     eps=1e-08, weight_decay=1E-6, amsgrad=False, foreach= True, fused=True)
+                                     eps=1e-08, weight_decay=1E-6, amsgrad=False, foreach=False, fused=True)
 
     if USE_LR_SCHEDULING:
-        optimizer = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=2, threshold=0.01, threshold_mode='rel', cooldown=1, min_lr=1E-12, eps=1e-08)
+        #optimizer = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=2, threshold=0.01, threshold_mode='rel', cooldown=1, min_lr=1E-12, eps=1e-08)
+        lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.2, last_epoch=options['epochStart']-1)
+        options['lr_scheduler'] = lr_scheduler
 
     print('Using loaded dataset for training and validation: ', dataDirPath)
 

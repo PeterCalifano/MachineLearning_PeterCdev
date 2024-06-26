@@ -566,7 +566,7 @@ class HorizonExtractionEnhancerCNNv1max(nn.Module):
         contextualInfoInput = inputSample[:, self.imagePixSize:]
 
         # DEBUG
-        print(img2Dinput[0, 0, :,:])
+        #print(img2Dinput[0, 0, :,:])
         ########################################
 
         # Convolutional layers
