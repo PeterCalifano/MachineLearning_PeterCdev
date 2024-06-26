@@ -27,7 +27,8 @@ from torch.utils.tensorboard import SummaryWriter # Key class to use tensorboard
 import torch.optim as optim
 
 # EXECUTION MODE
-USE_MULTIPROCESS = False
+USE_MULTIPROCESS = True
+USE_NORMALIZED_IMG = True
 
 def main(id):
 
@@ -57,25 +58,35 @@ def main(id):
         runID = str(3)
         #modelSavePath = './checkpoints/HorizonPixCorrector_CNNv2_run3'
         modelSavePath = './checkpoints/HorizonPixCorrector_CNNv1max_largerCNN_run' + runID
+
         tensorboardLogDir = './tensorboardLogs/tensorboardLog_v1max_largerCNN_run' + runID
+        tensorBoardPortNum = 6006
+        
         modelArchName = 'HorizonPixCorrector_CNNv1max_largerCNN_run' + runID
         inputSize = 56 # TODO: update this according to new model
 
 
     elif id == 1:
         runID = str(3)
-        inputSize = 57 # TODO: update this according to new model
         modelSavePath = './checkpoints/HorizonPixCorrector_CNNv2max_largerCNN_run' + runID
+
         tensorboardLogDir = './tensorboardLogs/tensorboardLog_v2max_largerCNN_run'   + runID
+        tensorBoardPortNum = 6007
+
         modelArchName = 'HorizonPixCorrector_CNNv2max_largerCNN_run' + runID
+        inputSize = 57 # TODO: update this according to new model
+
 
 
     if USE_MULTIPROCESS == True:
-        sys.stdout = open("multiprocessShellLog/stdout_log_" + modelArchName + '.txt', 'w') # Redirect print outputs
+        # Start tensorboard session
+
+        sys.stdout = open("./multiprocessShellLog/stdout_log_" + modelArchName + '.txt', 'w') # Redirect print outputs
+
 
     options = {'taskType': 'regression', 
                'device': device, 
-               'epochs': 4, 
+               'epochs': 5, 
                'Tensorboard':True,
                'saveCheckpoints':True,
                'checkpointsOutDir': modelSavePath,
@@ -84,7 +95,8 @@ def main(id):
                'checkpointsInDir': modelSavePath,
                'lossLogName': 'LossOutOfPatch_MoonHorizonExtraction',
                'logDirectory': tensorboardLogDir,
-               'epochStart': 6}
+               'epochStart': 5,
+               'tensorBoardPortNum': tensorBoardPortNum}
 
 
 
@@ -186,6 +198,10 @@ def main(id):
         if id == 1:
             targetAvgRadiusInPix = np.array(metadataDict['dTargetPixAvgRadius'], dtype=np.float32)
 
+        if USE_NORMALIZED_IMG:
+            normalizationCoeff = 255.0
+        else:
+            normalizationCoeff = 1.0
         
         for sampleID in range(ui16coarseLimbPixels.shape[1]):
             # Get flattened patch
@@ -201,7 +217,7 @@ def main(id):
                 ptrToInput = 0
                 
                 # Assign flattened window to input data array
-                inputDataArray[ptrToInput:ptrToInput+flattenedWindSize, saveID]  = flattenedWindow
+                inputDataArray[ptrToInput:ptrToInput+flattenedWindSize, saveID]  = flattenedWindow/normalizationCoeff
 
                 ptrToInput += flattenedWindSize # Update index
 

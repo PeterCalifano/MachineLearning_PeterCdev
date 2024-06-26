@@ -313,15 +313,17 @@ def IsTensorboardRunning() -> bool:
     return False
 
 # Function to start TensorBoard process
-def StartTensorboard(logDir:str) -> None:
-    if not(IsTensorboardRunning):
-        try:
-            subprocess.Popen(['tensorboard', '--logdir', logDir, '--host', '0.0.0.0', '--port', '6006'])
-            print('Tensorboard session successfully started using logDir:', logDir)
-        except Exception as errMsg:
-            print('Failed due to:', errMsg, '. Continuing without opening session.')
-    else:
-        print('Tensorboard seems to be running in this session! Restarting with new directory...')
+def StartTensorboard(logDir:str, portNum:int=6006) -> None:
+    subprocess.Popen(['tensorboard', '--logdir', logDir, '--host', '0.0.0.0', '--port', str(portNum)])
+
+    #if not(IsTensorboardRunning):
+    #    try:
+    #        subprocess.Popen(['tensorboard', '--logdir', logDir, '--host', '0.0.0.0', '--port', str(portNum)])
+    #        print('Tensorboard session successfully started using logDir:', logDir)
+    #    except Exception as errMsg:
+    #        print('Failed due to:', errMsg, '. Continuing without opening session.')
+    #else:
+    #    print('Tensorboard seems to be running in this session! Restarting with new directory...')
         #kill_tensorboard()
         #subprocess.Popen(['tensorboard', '--logdir', logDir, '--host', '0.0.0.0', '--port', '6006'])
         #print('Tensorboard session successfully started using logDir:', logDir)
@@ -337,15 +339,16 @@ def KillTensorboard():
                     os.kill(process.info['pid'], signal.SIGTERM)
 
 # Function to initialize Tensorboard session and writer
-def ConfigTensorboardSession(logDir:str='./tensorboardLogs') -> SummaryWriter:
+def ConfigTensorboardSession(logDir:str='./tensorboardLogs', portNum:int=6006) -> SummaryWriter:
 
-    print('Tensorboard logging directory:', logDir)
-    StartTensorboard(logDir) 
+    print('Tensorboard logging directory:', logDir, ' Port number:', portNum)
+    StartTensorboard(logDir, portNum) 
     # Define writer # By default, this will write in a folder names "runs" in the directory of the main script. Else change providing path as first input.
     tensorBoardWriter = SummaryWriter(log_dir=logDir, comment='', purge_step=None, max_queue=10, flush_secs=120, filename_suffix='') 
 
     # Return initialized writer
     return tensorBoardWriter
+
 
 
 # %% Function to get model checkpoint and load it into nn.Module for training restart - 09-06-2024
@@ -388,16 +391,45 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
                                                                                                               'epochStart': 0}):
     # NOTE: is the default dictionary considered as "single" object or does python perform a merge of the fields?
 
+    # TODO: For merging of options: https://stackoverflow.com/questions/38987/how-do-i-merge-two-dictionaries-in-a-single-expression-taking-union-of-dictiona
+    #if options is None:
+    #    options = {}
+    #
+    ## Merge user-provided options with default options
+    # combined_options = {**default_options, **options}
+    # Now use combined_options in the function
+    # taskType = combined_options['taskType']
+    # device = combined_options['device']
+    # epochs = combined_options['epochs']
+    # tensorboard = combined_options['Tensorboard']
+    # save_checkpoints = combined_options['saveCheckpoints']
+    # checkpoints_out_dir = combined_options['checkpointsOutDir']
+    # model_name = combined_options['modelName']
+    # load_checkpoint = combined_options['loadCheckpoint']
+    # loss_log_name = combined_options['lossLogName']
+    # epoch_start = combined_options['epochStart']
+
+
     # Setup options from input dictionary
-    taskType          = options['taskType']
-    device            = options['device']
-    numOfEpochs       = options['epochs']
-    enableTensorBoard = options['Tensorboard']
-    enableSave        = options['saveCheckpoints']
-    checkpointDir     = options['checkpointsOutDir']
-    modelName         = options['modelName']
-    lossLogName       = options['lossLogName']
-    epochStart        = options['epochStart']
+    taskType            = options['taskType']
+    device              = options['device']
+    numOfEpochs         = options['epochs']
+    enableTensorBoard   = options['Tensorboard']
+    enableSave          = options['saveCheckpoints']
+    checkpointDir       = options['checkpointsOutDir']
+    modelName           = options['modelName']
+    lossLogName         = options['lossLogName']
+    epochStart          = options['epochStart']
+
+    if 'enableAddImageToTensorboard' in options.keys():
+        ADD_IMAGE_TO_TENSORBOARD = options['enableAddImageToTensorboard']
+    else: 
+        ADD_IMAGE_TO_TENSORBOARD = True
+
+    if enableTensorBoard and 'tensorBoardPortNum' in options.keys():
+        tensorBoardPortNum = options['tensorBoardPortNum']
+    else:
+        tensorBoardPortNum = 6006
 
     # Get Torch dataloaders
     if ('TrainingDataLoader' in dataloaderIndex.keys() and 'ValidationDataLoader' in dataloaderIndex.keys()):
@@ -422,7 +454,7 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
         
     if not(os.path.isdir(logDirectory)):
         os.mkdir(logDirectory)
-    tensorBoardWriter = ConfigTensorboardSession(logDirectory)
+    tensorBoardWriter = ConfigTensorboardSession(logDirectory, portNum=tensorBoardPortNum)
 
     # If training is being restarted, attempt to load model
     if options['loadCheckpoint'] == True:
@@ -456,7 +488,6 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
             #tensorBoardWriter.add_scalar(lossLogName + "/validation", validationLossHistory[epochID], epochID + epochStart)
             entriesTagDict = {'Training': trainLossHistory[epochID], 'Validation': validationLossHistory[epochID]}
             tensorBoardWriter.add_scalars(lossLogName, entriesTagDict, epochID)
-            tensorBoardWriter.flush() 
         
         if enableSave:
             if not(os.path.isdir(checkpointDir)):
@@ -467,7 +498,7 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
             SaveTorchModel(model, modelSaveName, saveAsTraced=True, exampleInput=exampleInput, targetDevice=device)
         
         # %% MODEL PREDICTION EXAMPLES
-        examplePrediction, exampleLosses, inputSampleList = EvaluateModel(validationDataset, model, lossFcn, device, 10)
+        examplePrediction, exampleLosses, inputSampleList = EvaluateModel(validationDataset, model, lossFcn, device, 20)
 
         # Add model graph using samples from EvaluateModel
         #if enableTensorBoard:       
@@ -478,8 +509,15 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
         torch.set_printoptions(precision=2)
         for id in range(examplePrediction.shape[0]):
             print('\tPrediction: ', examplePrediction[id, :].tolist(), ' --> Loss: ',exampleLosses[id].tolist())
-        
+            imgTag = 'RandomSampleImg_' + str(id) + '_Epoch' + str(epochID)
+
+            # DEBUG: Add image to tensorboard
+            if ADD_IMAGE_TO_TENSORBOARD:
+                print('ADDING IMAGE TO TENSORBOARD: TEST')
+                tensorBoardWriter.add_image(imgTag, inputSampleList[id].reshape(1, 7, 7), epochID, dataformats='CHW')
+
         torch.set_printoptions(precision=5)
+        tensorBoardWriter.flush() # Force tensorboard to write data to disk
 
     return model, trainLossHistory, validationLossHistory, inputSampleList
 
