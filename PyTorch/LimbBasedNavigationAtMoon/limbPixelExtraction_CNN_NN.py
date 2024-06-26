@@ -215,10 +215,11 @@ def MoonLimbPixConvEnhancer_NormalizedLossFcnWithOutOfPatchTerm(predictCorrectio
     else:
         coeff = paramsTrain['ConicLossWeightCoeff']
 
-    if 'RectExpWeightCoeff' in paramsTrain.keys():
-        RectExpWeightCoeff = paramsTrain['RectExpWeightCoeff']
-    else:
+    if paramsTrain is None:
         RectExpWeightCoeff = 1
+    elif 'RectExpWeightCoeff' in paramsTrain.keys(): 
+        RectExpWeightCoeff = paramsTrain['RectExpWeightCoeff']
+
 
     # Temporary --> should come from params dictionary
     patchSize = 7
@@ -387,10 +388,13 @@ class HorizonExtractionEnhancerCNNv1avg(nn.Module):
         #img2Dinput = (((inputSample[:, 0:self.imagePixSize]).T).reshape(int(np.sqrt(float(self.imagePixSize))), -1, 1, inputSample.size(0))).T # First portion of the input vector reshaped to 2D
         
         #img2Dinput =  ( ( (inputSample[:, 0:self.imagePixSize]).T).reshape(int(torch.sqrt( torch.tensor(self.imagePixSize) )), -1, 1, inputSample.size(0) ) ).T # First portion of the input vector reshaped to 2D
-        firstIndex = int(sqrt( self.imagePixSize ))
-        img2Dinput =  ( ( (inputSample[:, 0:self.imagePixSize]).T).reshape(firstIndex, -1, 1, inputSample.size(0) ) ).T # First portion of the input vector reshaped to 2D
+        assert(inputSample.size(1) == (self.imagePixSize + self.LinearInputSkipSize))
+
+        imgWidth = int(sqrt( self.imagePixSize ))
+        img2Dinput =  ( ( (inputSample[:, 0:self.imagePixSize]).T).reshape(imgWidth, -1, 1, inputSample.size(0) ) ).T # First portion of the input vector reshaped to 2D
 
         contextualInfoInput = inputSample[:, self.imagePixSize:]
+
 
         # Convolutional layers
         # L1 (Input)
@@ -472,8 +476,10 @@ class HorizonExtractionEnhancerCNNv2avg(nn.Module):
         #img2Dinput = (((inputSample[:, 0:self.imagePixSize]).T).reshape(int(np.sqrt(float(self.imagePixSize))), -1, 1, inputSample.size(0))).T # First portion of the input vector reshaped to 2D
         
         #img2Dinput =  ( ( (inputSample[:, 0:self.imagePixSize]).T).reshape(int(torch.sqrt( torch.tensor(self.imagePixSize) )), -1, 1, inputSample.size(0) ) ).T # First portion of the input vector reshaped to 2D
-        firstIndex = int(sqrt( self.imagePixSize ))
-        img2Dinput =  ( ( (inputSample[:, 0:self.imagePixSize]).T).reshape(firstIndex, -1, 1, inputSample.size(0) ) ).T # First portion of the input vector reshaped to 2D
+        assert(inputSample.size(1) == (self.imagePixSize + self.LinearInputSkipSize))
+
+        imgWidth = int(sqrt( self.imagePixSize ))
+        img2Dinput =  ( ( (inputSample[:, 0:self.imagePixSize]).T).reshape(imgWidth, -1, 1, inputSample.size(0) ) ).T # First portion of the input vector reshaped to 2D
 
         contextualInfoInput = inputSample[:, self.imagePixSize:]
 
@@ -552,11 +558,16 @@ class HorizonExtractionEnhancerCNNv1max(nn.Module):
         # ACHTUNG: transpose, reshape, transpose operation assumes that input vector was reshaped column-wise (FORTRAN style)
         #img2Dinput = (((inputSample[:, 0:self.imagePixSize]).T).reshape(int(np.sqrt(float(self.imagePixSize))), -1, 1, inputSample.size(0))).T # First portion of the input vector reshaped to 2D
         
-        #img2Dinput =  ( ( (inputSample[:, 0:self.imagePixSize]).T).reshape(int(torch.sqrt( torch.tensor(self.imagePixSize) )), -1, 1, inputSample.size(0) ) ).T # First portion of the input vector reshaped to 2D
-        firstIndex = int(sqrt( self.imagePixSize ))
-        img2Dinput =  ( ( (inputSample[:, 0:self.imagePixSize]).T).reshape(firstIndex, -1, 1, inputSample.size(0) ) ).T # First portion of the input vector reshaped to 2D
+        assert(inputSample.size(1) == (self.imagePixSize + self.LinearInputSkipSize))
 
+        #img2Dinput =  ( ( (inputSample[:, 0:self.imagePixSize]).T).reshape(int(torch.sqrt( torch.tensor(self.imagePixSize) )), -1, 1, inputSample.size(0) ) ).T # First portion of the input vector reshaped to 2D
+        imgWidth = int(sqrt( self.imagePixSize ))
+        img2Dinput =  ( ( (inputSample[:, 0:self.imagePixSize]).T).reshape(imgWidth, -1, 1, inputSample.size(0) ) ).T # First portion of the input vector reshaped to 2D
         contextualInfoInput = inputSample[:, self.imagePixSize:]
+
+        # DEBUG
+        print(img2Dinput[0, 0, :,:])
+        ########################################
 
         # Convolutional layers
         # L1 (Input)
@@ -639,10 +650,11 @@ class HorizonExtractionEnhancerCNNv2max(nn.Module):
         # ACHTUNG: transpose, reshape, transpose operation assumes that input vector was reshaped column-wise (FORTRAN style)
         #img2Dinput = (((inputSample[:, 0:self.imagePixSize]).T).reshape(int(np.sqrt(float(self.imagePixSize))), -1, 1, inputSample.size(0))).T # First portion of the input vector reshaped to 2D
         
+        assert(inputSample.size(1) == (self.imagePixSize + self.LinearInputSkipSize))
         #img2Dinput =  ( ( (inputSample[:, 0:self.imagePixSize]).T).reshape(int(torch.sqrt( torch.tensor(self.imagePixSize) )), -1, 1, inputSample.size(0) ) ).T # First portion of the input vector reshaped to 2D
-        firstIndex = int(sqrt( self.imagePixSize ))
-        img2Dinput =  ( ( (inputSample[:, 0:self.imagePixSize]).T).reshape(firstIndex, -1, 1, inputSample.size(0) ) ).T # First portion of the input vector reshaped to 2D
-
+        
+        imgWidth = int(sqrt( self.imagePixSize ))
+        img2Dinput =  ( ( (inputSample[:, 0:self.imagePixSize]).T).reshape(imgWidth, -1, 1, inputSample.size(0) ) ).T # First portion of the input vector reshaped to 2D
         contextualInfoInput = inputSample[:, self.imagePixSize:]
 
         # Convolutional layers

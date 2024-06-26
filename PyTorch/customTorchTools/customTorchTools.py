@@ -664,7 +664,7 @@ class TorchModel_MATLABwrap():
 
         # Load model state and state
         trainedModel = LoadTorchModel(None, trainedModelName, trainedModelPath, loadAsTraced=True)
-
+        trainedModel.eval() # Set model in evaluation mode
         self.trainedModel = trainedModel.to(self.device)
 
 
