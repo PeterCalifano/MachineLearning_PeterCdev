@@ -12,7 +12,7 @@ import limbPixelExtraction_CNN_NN
 import datasetPreparation
 
 import torch
-import datetime
+import datetime, json
 from torch import nn
 from scipy.spatial.transform import Rotation
 
@@ -27,7 +27,7 @@ from torch.utils.tensorboard import SummaryWriter # Key class to use tensorboard
 import torch.optim as optim
 
 # EXECUTION MODE
-USE_MULTIPROCESS = True
+USE_MULTIPROCESS = False
 
 def main(id):
 
@@ -37,7 +37,7 @@ def main(id):
     #outChannelsSizes = [16, 32, 75, 15] 
     outChannelsSizes = [256, 128, 75, 50] 
     kernelSizes = [3, 3]
-    learnRate = 1E-8
+    learnRate = 1E-9
     momentumValue = 0.001
 
     LOSS_TYPE = 2 # 0: Conic + L2, # 1: Conic + L2 + Quadratic OutOfPatch, # 2: Normalized Conic + L2 + OutOfPatch
@@ -75,7 +75,7 @@ def main(id):
 
     options = {'taskType': 'regression', 
                'device': device, 
-               'epochs': 2, 
+               'epochs': 4, 
                'Tensorboard':True,
                'saveCheckpoints':True,
                'checkpointsOutDir': modelSavePath,
@@ -84,7 +84,7 @@ def main(id):
                'checkpointsInDir': modelSavePath,
                'lossLogName': 'LossOutOfPatch_MoonHorizonExtraction',
                'logDirectory': tensorboardLogDir,
-               'epochStart': 5}
+               'epochStart': 6}
 
 
 
@@ -180,9 +180,13 @@ def main(id):
 
         centreBaseCost2 = np.array(tmpdataDict['dPatchesCentreBaseCost2'], dtype=np.float32)
 
+        invalidPatchesToCheck = {'ID': [], 'flattenedPatch': []}
+
+
         if id == 1:
             targetAvgRadiusInPix = np.array(metadataDict['dTargetPixAvgRadius'], dtype=np.float32)
 
+        
         for sampleID in range(ui16coarseLimbPixels.shape[1]):
             # Get flattened patch
             flattenedWindow = ui8flattenedWindows[:, sampleID]
@@ -229,7 +233,18 @@ def main(id):
                 labelsDataArray[11, saveID] = centreBaseCost2[sampleID]
 
                 saveID += 1
+            else:
+                # Save invalid patches to check
+                invalidPatchesToCheck['ID'].append(sampleID)
+                invalidPatchesToCheck['flattenedPatch'].append(flattenedWindow.tolist())
+                
+                
 
+    # Save json with invalid patches to check
+    with open(os.path.join('./invalidPatchesToCheck.json'), 'w') as fileCheck:
+        invalidPatchesToCheck_string = json.dumps(invalidPatchesToCheck)
+        json.dump(invalidPatchesToCheck_string, fileCheck)
+        fileCheck.close()
 
     # Shrink dataset remove entries which have not been filled due to invalid path
     print('Number of images loaded from dataset: ', nImages)
@@ -258,14 +273,12 @@ def main(id):
     trainingData, validationData = torch.utils.data.random_split(dataset, [trainingSize, validationSize])
 
     # Define dataloaders objects
-    trainingDataset   = DataLoader(trainingData, batch_size, shuffle=True)
-    validationDataset = DataLoader(validationData, batch_size, shuffle=True) 
+    trainingDataset   = DataLoader(trainingData, batch_size, shuffle=True, num_workers=2, pin_memory=True)
+    validationDataset = DataLoader(validationData, batch_size, shuffle=True, num_workers=2, pin_memory=True)
 
     dataloaderIndex = {'TrainingDataLoader' : trainingDataset, 'ValidationDataLoader': validationDataset}
 
     # LOSS FUNCTION DEFINITION
-    # Custom EvalLoss function: MoonLimbPixConvEnhancer_LossFcn(predictCorrection, labelVector, params:list=None)
-
 
     if LOSS_TYPE == 0:
         lossFcn = customTorchTools.CustomLossFcn(limbPixelExtraction_CNN_NN.MoonLimbPixConvEnhancer_LossFcn, params)
@@ -301,6 +314,13 @@ def main(id):
             raise ValueError('Specified model state file not found. Check input path.')    
     else:
             modelCNN_NN = modelClass(outChannelsSizes, kernelSizes)
+
+
+    # ######### TEST DEBUG ############
+    #testPrediction = modelCNN_NN(torch.tensor(inputDataArray[0:, 0]))
+
+    ############    END TEST DEBUG    ############
+    #exit()
 
     #try:
     #    modelCNN_NN = torch.compile(modelCNN_NN) # ACHTUNG: compile is not compatible with jit.trace required to save traced model.
