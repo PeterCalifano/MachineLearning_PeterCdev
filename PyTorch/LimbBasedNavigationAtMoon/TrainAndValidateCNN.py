@@ -27,8 +27,9 @@ from torch.utils.tensorboard import SummaryWriter # Key class to use tensorboard
 import torch.optim as optim
 
 # EXECUTION MODE
-USE_MULTIPROCESS = True
+USE_MULTIPROCESS = False
 USE_NORMALIZED_IMG = True
+USE_LR_SCHEDULING = True
 
 def main(id):
 
@@ -38,7 +39,7 @@ def main(id):
     #outChannelsSizes = [16, 32, 75, 15] 
     outChannelsSizes = [256, 128, 75, 50] 
     kernelSizes = [3, 3]
-    learnRate = 1E-9
+    initialLearnRate = 1E-5
     momentumValue = 0.001
 
     LOSS_TYPE = 2 # 0: Conic + L2, # 1: Conic + L2 + Quadratic OutOfPatch, # 2: Normalized Conic + L2 + OutOfPatch
@@ -55,7 +56,7 @@ def main(id):
 
     # Options to restart training from checkpoint
     if id == 0:
-        runID = str(3)
+        runID = str(4)
         #modelSavePath = './checkpoints/HorizonPixCorrector_CNNv2_run3'
         modelSavePath = './checkpoints/HorizonPixCorrector_CNNv1max_largerCNN_run' + runID
 
@@ -67,7 +68,7 @@ def main(id):
 
 
     elif id == 1:
-        runID = str(3)
+        runID = str(4)
         modelSavePath = './checkpoints/HorizonPixCorrector_CNNv2max_largerCNN_run' + runID
 
         tensorboardLogDir = './tensorboardLogs/tensorboardLog_v2max_largerCNN_run'   + runID
@@ -86,7 +87,7 @@ def main(id):
 
     options = {'taskType': 'regression', 
                'device': device, 
-               'epochs': 5, 
+               'epochs': 8, 
                'Tensorboard':True,
                'saveCheckpoints':True,
                'checkpointsOutDir': modelSavePath,
@@ -95,7 +96,7 @@ def main(id):
                'checkpointsInDir': modelSavePath,
                'lossLogName': 'LossOutOfPatch_MoonHorizonExtraction',
                'logDirectory': tensorboardLogDir,
-               'epochStart': 5,
+               'epochStart': 0,
                'tensorBoardPortNum': tensorBoardPortNum}
 
 
@@ -346,9 +347,14 @@ def main(id):
 
     # Define optimizer object specifying model instance parameters and optimizer parameters
     if optimizerID == 0:
-        optimizer = torch.optim.SGD(modelCNN_NN.parameters(), lr=learnRate, momentum=momentumValue) 
+        optimizer = torch.optim.SGD(modelCNN_NN.parameters(), lr=initialLearnRate, momentum=momentumValue) 
+    
     elif optimizerID == 1:
-        optimizer = torch.optim.Adam(modelCNN_NN.parameters(), lr=learnRate)
+        optimizer = torch.optim.Adam(modelCNN_NN.parameters(), lr=initialLearnRate, betas=(0.9, 0.999), 
+                                     eps=1e-08, weight_decay=1E-6, amsgrad=False, foreach= True, fused=True)
+
+    if USE_LR_SCHEDULING:
+        optimizer = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=2, threshold=0.01, threshold_mode='rel', cooldown=1, min_lr=1E-12, eps=1e-08)
 
     print('Using loaded dataset for training and validation: ', dataDirPath)
 
@@ -380,6 +386,9 @@ def main(id):
 
 # %% MAIN SCRIPT
 if __name__ == '__main__':
+
+    # Stop any running tensorboard session before starting a new one
+    customTorchTools.KillTensorboard()
 
     # Setup multiprocessing for training the two models in parallel
     if USE_MULTIPROCESS == True:
