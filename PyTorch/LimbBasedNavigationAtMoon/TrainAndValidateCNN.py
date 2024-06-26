@@ -27,7 +27,7 @@ from torch.utils.tensorboard import SummaryWriter # Key class to use tensorboard
 import torch.optim as optim
 
 # EXECUTION MODE
-USE_MULTIPROCESS = False
+USE_MULTIPROCESS = True
 USE_NORMALIZED_IMG = True
 USE_LR_SCHEDULING = True
 
@@ -87,7 +87,7 @@ def main(id):
 
     options = {'taskType': 'regression', 
                'device': device, 
-               'epochs': 8, 
+               'epochs': 2, 
                'Tensorboard':True,
                'saveCheckpoints':True,
                'checkpointsOutDir': modelSavePath,
