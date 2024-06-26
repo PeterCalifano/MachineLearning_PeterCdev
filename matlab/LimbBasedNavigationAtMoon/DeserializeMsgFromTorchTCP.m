@@ -44,7 +44,7 @@ end
 % dPosCam_TF
 % ui8coarseLimbPixels
 
-fprintf('\nReceived data length: %d. \nData vector: ', recvBytes);
+%fprintf('\nReceived data length: %d. \nData vector: ', recvBytes);
 
 % Compute number of batches
 inputSizeInBytes = 4*outputSize;
@@ -58,7 +58,7 @@ for idB = 1:numOfBatches
 
     % Extract data from buffer
     dataBufferReceived = typecast(recvDataBuffer(ptrVector), 'single');
-    disp(dataBufferReceived);
+    %disp(dataBufferReceived);
 
     % Update vector of index pointers
     ptrVector = ptrVector + inputSizeInBytes;
