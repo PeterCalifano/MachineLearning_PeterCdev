@@ -351,7 +351,7 @@ def main(id):
     
     elif optimizerID == 1:
         optimizer = torch.optim.Adam(modelCNN_NN.parameters(), lr=initialLearnRate, betas=(0.9, 0.999), 
-                                     eps=1e-08, weight_decay=1E-6, amsgrad=False, foreach=False, fused=True)
+                                     eps=1e-08, weight_decay=1E-6, amsgrad=False, foreach=None, fused=True)
 
     if USE_LR_SCHEDULING:
         #optimizer = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=2, threshold=0.01, threshold_mode='rel', cooldown=1, min_lr=1E-12, eps=1e-08)
