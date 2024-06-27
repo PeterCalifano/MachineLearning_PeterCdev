@@ -522,9 +522,8 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
 
             # DEBUG: Add image to tensorboard
             if ADD_IMAGE_TO_TENSORBOARD:
-                print('ADDING IMAGE TO TENSORBOARD: TEST')
-                tensorBoardWriter.add_image(imgTag, inputSampleList[id][0:49].reshape(1, 7, 7), epochID, dataformats='CHW')
-
+                tensorBoardWriter.add_image(imgTag, (inputSampleList[id][0:49]).reshape(7, 7).T, epochID, dataformats='HW')
+                
         torch.set_printoptions(precision=5)
         tensorBoardWriter.flush() # Force tensorboard to write data to disk
 
