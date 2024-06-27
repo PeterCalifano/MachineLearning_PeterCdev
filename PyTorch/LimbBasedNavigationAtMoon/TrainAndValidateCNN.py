@@ -31,7 +31,8 @@ USE_MULTIPROCESS = False
 USE_NORMALIZED_IMG = True
 USE_LR_SCHEDULING = True
 TRAIN_ALL = False
-REGEN_DATASET = True
+REGEN_DATASET = False
+USE_TENSOR_LOSS_EVAL = True
 
 def main(idSession:int):
 
@@ -332,7 +333,10 @@ def main(idSession:int):
     elif LOSS_TYPE == 1:
         lossFcn = customTorchTools.CustomLossFcn(limbPixelExtraction_CNN_NN.MoonLimbPixConvEnhancer_LossFcnWithOutOfPatchTerm, params)
     elif LOSS_TYPE == 2:
-        lossFcn = customTorchTools.CustomLossFcn(limbPixelExtraction_CNN_NN.MoonLimbPixConvEnhancer_NormalizedLossFcnWithOutOfPatchTerm, params)
+        if USE_TENSOR_LOSS_EVAL:
+            lossFcn = customTorchTools.CustomLossFcn(limbPixelExtraction_CNN_NN.MoonLimbPixConvEnhancer_NormalizedLossFcnWithOutOfPatchTerm_asTensor, params)
+        else:
+            lossFcn = customTorchTools.CustomLossFcn(limbPixelExtraction_CNN_NN.MoonLimbPixConvEnhancer_NormalizedLossFcnWithOutOfPatchTerm, params)
         
 
     # MODEL CLASS TYPE

@@ -156,7 +156,7 @@ class CustomLossFcn(nn.Module):
         ''''Forward pass method to evaluate loss function on input and label vectors using EvalLossFcn'''
         lossBatch = self.LossFcnObj(predictVector, labelVector, self.paramsTrain, self.paramsEval)
 
-        assert(lossBatch.size()[0] == 1 and lossBatch.size()[1] == 1)
+        assert(lossBatch.dim() == 0)
 
         return lossBatch
    

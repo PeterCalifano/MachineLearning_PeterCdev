@@ -213,24 +213,24 @@ def outOfPatchoutLoss_Quadratic_asTensor(predictCorrection:torch.tensor, halfPat
         raise ValueError('predictCorrection must have 2 rows for x and y pixel correction')
     
     device = predictCorrection.device
+    batchSize = predictCorrection.size()[0]
 
     numOfCoordsOutOfPatch = torch.ones(batchSize, 1, device=device)
-    batchSize = predictCorrection.size()[0]
 
     # Check which samples have the coordinates out of the patch
     idXmask = abs(predictCorrection[:, 0]) > halfPatchSize
     idYmask = abs(predictCorrection[:, 1]) > halfPatchSize
 
-    numOfCoordsOutOfPatch += torch.sum(idYmask)
+    numOfCoordsOutOfPatch += idYmask.view(batchSize, 1)
 
     tmpOutOfPatchoutLoss = torch.zeros(batchSize, 1, device=device)
 
     # Add contribution for all X coordinates violating the condition
-    tmpOutOfPatchoutLoss[idXmask] += torch.square(slopeMultiplier*(predictCorrection[idXmask, 0] - halfPatchSize)**2)
+    tmpOutOfPatchoutLoss[idXmask] += torch.square(slopeMultiplier*(predictCorrection[idXmask, 0] - halfPatchSize)**2).reshape(-1, 1)
     # Add contribution for all Y coordinates violating the condition
-    tmpOutOfPatchoutLoss[idYmask] += torch.square(slopeMultiplier*(predictCorrection[idYmask, 1] - halfPatchSize)**2)
+    tmpOutOfPatchoutLoss[idYmask] += torch.square(slopeMultiplier*(predictCorrection[idYmask, 1] - halfPatchSize)**2).reshape(-1, 1)
 
-    if tmpOutOfPatchoutLoss > 0:
+    if any(tmpOutOfPatchoutLoss > 0):
         if any(tmpOutOfPatchoutLoss.isinf()):
             raise ValueError('tmpOutOfPatchoutLoss is infinite')
         
@@ -334,19 +334,19 @@ def MoonLimbPixConvEnhancer_NormalizedLossFcnWithOutOfPatchTerm_asTensor(predict
     baseCost2 = labelVector[:, 11]
 
     # Evaluate loss terms
-    normalizedConicLoss = torch.zeros(batchSize, 1, dtype=torch.float32, device=device) # Weighting violation of Horizon conic equation
-    outOfPatchoutLoss = torch.zeros(batchSize, 1, dtype=torch.float32, device=device)
+    normalizedConicLoss = torch.zeros(batchSize, 1, 1, dtype=torch.float32, device=device) # Weighting violation of Horizon conic equation
+    outOfPatchoutLoss = torch.zeros(batchSize, 1, 1, dtype=torch.float32, device=device)
 
     # Compute corrected pixel
     correctedPix = torch.zeros(batchSize, 3, 1, dtype=torch.float32, device=device)
 
-    correctedPix[:, 0:2, 2] = 1
-    correctedPix[:, 0:2] = patchCentre + predictCorrection
+    correctedPix[:, 2, 0] = 1
+    correctedPix[:, 0:2, 0] = patchCentre + predictCorrection
 
-    normalizedConicLoss += torch.div((torch.bmm(correctedPix.transpose(1,2), torch.bmm(LimbConicMatrixImg, correctedPix)))**2, baseCost2)
+    normalizedConicLoss += torch.div((torch.bmm(correctedPix.transpose(1,2), torch.bmm(LimbConicMatrixImg, correctedPix)))**2, baseCost2.reshape(batchSize, 1,1))
 
     # Add average of the two coordinates to the total cost term
-    outOfPatchoutLoss += outOfPatchoutLoss_Quadratic_asTensor(predictCorrection, halfPatchSize=halfPatchSize, slopeMultiplier=slopeMultiplier)
+    outOfPatchoutLoss += outOfPatchoutLoss_Quadratic_asTensor(predictCorrection, halfPatchSize=halfPatchSize, slopeMultiplier=slopeMultiplier).reshape(batchSize, 1, 1)
 
     if coeff == 1:
         L2regLoss = 0
