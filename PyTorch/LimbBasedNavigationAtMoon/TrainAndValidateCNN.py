@@ -37,14 +37,14 @@ USE_TENSOR_LOSS_EVAL = True
 def main(idSession:int):
 
     # SETTINGS and PARAMETERS 
-    batch_size = 16*3 # Defines batch size in dataset
+    batch_size = 16*4 # Defines batch size in dataset
     #outChannelsSizes = [16, 32, 75, 15] 
-    outChannelsSizes = [256, 128, 75, 50] 
+    outChannelsSizes = [2*256, 2*128, 2*75, 50] 
     kernelSizes = [3, 3]
-    initialLearnRate = 1E-5
+    initialLearnRate = 1E-2
     momentumValue = 0.001
 
-    LOSS_TYPE = 2 # 0: Conic + L2, # 1: Conic + L2 + Quadratic OutOfPatch, # 2: Normalized Conic + L2 + OutOfPatch
+    LOSS_TYPE = 3 # 0: Conic + L2, # 1: Conic + L2 + Quadratic OutOfPatch, # 2: Normalized Conic + L2 + OutOfPatch, # 3: Polar-n-direction distance + OutOfPatch
     # Loss function parameters
     params = {'ConicLossWeightCoeff': 1, 'RectExpWeightCoeff': 1}
 
@@ -58,7 +58,7 @@ def main(idSession:int):
 
     # Options to restart training from checkpoint
     if idSession == 0:
-        runID = str(4)
+        runID = str(5)
         #modelSavePath = './checkpoints/HorizonPixCorrector_CNNv1_run3'
         modelSavePath = './checkpoints/HorizonPixCorrector_CNNv1max_largerCNN_run' + runID
         datasetSavePath = './datasets/HorizonPixCorrectorV1'
@@ -70,7 +70,7 @@ def main(idSession:int):
 
 
     elif idSession == 1:
-        runID = str(4)
+        runID = str(5)
         modelSavePath = './checkpoints/HorizonPixCorrector_CNNv2max_largerCNN_run' + runID
         datasetSavePath = './datasets/HorizonPixCorrectorV2'
         tensorboardLogDir = './tensorboardLogs/tensorboardLog_v2max_largerCNN_run'   + runID
@@ -89,7 +89,7 @@ def main(idSession:int):
 
     options = {'taskType': 'regression', 
                'device': device, 
-               'epochs': 3, 
+               'epochs': 35, 
                'Tensorboard':True,
                'saveCheckpoints':True,
                'checkpointsOutDir': modelSavePath,
@@ -337,7 +337,8 @@ def main(idSession:int):
             lossFcn = customTorchTools.CustomLossFcn(limbPixelExtraction_CNN_NN.MoonLimbPixConvEnhancer_NormalizedLossFcnWithOutOfPatchTerm_asTensor, params)
         else:
             lossFcn = customTorchTools.CustomLossFcn(limbPixelExtraction_CNN_NN.MoonLimbPixConvEnhancer_NormalizedLossFcnWithOutOfPatchTerm, params)
-        
+    elif LOSS_TYPE == 3:
+        lossFcn = customTorchTools.CustomLossFcn(limbPixelExtraction_CNN_NN.MoonLimbPixConvEnhancer_PolarNdirectionDistanceWithOutOfPatch_asTensor, params)
 
     # MODEL CLASS TYPE
     if UseMaxPooling == False:
@@ -389,7 +390,7 @@ def main(idSession:int):
 
     if USE_LR_SCHEDULING:
         #optimizer = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=2, threshold=0.01, threshold_mode='rel', cooldown=1, min_lr=1E-12, eps=1e-08)
-        lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.2, last_epoch=options['epochStart']-1)
+        lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.65, last_epoch=options['epochStart']-1)
         options['lr_scheduler'] = lr_scheduler
 
 

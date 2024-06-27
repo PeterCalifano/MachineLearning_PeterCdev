@@ -361,6 +361,50 @@ def MoonLimbPixConvEnhancer_NormalizedLossFcnWithOutOfPatchTerm_asTensor(predict
 
 
 # %% Polar-n-direction loss function for Moon Limb pixel extraction CNN enhancer tensorized evaluation - 27-06-2024
+def MoonLimbPixConvEnhancer_PolarNdirectionDistanceWithOutOfPatch_asTensor(predictCorrection, labelVector, paramsTrain:dict=None, paramsEval:dict=None):
+        # Get parameters and labels for computation of the loss
+
+    if paramsTrain is None:
+        RectExpWeightCoeff = 1
+    elif 'RectExpWeightCoeff' in paramsTrain.keys(): 
+        RectExpWeightCoeff = paramsTrain['RectExpWeightCoeff']
+
+    slopeMultiplier = 4
+
+    # Temporary --> should come from params dictionary
+    patchSize = 7
+    halfPatchSize = patchSize/2
+
+    # Extract data from labelVector
+    batchSize = labelVector.size()[0]
+    device = labelVector.device
+    
+    LimbConicMatrixImg = torch.tensor((labelVector[:, 0:9].T).reshape(3, 3, labelVector.size()[0]).T, dtype=torch.float32, device=device)
+    patchCentre = labelVector[:, 9:11]
+
+    # Evaluate loss terms
+    outOfPatchoutLoss = torch.zeros(batchSize, 1, 1, dtype=torch.float32, device=device)
+
+    # Compute corrected pixel
+    correctedPix = torch.zeros(batchSize, 3, 1, dtype=torch.float32, device=device)
+
+    correctedPix[:, 2, 0] = 1
+    correctedPix[:, 0:2, 0] = patchCentre + predictCorrection
+
+    # Compute the Polar-n-direction distance
+    polarNdirectionDist = ComputePolarNdirectionDistance_asTensor(LimbConicMatrixImg, correctedPix)
+
+    # Add average of the two coordinates to the total cost term
+    outOfPatchoutLoss += outOfPatchoutLoss_Quadratic_asTensor(predictCorrection, halfPatchSize=halfPatchSize, slopeMultiplier=slopeMultiplier).reshape(batchSize, 1, 1)
+
+    # Total loss function
+    lossValue = polarNdirectionDist + RectExpWeightCoeff * outOfPatchoutLoss
+
+    # Return sum of loss for the whole batch
+    return torch.sum(lossValue/batchSize)
+    
+    
+
 def ComputePolarNdirectionDistance_asTensor(CconicMatrix:Union[np.array , torch.tensor , list], 
                                    pointCoords: Union[np.array , torch.tensor]):
     '''
@@ -371,7 +415,7 @@ def ComputePolarNdirectionDistance_asTensor(CconicMatrix:Union[np.array , torch.
     batchSize = pointCoords.shape[0]
 
     pointHomoCoords_tensor = torch.zeros((batchSize,3,1), dtype=torch.float32, device=device)
-    pointHomoCoords_tensor[:, 0:2, 0] = torch.stack((pointCoords[:, 0], pointCoords[:, 1]), dim=1)
+    pointHomoCoords_tensor[:, 0:2, 0] = torch.stack((pointCoords[:, 0, 0], pointCoords[:, 1, 0]), dim=1).reshape(batchSize, 2)
     pointHomoCoords_tensor[:, 2, 0] = 1
 
     # Reshape Conic matrix to tensor
@@ -396,8 +440,6 @@ def ComputePolarNdirectionDistance_asTensor(CconicMatrix:Union[np.array , torch.
     # Get mask for the condition
     idsMask = Gdist2_tensor >= CWdist_tensor
 
-    print('Any false in idsMask? ', torch.any(idsMask == False).item())
-
     notIdsMask = Gdist2_tensor < CWdist_tensor
 
     # Compute the square distance depending on if condition
@@ -407,7 +449,7 @@ def ComputePolarNdirectionDistance_asTensor(CconicMatrix:Union[np.array , torch.
     sqrDist_tensor[notIdsMask[:,0,0]] = 0.25 * (Cdist_tensor[notIdsMask]**2 / Gdist_tensor[notIdsMask])
 
     # Return mean over the whole batch
-    return torch.sum(sqrDist_tensor)/batchSize
+    return torch.sum(sqrDist_tensor**2)
 
 
 # %% MSE + Conic Loss function for Moon Limb pixel extraction CNN enhancer tensorized evaluation - 27-06-2024
