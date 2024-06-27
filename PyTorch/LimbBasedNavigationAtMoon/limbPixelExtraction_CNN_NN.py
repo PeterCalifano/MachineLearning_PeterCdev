@@ -410,6 +410,56 @@ def ComputePolarNdirectionDistance_asTensor(CconicMatrix:Union[np.array , torch.
     return torch.sum(sqrDist_tensor)/batchSize
 
 
+# %% MSE + Conic Loss function for Moon Limb pixel extraction CNN enhancer tensorized evaluation - 27-06-2024
+def MoonLimbPixConvEnhancer_NormalizedConicLossWithMSEandOutOfPatch_asTensor(predictCorrection, labelVector, paramsTrain:dict=None, paramsEval:dict=None):
+    # Get parameters and labels for computation of the loss
+    if paramsTrain is None:
+        RectExpWeightCoeff = 1
+    elif 'RectExpWeightCoeff' in paramsTrain.keys(): 
+        RectExpWeightCoeff = paramsTrain['RectExpWeightCoeff']
+
+    # Temporary --> should come from params dictionary
+    patchSize = 7
+    halfPatchSize = patchSize/2
+    slopeMultiplier = 2
+
+    # Extract data from labelVector
+    batchSize = labelVector.size()[0]
+    device = predictCorrection.device
+    
+    LimbConicMatrixImg = torch.tensor((labelVector[:, 0:9].T).reshape(3, 3, labelVector.size()[0]).T, dtype=torch.float32, device=device)
+
+    assert(LimbConicMatrixImg.shape[0] == batchSize)
+
+    patchCentre = labelVector[:, 9:11] # Patch centre coordinates (pixels)
+    baseCost2 = labelVector[:, 11]    # Base cost for the conic constraint evaluated at patch centre
+    targetPrediction = labelVector[:, 12:14] # Target prediction for the pixel correction
+
+    normalizedConicLoss = torch.zeros(batchSize, 1, dtype=torch.float32, device=device) # Weighting violation of Horizon conic equation
+    outOfPatchoutLoss = torch.zeros(batchSize, 1, dtype=torch.float32, device=device)
+
+    # Compute corrected pixel
+    correctedPix = torch.zeros(batchSize, 3, 1, dtype=torch.float32, device=device)
+    correctedPix[:, 0:2, 2] = 1
+    correctedPix[:, 0:2] = patchCentre + predictCorrection
+
+    # Compute the normalized conic loss
+    normalizedConicLoss += torch.div((torch.bmm(correctedPix.transpose(1,2), torch.bmm(LimbConicMatrixImg, correctedPix)))**2, baseCost2)
+
+    # Compute the MSE loss term
+    mseLoss = torch.nn.functional.mse_loss(predictCorrection, targetPrediction, size_average=None, reduce=None, reduction='sum')
+
+    # Add average of the two coordinates to the out of patch cost term
+    outOfPatchoutLoss += outOfPatchoutLoss_Quadratic_asTensor(predictCorrection, halfPatchSize=halfPatchSize, slopeMultiplier=slopeMultiplier)
+
+
+    # Total loss function
+    lossValue =  normalizedConicLoss + mseLoss + (RectExpWeightCoeff * outOfPatchoutLoss)
+
+    # Return sum of loss for the whole batch
+    return torch.sum(lossValue/batchSize)
+
+
 # %% ARCHITECTURES ############################################################################################################
 
 def AutoComputeConvBlocksOutput(self, kernelSizes, poolingKernelSize):
@@ -430,10 +480,10 @@ def AutoComputeConvBlocksOutput(self, kernelSizes, poolingKernelSize):
         return convBlockOutputSize
 
 # %% Custom CNN-NN model for Moon limb pixel extraction enhancer - 01-06-2024
+'''Architecture characteristics: Conv. layers, average pooling, fully connected layers, dropout, leaky ReLU activation, batch normalization.
+Input: Image patch with Moon limb, contextual information: relative attitude, sun direction in pixels, patch centre coordinates.
+'''
 class HorizonExtractionEnhancerCNNv1avg(nn.Module):
-    '''Architecture characteristics: Conv. layers, average pooling, fully connected layers, dropout, leaky ReLU activation, batch normalization.
-    Input: Image patch with Moon limb, contextual information: relative attitude, sun direction in pixels, patch centre coordinates.
-    '''
     def __init__(self, outChannelsSizes:list, kernelSizes, poolingKernelSize=2, alphaDropCoeff=0.1, alphaLeaky=0.01, patchSize=7) -> None:
         super().__init__()
 
@@ -517,11 +567,11 @@ class HorizonExtractionEnhancerCNNv1avg(nn.Module):
     
 
 # %% Custom training function for Moon limb pixel extraction enhancer V2 (with target average radius in pixels) - 21-06-2024
-'''
-Architecture characteristics: Conv. layers, average pooling, fully connected layers, dropout, leaky ReLU activation, batch normalization
-    Input: Image patch with Moon limb, contextual information: relative attitude, sun direction in pixels, patch centre coordinates, target average radius in pixels.
-'''
 class HorizonExtractionEnhancerCNNv2avg(nn.Module):
+    '''
+    Architecture characteristics: Conv. layers, average pooling, fully connected layers, dropout, leaky ReLU activation, batch normalization
+    Input: Image patch with Moon limb, contextual information: relative attitude, sun direction in pixels, patch centre coordinates, target average radius in pixels.
+    '''
     def __init__(self, outChannelsSizes:list, kernelSizes, poolingKernelSize=2, alphaDropCoeff=0.1, alphaLeaky=0.01, patchSize=7) -> None:
         super().__init__()
 
@@ -603,10 +653,11 @@ class HorizonExtractionEnhancerCNNv2avg(nn.Module):
         return predictedPixCorrection
     
 # %% Custom CNN-NN model for Moon limb pixel extraction enhancer V1max - 23-06-2024
-class HorizonExtractionEnhancerCNNv1max(nn.Module):
     '''Architecture characteristics: Conv. layers, max pooling, fully connected layers, dropout, leaky ReLU activation, batch normalization.
     Input: Image patch with Moon limb, contextual information: relative attitude, sun direction in pixels, patch centre coordinates.
     '''
+class HorizonExtractionEnhancerCNNv1max(nn.Module):
+
     def __init__(self, outChannelsSizes:list, kernelSizes, poolingKernelSize=2, alphaDropCoeff=0.1, alphaLeaky=0.01, patchSize=7) -> None:
         super().__init__()
 
