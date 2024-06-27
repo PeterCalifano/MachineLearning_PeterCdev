@@ -30,14 +30,13 @@ import torch.optim as optim
 USE_MULTIPROCESS = False
 USE_NORMALIZED_IMG = True
 USE_LR_SCHEDULING = True
-TRAIN_ALL = True
-REGEN_DATASET = False
+TRAIN_ALL = False
+REGEN_DATASET = True
 
 def main(idSession:int):
 
     # SETTINGS and PARAMETERS 
     batch_size = 16*3 # Defines batch size in dataset
-    TRAINING_PERC = 0.85
     #outChannelsSizes = [16, 32, 75, 15] 
     outChannelsSizes = [256, 128, 75, 50] 
     kernelSizes = [3, 3]
@@ -440,7 +439,7 @@ if __name__ == '__main__':
         print("Training complete for both network classes. Check the logs for more information.")
     else:
 
-        for id in range(2 if TRAIN_ALL else 1):
+        for idSession in range(2 if TRAIN_ALL else 1):
             print('\n\n----------------------------------- RUNNING: TrainAndValidateCNN.py -----------------------------------\n')
             print("MAIN script operations: load dataset --> split dataset --> define dataloaders --> define model --> define loss function --> train and validate model --> export trained model\n")
-            main(id)
+            main(1)

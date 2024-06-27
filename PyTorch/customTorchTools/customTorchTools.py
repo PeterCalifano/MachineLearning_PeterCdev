@@ -521,11 +521,11 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
         torch.set_printoptions(precision=2)
         for id in range(examplePrediction.shape[0]):
             print('\tPrediction: ', examplePrediction[id, :].tolist(), ' --> Loss: ',exampleLosses[id].tolist())
-            imgTag = 'RandomSampleImg_' + str(id) + '_Epoch' + str(epochID)
+            imgTag = 'RandomSampleImg_' + str(id) + '_Epoch' + str(exampleLosses[id].round(4))
 
             # DEBUG: Add image to tensorboard
             if ADD_IMAGE_TO_TENSORBOARD:
-                tensorBoardWriter.add_image(imgTag, (inputSampleList[id][0:49]).reshape(7, 7).T, epochID, dataformats='HW')
+                tensorBoardWriter.add_image(imgTag, (inputSampleList[id][0:49]).reshape(7, 7).T, global_step=epochID, dataformats='HW')
 
         torch.set_printoptions(precision=5)
         tensorBoardWriter.flush() # Force tensorboard to write data to disk
