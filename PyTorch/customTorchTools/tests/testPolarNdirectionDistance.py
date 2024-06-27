@@ -19,8 +19,8 @@ from typing import Union
 
 
 
-
-def ComputePoarNdirectionDistance(CconicMatrix:Union[np.array | torch.tensor | list], pointCoords: Union[np.array | torch.tensor], device=customTorchTools.getDevice()):
+def ComputePolarNdirectionDistance(self, CconicMatrix:Union[np.array | torch.tensor | list], 
+                                   pointCoords: Union[np.array | torch.tensor], device=customTorchTools.getDevice()):
     '''
     Function to compute the Polar-n-direction distance of a point from a conic in the image plane represented by its [3x3] matrix.
     '''
@@ -41,7 +41,6 @@ def ComputePoarNdirectionDistance(CconicMatrix:Union[np.array | torch.tensor | l
     Gdist2 = Gdist * Gdist
     
     Wdist = ( torch.matmul(pointHomoCoords.transpose() * torch.matmul(Wmatrix, pointHomoCoords)) )
-
     CWdist = Cdist * Wdist
 
     # Compute the square distance depending on if condition
@@ -58,6 +57,14 @@ def ComputePoarNdirectionDistance(CconicMatrix:Union[np.array | torch.tensor | l
     print('Gmatrix:', Gmatrix)
     print('Wmatrix:', Wmatrix)
     ############################
+
+    # Shape point coordinates as tensor
+    pointHomoCoords_vec = torch.zeros(shape=(pointCoords.shape[0],3,1), dtype=torch.float32, device=self.device)
+    pointHomoCoords_vec[:, 0:2, 0] = [pointCoords[:, 0], pointCoords[:, 1]]
+    pointHomoCoords_vec[:, 2, 0] = 1
+
+    # Reshape Conic matrix to tensor
+    
 
     return sqrDist
 
