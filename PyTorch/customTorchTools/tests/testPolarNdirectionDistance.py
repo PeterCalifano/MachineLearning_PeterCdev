@@ -29,22 +29,22 @@ def ComputePolarNdirectionDistance(CconicMatrix:Union[np.array , torch.tensor , 
     Function to compute the Polar-n-direction distance of a point from a conic in the image plane represented by its [3x3] matrix.
     '''    
     # Convert the input to homogeneous coordinates
-    pointHomoCoords = torch.tensor([pointCoords[0], pointCoords[1], 1]).reshape(3,1)
+    pointHomoCoords = torch.tensor([pointCoords[0], pointCoords[1], 1], dtype=torch.float32).reshape(3,1)
 
     # Compute auxiliary variables
     CbarMatrix = torch.zeros((3,3))
-    CbarMatrix[0:2,0:2] = CconicMatrix.reshape(3,3)[0:2,0:2]
+    CbarMatrix[0:2,0:3] = CconicMatrix.reshape(3,3)[0:2,0:3]
 
     Gmatrix = torch.matmul(CconicMatrix, CbarMatrix)
-    Wmatrix = torch.matmul(torch.matmul(CbarMatrix.transpose, CconicMatrix), CbarMatrix)
+    Wmatrix = torch.matmul(torch.matmul(CbarMatrix.T, CconicMatrix), CbarMatrix)
 
     # Compute Gdist2, CWdist and Cdist
-    Cdist = torch.matmul(pointHomoCoords.transpose() * torch.matmul(CconicMatrix, pointHomoCoords))
+    Cdist = torch.matmul(pointHomoCoords.T, torch.matmul(CconicMatrix, pointHomoCoords))
     
-    Gdist = ( torch.matmul(pointHomoCoords.transpose() * torch.matmul(Gmatrix, pointHomoCoords)) )
+    Gdist = ( torch.matmul(pointHomoCoords.T, torch.matmul(Gmatrix, pointHomoCoords)) )
     Gdist2 = Gdist * Gdist
     
-    Wdist = ( torch.matmul(pointHomoCoords.transpose() * torch.matmul(Wmatrix, pointHomoCoords)) )
+    Wdist = ( torch.matmul(pointHomoCoords.T, torch.matmul(Wmatrix, pointHomoCoords)) )
     CWdist = Cdist * Wdist
 
     # Compute the square distance depending on if condition
@@ -57,9 +57,9 @@ def ComputePolarNdirectionDistance(CconicMatrix:Union[np.array , torch.tensor , 
 
 
     ##### DEBUG PRINTS ##########
-    print('CbarMatrix:', CbarMatrix)
-    print('Gmatrix:', Gmatrix)
-    print('Wmatrix:', Wmatrix)
+    #print('CbarMatrix:', CbarMatrix)
+    #print('Gmatrix:', Gmatrix)
+    #print('Wmatrix:', Wmatrix)
     ############################
 
     return sqrDist
@@ -167,12 +167,20 @@ def main():
     X, Y = np.array(X.cpu().detach().numpy()), np.array(Y.cpu().detach().numpy())
     ax.contourf(X, Y, sqrDist_np, levels=Nlevels)
     
+    # Plot distance as surface 
     fig2, ax2 = plt.subplots(subplot_kw={"projection": "3d"})
     
     ax2.plot_surface(X, Y, sqrDist_np**2, cmap='viridis', edgecolor='none')
 
-    plt.show(block=True)
+    # Plot loop version
+    fig3, ax3 = plt.subplots(subplot_kw={"projection": "3d"})
     
+    ax3.plot_surface(X, Y, sqrDist_loop**2, cmap='viridis', edgecolor='none')
+
+
+    plt.show(block=True)
+
+    diff = np.array(sqrDist_loop) - np.array(sqrDist_np)
     
 
 

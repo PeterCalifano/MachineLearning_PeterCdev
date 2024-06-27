@@ -27,6 +27,7 @@ from torch.utils.data import DataLoader # Utils for dataset management, storing 
 from torchvision import datasets # Import vision default datasets from torchvision
 from torchvision.transforms import ToTensor # Utils
 
+from typing import Union
 import numpy as np
 
 from torch.utils.tensorboard import SummaryWriter 
@@ -353,12 +354,60 @@ def MoonLimbPixConvEnhancer_NormalizedLossFcnWithOutOfPatchTerm_asTensor(predict
         L2regLoss = torch.norm(predictCorrection, dim=1).sum()
 
     # Total loss function
-    lossValue = coeff * (normalizedConicLoss/batchSize) + (1-coeff) * L2regLoss + RectExpWeightCoeff * outOfPatchoutLoss
+    lossValue = coeff * (normalizedConicLoss) + (1-coeff) * L2regLoss + RectExpWeightCoeff * outOfPatchoutLoss
 
-    return lossValue
+    # Return sum of loss for the whole batch
+    return torch.sum(lossValue/batchSize)
 
 
+# %% Polar-n-direction loss function for Moon Limb pixel extraction CNN enhancer tensorized evaluation - 27-06-2024
+def ComputePolarNdirectionDistance_asTensor(CconicMatrix:Union[np.array , torch.tensor , list], 
+                                   pointCoords: Union[np.array , torch.tensor]):
+    '''
+    Function to compute the Polar-n-direction distance of a point from a conic in the image plane represented by its [3x3] matrix using torch tensors operations.
+    '''
+    device = pointCoords.device
+    # Shape point coordinates as tensor
+    batchSize = pointCoords.shape[0]
 
+    pointHomoCoords_tensor = torch.zeros((batchSize,3,1), dtype=torch.float32, device=device)
+    pointHomoCoords_tensor[:, 0:2, 0] = torch.stack((pointCoords[:, 0], pointCoords[:, 1]), dim=1)
+    pointHomoCoords_tensor[:, 2, 0] = 1
+
+    # Reshape Conic matrix to tensor
+    CconicMatrix = CconicMatrix.view(batchSize, 3, 3).to(device)
+
+    CbarMatrix_tensor = torch.zeros((batchSize, 3, 3), dtype=torch.float32, device=device)
+    CbarMatrix_tensor[:, 0:2,0:3] = CconicMatrix[:, 0:2,0:3]
+
+    Gmatrix_tensor = torch.bmm(CconicMatrix, CbarMatrix_tensor)
+    Wmatrix_tensor = torch.bmm(torch.bmm(CbarMatrix_tensor.transpose(1,2), CconicMatrix), CbarMatrix_tensor)
+
+    # Compute Gdist2, CWdist and Cdist
+    Cdist_tensor = torch.bmm( pointHomoCoords_tensor.transpose(1, 2), torch.bmm(CconicMatrix, pointHomoCoords_tensor) ) 
+    
+    Gdist_tensor = torch.bmm( pointHomoCoords_tensor.transpose(1, 2), torch.bmm(Gmatrix_tensor, pointHomoCoords_tensor) )
+    Gdist2_tensor = torch.bmm(Gdist_tensor, Gdist_tensor)
+    
+    Wdist_tensor = torch.bmm(pointHomoCoords_tensor.transpose(1, 2), torch.bmm(Wmatrix_tensor, pointHomoCoords_tensor)) 
+    CWdist_tensor = torch.bmm(Cdist_tensor, Wdist_tensor)
+
+
+    # Get mask for the condition
+    idsMask = Gdist2_tensor >= CWdist_tensor
+
+    print('Any false in idsMask? ', torch.any(idsMask == False).item())
+
+    notIdsMask = Gdist2_tensor < CWdist_tensor
+
+    # Compute the square distance depending on if condition
+    sqrDist_tensor = torch.zeros(batchSize, dtype=torch.float32, device=device)
+
+    sqrDist_tensor[idsMask[:,0,0]] = Cdist_tensor[idsMask] / ( Gdist_tensor[idsMask] * ( 1 + torch.sqrt(1 + (Gdist2_tensor[idsMask] - CWdist_tensor[idsMask]) / Gdist2_tensor[idsMask]) )**2)
+    sqrDist_tensor[notIdsMask[:,0,0]] = 0.25 * (Cdist_tensor[notIdsMask]**2 / Gdist_tensor[notIdsMask])
+
+    # Return mean over the whole batch
+    return torch.sum(sqrDist_tensor)/batchSize
 
 
 # %% ARCHITECTURES ############################################################################################################
