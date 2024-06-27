@@ -155,7 +155,10 @@ class CustomLossFcn(nn.Module):
     def forward(self, predictVector, labelVector):
         ''''Forward pass method to evaluate loss function on input and label vectors using EvalLossFcn'''
         lossBatch = self.LossFcnObj(predictVector, labelVector, self.paramsTrain, self.paramsEval)
-        return lossBatch.mean()
+
+        assert(lossBatch.size()[0] == 1 and lossBatch.size()[1] == 1)
+
+        return lossBatch
    
 
 # %% Function to save model state - 04-05-2024, updated 11-06-2024
@@ -262,11 +265,11 @@ def SaveTorchDataset(datasetObj:Dataset, datasetFilePath:str='', datasetName:str
 
     if not(os.path.isdir(datasetFilePath)):
         os.makedirs(datasetFilePath)
-    torch.save(datasetObj, datasetFilePath + datasetName + ".pt")
+    torch.save(datasetObj, os.path.join(datasetFilePath, datasetName + ".pt"))
 
 # %% Function to load Dataset object - 01-06-2024
-def LoadTorchDataset(datasetFilePath:str) -> Dataset:
-    return torch.load(datasetFilePath + ".pt")
+def LoadTorchDataset(datasetFilePath:str, datasetName:str='dataset') -> Dataset:
+    return torch.load(os.path.join(datasetFilePath, datasetName + ".pt"))
 
 
 # %% Generic Dataset class for Supervised learning - 30-05-2024
@@ -523,7 +526,7 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
             # DEBUG: Add image to tensorboard
             if ADD_IMAGE_TO_TENSORBOARD:
                 tensorBoardWriter.add_image(imgTag, (inputSampleList[id][0:49]).reshape(7, 7).T, epochID, dataformats='HW')
-                
+
         torch.set_printoptions(precision=5)
         tensorBoardWriter.flush() # Force tensorboard to write data to disk
 

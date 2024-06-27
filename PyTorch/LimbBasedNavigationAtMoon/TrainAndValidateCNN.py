@@ -31,7 +31,7 @@ USE_MULTIPROCESS = False
 USE_NORMALIZED_IMG = True
 USE_LR_SCHEDULING = True
 TRAIN_ALL = True
-REGEN_DATASET = True
+REGEN_DATASET = False
 
 def main(idSession:int):
 
@@ -295,16 +295,21 @@ def main(idSession:int):
         if not os.path.exists(datasetSavePath):
             os.makedirs(datasetSavePath)
         
-        customTorchTools.SaveTorchDataset(datasetTraining, datasetSavePath, datasetName='/TrainingDataset_'+TrainingDatasetTag)
-        customTorchTools.SaveTorchDataset(datasetValidation, datasetSavePath, datasetName='/ValidationDataset_'+ValidationDatasetTag)
+        customTorchTools.SaveTorchDataset(datasetTraining, datasetSavePath, datasetName='TrainingDataset_'+TrainingDatasetTag)
+        customTorchTools.SaveTorchDataset(datasetValidation, datasetSavePath, datasetName='ValidationDataset_'+ValidationDatasetTag)
     else:
 
-        if not(os.path.isfile(os.path.join(datasetSavePath, 'TrainingDataset_'+TrainingDatasetTag))) or not((os.path.isfile(os.path.join(datasetSavePath, 'ValidationDataset_'+ValidationDatasetTag)))):
+        if not(os.path.isfile(os.path.join(datasetSavePath, 'TrainingDataset_'+TrainingDatasetTag+'.pt'))) or not((os.path.isfile(os.path.join(datasetSavePath, 'ValidationDataset_'+ValidationDatasetTag+'.pt')))):
             raise ImportError('Dataset files not found. Set REGEN_DATASET to True to regenerate the dataset torch saves.')
         
         # LOAD PRE-GENERATED DATASETS
-        datasetTraining = customTorchTools.LoadTorchDataset(datasetSavePath, datasetName='/TrainingDataset_'+TrainingDatasetTag)
-        datasetValidation = customTorchTools.LoadTorchDataset(datasetSavePath, datasetName='/ValidationDataset_'+ValidationDatasetTag)
+        trainingDatasetPath = os.path.join(datasetSavePath, 'TrainingDataset_'+TrainingDatasetTag+'.pt')
+        validationDatasetPath = os.path.join(datasetSavePath, 'ValidationDataset_'+ValidationDatasetTag+'.pt')
+        
+        print('Loading training and validation datasets from: \n\t', trainingDatasetPath, '\n\t', validationDatasetPath)
+
+        datasetTraining = customTorchTools.LoadTorchDataset(datasetSavePath, datasetName='TrainingDataset_'+TrainingDatasetTag)
+        datasetValidation = customTorchTools.LoadTorchDataset(datasetSavePath, datasetName='ValidationDataset_'+ValidationDatasetTag)
     ################################################################################################
 
     # SUPERSEDED CODE --> move this to function for dataset splitting (add rng seed for reproducibility)
@@ -384,7 +389,6 @@ def main(idSession:int):
         lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.2, last_epoch=options['epochStart']-1)
         options['lr_scheduler'] = lr_scheduler
 
-    print('Using loaded dataset for training and validation: ', dataDirPath)
 
     # %% TRAIN and VALIDATE MODEL
     '''
@@ -405,7 +409,7 @@ def main(idSession:int):
        #customTorchTools.ExportTorchModelToONNx(trainedModel, inputSample, onnxExportPath='./checkpoints',
        #                                    onnxSaveName='trainedModelONNx', modelID=options['epochStart']+options['epochs'], onnx_version=14)
 
-        customTorchTools.SaveTorchModel(trainedModel, modelName=os.path.join(tracedModelSavePath, modelArchName+'_'+str(customTorchTools.AddZerosPadding(options['epochStart']+options['epochs'])), 3), 
+        customTorchTools.SaveTorchModel(trainedModel, modelName=os.path.join(tracedModelSavePath, modelArchName+'_'+str(customTorchTools.AddZerosPadding(options['epochStart']+options['epochs'], 3) )), 
                                    saveAsTraced=True, exampleInput=inputSample)
 
     # Close stdout log stream
