@@ -30,9 +30,10 @@ import torch.optim as optim
 USE_MULTIPROCESS = False
 USE_NORMALIZED_IMG = True
 USE_LR_SCHEDULING = True
-TRAIN_ALL = False
+TRAIN_ALL = True
+REGEN_DATASET = True
 
-def main(id):
+def main(idSession:int):
 
     # SETTINGS and PARAMETERS 
     batch_size = 16*3 # Defines batch size in dataset
@@ -56,11 +57,11 @@ def main(id):
     tracedModelSavePath = 'tracedModelsArchive' 
 
     # Options to restart training from checkpoint
-    if id == 0:
+    if idSession == 0:
         runID = str(4)
-        #modelSavePath = './checkpoints/HorizonPixCorrector_CNNv2_run3'
+        #modelSavePath = './checkpoints/HorizonPixCorrector_CNNv1_run3'
         modelSavePath = './checkpoints/HorizonPixCorrector_CNNv1max_largerCNN_run' + runID
-
+        datasetSavePath = './datasets/HorizonPixCorrectorV1'
         tensorboardLogDir = './tensorboardLogs/tensorboardLog_v1max_largerCNN_run' + runID
         tensorBoardPortNum = 6008
         
@@ -68,10 +69,10 @@ def main(id):
         inputSize = 56 # TODO: update this according to new model
 
 
-    elif id == 1:
+    elif idSession == 1:
         runID = str(4)
         modelSavePath = './checkpoints/HorizonPixCorrector_CNNv2max_largerCNN_run' + runID
-
+        datasetSavePath = './datasets/HorizonPixCorrectorV2'
         tensorboardLogDir = './tensorboardLogs/tensorboardLog_v2max_largerCNN_run'   + runID
         tensorBoardPortNum = 6009
 
@@ -88,7 +89,7 @@ def main(id):
 
     options = {'taskType': 'regression', 
                'device': device, 
-               'epochs': 2, 
+               'epochs': 3, 
                'Tensorboard':True,
                'saveCheckpoints':True,
                'checkpointsOutDir': modelSavePath,
@@ -112,187 +113,211 @@ def main(id):
         modelName = sorted(modelNamesWithTime, key=lambda x: x[1])[-1][0]
 
 
-    # DATASET LOADING
-    # TODO: add datasets
-    #trainingData = datasets.FashionMNIST(
-    #    root="data",
-    #    train=True,
-    #    download=True,
-    #    transform=ToTensor(),
-    #) 
-    #testData = datasets.FashionMNIST(
-    #    root="data",
-    #    train=False,
-    #    download=True,
-    #    transform=ToTensor(),
-    #) 
+    # %% GENERATE OR LOAD TORCH DATASET
 
-    # Extract data from JSON
-    #trainingDataPath = ''
-    #validationDataPath = ''
-    #trainingDataDict = datasetPreparation.LoadJSONdata(dataPath)
-    #validationDataDict = datasetPreparation.LoadJSONdata(dataPath)
-
-    # Construct Dataset objects
-    #trainingData    = MoonLimbPixCorrector_Dataset(trainingDataDict)
-    #validationData  = MoonLimbPixCorrector_Dataset(validationDataDict)
-
-    ######## TEMPORARY CODE: load single dataset and split ########
-    # Create the dataset
     dataPath = os.path.join('/home/peterc/devDir/MATLABcodes/syntheticRenderings/Datapairs')
     dirNamesRoot = os.listdir(dataPath)
 
+    #os.scandir(dataDirPath)
+    #with os.scandir(modelSavePath) as it:
+    #    modelNamesWithTime = [(entry.name, entry.stat().st_mtime) for entry in it if entry.is_file()]
+    #    modelName = sorted(modelNamesWithTime, key=lambda x: x[1])[-1][0]
+
+    assert(len(dirNamesRoot) >= 2)
+
     # Select one of the available datapairs folders (each corresponding to a labels generation pipeline output)
-    datasetID = 0 # ACHTUNG! paths from listdir are randomly ordered! --> TODO: modify
-    dataDirPath = os.path.join(dataPath, dirNamesRoot[datasetID])
+    datasetID = [0, 6] # TRAINING and VALIDATION datasets ID in folder (in this order)
 
-    dataFilenames = os.listdir(dataDirPath)
+    assert(len(datasetID) == 2)
 
-    nImages = len(dataFilenames)
+    TrainingDatasetTag = dirNamesRoot[datasetID[0]]
+    ValidationDatasetTag = dirNamesRoot[datasetID[1]]
 
-    # DEBUG
-    print('Found images:', nImages)
-    print(dataFilenames)
+    if REGEN_DATASET == True:
+        # REGENERATE the dataset
+        # TODO: add printing of loaded dataset information
 
-    # Get nPatches from the first datapairs files
-    dataFileID = 0
-    dataFilePath = os.path.join(dataDirPath, dataFilenames[dataFileID])
-    print('Loading data from:', dataFilePath)
-    tmpdataDict, tmpdataKeys = datasetPreparation.LoadJSONdata(dataFilePath)
-    print('All data loaded correctly.')
+        for idDataset in range(len(datasetID)):
 
-    # TODO: add printing of loaded dataset information
+            if idDataset == 0:
+                print('Generating training dataset from: ', dirNamesRoot[datasetID[idDataset]])
+            elif idDataset == 1:
+                print('Generating validation dataset from: ', dirNamesRoot[datasetID[idDataset]])
 
-    # DEBUG
-    print(tmpdataKeys)
+            # Get images and labels from IDth dataset
+            dataDirPath = os.path.join(dataPath, dirNamesRoot[datasetID[idDataset]])
+            dataFilenames = os.listdir(dataDirPath)
+            nImages = len(dataFilenames)
 
-    nPatches = len(tmpdataDict['ui16coarseLimbPixels'][0])
-    nSamples = nPatches * nImages
+            print('Found number of images:', nImages)
 
-    # NOTE: each datapair corresponds to an image (i.e. nPatches samples)
-    # Initialize dataset building variables
-    saveID = 0
-    
+            # DEBUG
+            #print(dataFilenames)
 
-    inputDataArray  = np.zeros((inputSize, nSamples), dtype=np.float32)
-    labelsDataArray = np.zeros((12, nSamples), dtype=np.float32)
+            # Get nPatches from the first datapairs files
+            dataFileID = 0
+            dataFilePath = os.path.join(dataDirPath, dataFilenames[dataFileID])
+            #print('Loading data from:', dataFilePath)
+            tmpdataDict, tmpdataKeys = datasetPreparation.LoadJSONdata(dataFilePath)
+            print('All data loaded correctly --> DATASET PREPARATION BEGIN')
 
-    for dataPair in dataFilenames:
-        # Data dict for ith image
-        tmpdataDict, tmpdataKeys = datasetPreparation.LoadJSONdata(os.path.join(dataDirPath, dataPair))
+            # DEBUG
+            #print(tmpdataKeys)
 
-        metadataDict = tmpdataDict['metadata']
+            nPatches = len(tmpdataDict['ui16coarseLimbPixels'][0])
+            nSamples = nPatches * nImages
 
-        #dPosCam_TF           = np.array(metadataDict['dPosCam_TF'], dtype=np.float32)
-        dAttDCM_fromTFtoCAM  = np.array(metadataDict['dAttDCM_fromTFtoCAM'], dtype=np.float32)
-        dSunDir_PixCoords    = np.array(metadataDict['dSunDir_PixCoords'], dtype=np.float32)
-        dLimbConicCoeffs_PixCoords = np.array(metadataDict['dLimbConic_PixCoords'], dtype=np.float32)
-        #dRmoonDEM            = np.array(metadataDict['dRmoonDEM'], dtype=np.float32)
+            # NOTE: each datapair corresponds to an image (i.e. nPatches samples)
+            # Initialize dataset building variables
+            saveID = 0
 
-        ui16coarseLimbPixels = np.array(tmpdataDict['ui16coarseLimbPixels'], dtype=np.float32)
-        ui8flattenedWindows  = np.array(tmpdataDict['ui8flattenedWindows'], dtype=np.float32)
+            inputDataArray  = np.zeros((inputSize, nSamples), dtype=np.float32)
+            labelsDataArray = np.zeros((12, nSamples), dtype=np.float32)
 
-        centreBaseCost2 = np.array(tmpdataDict['dPatchesCentreBaseCost2'], dtype=np.float32)
+            imgID = 0
+            for dataPair in dataFilenames:
+       
+                # Data dict for ith image
+                tmpdataDict, tmpdataKeys = datasetPreparation.LoadJSONdata(os.path.join(dataDirPath, dataPair))
 
-        invalidPatchesToCheck = {'ID': [], 'flattenedPatch': []}
+                metadataDict = tmpdataDict['metadata']
+
+                #dPosCam_TF           = np.array(metadataDict['dPosCam_TF'], dtype=np.float32)
+                dAttDCM_fromTFtoCAM  = np.array(metadataDict['dAttDCM_fromTFtoCAM'], dtype=np.float32)
+                dSunDir_PixCoords    = np.array(metadataDict['dSunDir_PixCoords'], dtype=np.float32)
+                dLimbConicCoeffs_PixCoords = np.array(metadataDict['dLimbConic_PixCoords'], dtype=np.float32)
+                #dRmoonDEM            = np.array(metadataDict['dRmoonDEM'], dtype=np.float32)
+
+                ui16coarseLimbPixels = np.array(tmpdataDict['ui16coarseLimbPixels'], dtype=np.float32)
+                ui8flattenedWindows  = np.array(tmpdataDict['ui8flattenedWindows'], dtype=np.float32)
+
+                centreBaseCost2 = np.array(tmpdataDict['dPatchesCentreBaseCost2'], dtype=np.float32)
+
+                invalidPatchesToCheck = {'ID': [], 'flattenedPatch': []}
 
 
-        if id == 1:
-            targetAvgRadiusInPix = np.array(metadataDict['dTargetPixAvgRadius'], dtype=np.float32)
+                if idSession == 1:
+                    targetAvgRadiusInPix = np.array(metadataDict['dTargetPixAvgRadius'], dtype=np.float32)
 
-        if USE_NORMALIZED_IMG:
-            normalizationCoeff = 255.0
-        else:
-            normalizationCoeff = 1.0
+                if USE_NORMALIZED_IMG:
+                    normalizationCoeff = 255.0
+                else:
+                    normalizationCoeff = 1.0
+
+                for sampleID in range(ui16coarseLimbPixels.shape[1]):
+
+                    print("\tProcessing samples: {current:8.0f}/{total:8.0f} of image {currentImgID:5.0f}/{totalImgs:5.0f}".format(current=sampleID+1, 
+                    total=ui16coarseLimbPixels.shape[1], currentImgID=imgID+1, totalImgs=nImages), end="\r")
+
+                    # Get flattened patch
+                    flattenedWindow = ui8flattenedWindows[:, sampleID]
+                    flattenedWindSize = len(flattenedWindow)
+                    # Validate patch counting how many pixels are completely black or white
+
+                    pathIsValid = limbPixelExtraction_CNN_NN.IsPatchValid(flattenedWindow, lowerIntensityThr=10)
+
+                    #pathIsValid = True
+
+                    if pathIsValid:
+                        ptrToInput = 0
+
+                        # Assign flattened window to input data array
+                        inputDataArray[ptrToInput:ptrToInput+flattenedWindSize, saveID]  = flattenedWindow/normalizationCoeff
+
+                        ptrToInput += flattenedWindSize # Update index
+
+                        #inputDataArray[49, saveID]    = dRmoonDEM
+
+                        # Assign Sun direction to input data array
+                        inputDataArray[ptrToInput:ptrToInput+len(dSunDir_PixCoords), saveID] = dSunDir_PixCoords
+
+                        ptrToInput += len(dSunDir_PixCoords) # Update index
+
+                        # Assign Attitude matrix as Modified Rodrigues Parameters to input data array
+                        tmpVal = (Rotation.from_matrix(np.array(dAttDCM_fromTFtoCAM))).as_mrp() # Convert Attitude matrix to MRP parameters
+
+                        inputDataArray[ptrToInput:ptrToInput+len(tmpVal), saveID] = tmpVal
+
+                        ptrToInput += len(tmpVal) # Update index
+
+                        #inputDataArray[55:58, saveID] = dPosCam_TF
+                        if idSession == 1:
+                            inputDataArray[ptrToInput, saveID] = targetAvgRadiusInPix
+                            ptrToInput += targetAvgRadiusInPix.size # Update index
+
+                        # Assign coarse Limb pixels to input data array
+                        inputDataArray[ptrToInput::, saveID] = ui16coarseLimbPixels[:, sampleID]
+
+                        # Assign labels to labels data array
+                        labelsDataArray[0:9, saveID] = np.ravel(dLimbConicCoeffs_PixCoords)
+                        labelsDataArray[9:11, saveID] = ui16coarseLimbPixels[:, sampleID]
+                        labelsDataArray[11, saveID] = centreBaseCost2[sampleID]
+
+                        saveID += 1
+                    else:
+                        # Save invalid patches to check
+                        invalidPatchesToCheck['ID'].append(sampleID)
+                        invalidPatchesToCheck['flattenedPatch'].append(flattenedWindow.tolist())
+                imgID += 1
+
+            # Save json with invalid patches to check
+            if idSession == 0:
+                fileName = './invalidPatchesToCheck_Training.json'
+            elif idSession == 1:
+                fileName = './invalidPatchesToCheck_Validation.json'
+
+            with open(os.path.join(fileName), 'w') as fileCheck:
+                invalidPatchesToCheck_string = json.dumps(invalidPatchesToCheck)
+                json.dump(invalidPatchesToCheck_string, fileCheck)
+                fileCheck.close()
+
+            # Shrink dataset remove entries which have not been filled due to invalid path
+            print('\n')
+            print('\tNumber of images loaded from dataset: ', nImages)
+            print('\tNumber of samples in dataset: ', nSamples)
+            print('\tNumber of removed invalid patches from validity check:', nSamples - saveID)
+
+            inputDataArray = inputDataArray[:, 0:saveID]           
+            labelsDataArray = labelsDataArray[:, 0:saveID]
+
+            if idDataset == 0:
+                dataDictTraining = {'labelsDataArray': labelsDataArray, 'inputDataArray': inputDataArray}
+            elif idDataset == 1:   
+                dataDictValidation = {'labelsDataArray': labelsDataArray, 'inputDataArray': inputDataArray}
+
+            print('DATASET PREPARATION COMPLETED.')
+
+        # INITIALIZE DATASET OBJECT # TEMPORARY from one single dataset
+        datasetTraining = limbPixelExtraction_CNN_NN.MoonLimbPixCorrector_Dataset(dataDictTraining)
+        datasetValidation = limbPixelExtraction_CNN_NN.MoonLimbPixCorrector_Dataset(dataDictValidation)
+
+        # Save dataset as torch dataset object for future use
+        if not os.path.exists(datasetSavePath):
+            os.makedirs(datasetSavePath)
         
-        for sampleID in range(ui16coarseLimbPixels.shape[1]):
-            # Get flattened patch
-            flattenedWindow = ui8flattenedWindows[:, sampleID]
-            flattenedWindSize = len(flattenedWindow)
-            # Validate patch counting how many pixels are completely black or white
+        customTorchTools.SaveTorchDataset(datasetTraining, datasetSavePath, datasetName='/TrainingDataset_'+TrainingDatasetTag)
+        customTorchTools.SaveTorchDataset(datasetValidation, datasetSavePath, datasetName='/ValidationDataset_'+ValidationDatasetTag)
+    else:
 
-            pathIsValid = limbPixelExtraction_CNN_NN.IsPatchValid(flattenedWindow, lowerIntensityThr=10)
-
-            #pathIsValid = True
-
-            if pathIsValid:
-                ptrToInput = 0
-                
-                # Assign flattened window to input data array
-                inputDataArray[ptrToInput:ptrToInput+flattenedWindSize, saveID]  = flattenedWindow/normalizationCoeff
-
-                ptrToInput += flattenedWindSize # Update index
-
-                #inputDataArray[49, saveID]    = dRmoonDEM
-
-                # Assign Sun direction to input data array
-                inputDataArray[ptrToInput:ptrToInput+len(dSunDir_PixCoords), saveID] = dSunDir_PixCoords
-
-                ptrToInput += len(dSunDir_PixCoords) # Update index
-
-                # Assign Attitude matrix as Modified Rodrigues Parameters to input data array
-                tmpVal = (Rotation.from_matrix(np.array(dAttDCM_fromTFtoCAM))).as_mrp() # Convert Attitude matrix to MRP parameters
-                
-                inputDataArray[ptrToInput:ptrToInput+len(tmpVal), saveID] = tmpVal
-
-                ptrToInput += len(tmpVal) # Update index
-
-                #inputDataArray[55:58, saveID] = dPosCam_TF
-                if id == 1:
-                    inputDataArray[ptrToInput, saveID] = targetAvgRadiusInPix
-                    ptrToInput += targetAvgRadiusInPix.size # Update index
-
-                # Assign coarse Limb pixels to input data array
-                inputDataArray[ptrToInput::, saveID] = ui16coarseLimbPixels[:, sampleID]
-
-                # Assign labels to labels data array
-                labelsDataArray[0:9, saveID] = np.ravel(dLimbConicCoeffs_PixCoords)
-                labelsDataArray[9:11, saveID] = ui16coarseLimbPixels[:, sampleID]
-                labelsDataArray[11, saveID] = centreBaseCost2[sampleID]
-
-                saveID += 1
-            else:
-                # Save invalid patches to check
-                invalidPatchesToCheck['ID'].append(sampleID)
-                invalidPatchesToCheck['flattenedPatch'].append(flattenedWindow.tolist())
-                
-                
-
-    # Save json with invalid patches to check
-    with open(os.path.join('./invalidPatchesToCheck.json'), 'w') as fileCheck:
-        invalidPatchesToCheck_string = json.dumps(invalidPatchesToCheck)
-        json.dump(invalidPatchesToCheck_string, fileCheck)
-        fileCheck.close()
-
-    # Shrink dataset remove entries which have not been filled due to invalid path
-    print('Number of images loaded from dataset: ', nImages)
-    print('Number of samples in dataset: ', nSamples)
-    print('Number of removed invalid patches from validity check:', nSamples - saveID)
-
-    inputDataArray = inputDataArray[:, 0:saveID]           
-    labelsDataArray = labelsDataArray[:, 0:saveID]
-
+        if not(os.path.isfile(os.path.join(datasetSavePath, 'TrainingDataset_'+TrainingDatasetTag))) or not((os.path.isfile(os.path.join(datasetSavePath, 'ValidationDataset_'+ValidationDatasetTag)))):
+            raise ImportError('Dataset files not found. Set REGEN_DATASET to True to regenerate the dataset torch saves.')
+        
+        # LOAD PRE-GENERATED DATASETS
+        datasetTraining = customTorchTools.LoadTorchDataset(datasetSavePath, datasetName='/TrainingDataset_'+TrainingDatasetTag)
+        datasetValidation = customTorchTools.LoadTorchDataset(datasetSavePath, datasetName='/ValidationDataset_'+ValidationDatasetTag)
     ################################################################################################
 
-    dataDict = {'labelsDataArray': labelsDataArray, 'inputDataArray': inputDataArray}
-    
-    # INITIALIZE DATASET OBJECT # TEMPORARY from one single dataset
-    dataset = limbPixelExtraction_CNN_NN.MoonLimbPixCorrector_Dataset(dataDict)
-
-    if exportTracedModel:
-        # Save sample dataset for ONNx use
-        customTorchTools.SaveTorchDataset(dataset, modelSavePath, datasetName='sampleDatasetToONNx')
-
+    # SUPERSEDED CODE --> move this to function for dataset splitting (add rng seed for reproducibility)
     # Define the split ratio
-    trainingSize = int(TRAINING_PERC * len(dataset))  
-    validationSize = len(dataset) - trainingSize 
+    #trainingSize = int(TRAINING_PERC * len(dataset))  
+    #validationSize = len(dataset) - trainingSize 
 
     # Split the dataset
-    trainingData, validationData = torch.utils.data.random_split(dataset, [trainingSize, validationSize])
+    #trainingData, validationData = torch.utils.data.random_split(dataset, [trainingSize, validationSize])
 
     # Define dataloaders objects
-    trainingDataset   = DataLoader(trainingData, batch_size, shuffle=True, num_workers=2, pin_memory=True)
-    validationDataset = DataLoader(validationData, batch_size, shuffle=True, num_workers=2, pin_memory=True)
+    trainingDataset   = DataLoader(datasetTraining, batch_size, shuffle=True, num_workers=2, pin_memory=True)
+    validationDataset = DataLoader(datasetValidation, batch_size, shuffle=True, num_workers=2, pin_memory=True)
 
     dataloaderIndex = {'TrainingDataLoader' : trainingDataset, 'ValidationDataLoader': validationDataset}
 
@@ -308,14 +333,14 @@ def main(id):
 
     # MODEL CLASS TYPE
     if UseMaxPooling == False:
-        if id == 0:
+        if idSession == 0:
             modelClass = limbPixelExtraction_CNN_NN.HorizonExtractionEnhancerCNNv1avg
-        elif id == 1:
+        elif idSession == 1:
             modelClass = limbPixelExtraction_CNN_NN.HorizonExtractionEnhancerCNNv2avg
     else:
-        if id == 0:
+        if idSession == 0:
             modelClass = limbPixelExtraction_CNN_NN.HorizonExtractionEnhancerCNNv1max
-        elif id == 1:
+        elif idSession == 1:
             modelClass = limbPixelExtraction_CNN_NN.HorizonExtractionEnhancerCNNv2max
 
     # MODEL DEFINITION
@@ -380,7 +405,7 @@ def main(id):
        #customTorchTools.ExportTorchModelToONNx(trainedModel, inputSample, onnxExportPath='./checkpoints',
        #                                    onnxSaveName='trainedModelONNx', modelID=options['epochStart']+options['epochs'], onnx_version=14)
 
-        customTorchTools.SaveTorchModel(trainedModel, modelName=os.path.join(tracedModelSavePath, modelArchName+'_'+customTorchTools.AddZerosPadding(options['epochStart']+options['epochs']), 3), 
+        customTorchTools.SaveTorchModel(trainedModel, modelName=os.path.join(tracedModelSavePath, modelArchName+'_'+str(customTorchTools.AddZerosPadding(options['epochStart']+options['epochs'])), 3), 
                                    saveAsTraced=True, exampleInput=inputSample)
 
     # Close stdout log stream
