@@ -205,6 +205,36 @@ def outOfPatchoutLoss_Quadratic(predictCorrection, halfPatchSize=3.5, slopeMulti
         
     return tmpOutOfPatchoutLoss/numOfCoordsOutOfPatch # Return the average of the two losses
 
+
+def outOfPatchoutLoss_Quadratic_asTensor(predictCorrection:torch.tensor, halfPatchSize=3.5, slopeMultiplier=0.2):
+
+    if predictCorrection.size()[1] != 2:
+        raise ValueError('predictCorrection must have 2 rows for x and y pixel correction')
+    
+    device = predictCorrection.device
+
+    numOfCoordsOutOfPatch = torch.ones(batchSize, 1, device=device)
+    batchSize = predictCorrection.size()[0]
+
+    # Check which samples have the coordinates out of the patch
+    idXmask = abs(predictCorrection[:, 0]) > halfPatchSize
+    idYmask = abs(predictCorrection[:, 1]) > halfPatchSize
+
+    numOfCoordsOutOfPatch += torch.sum(idYmask)
+
+    tmpOutOfPatchoutLoss = torch.zeros(batchSize, 1, device=device)
+
+    # Add contribution for all X coordinates violating the condition
+    tmpOutOfPatchoutLoss[idXmask] += torch.square(slopeMultiplier*(predictCorrection[idXmask, 0] - halfPatchSize)**2)
+    # Add contribution for all Y coordinates violating the condition
+    tmpOutOfPatchoutLoss[idYmask] += torch.square(slopeMultiplier*(predictCorrection[idYmask, 1] - halfPatchSize)**2)
+
+    if tmpOutOfPatchoutLoss > 0:
+        if any(tmpOutOfPatchoutLoss.isinf()):
+            raise ValueError('tmpOutOfPatchoutLoss is infinite')
+        
+    return torch.div(tmpOutOfPatchoutLoss, numOfCoordsOutOfPatch) # Return the average of the two losses for each entry in the batch
+
 #######################################################################################################
 # %% Custom normalized loss function for Moon Limb pixel extraction CNN enhancer - 23-06-2024
 def MoonLimbPixConvEnhancer_NormalizedLossFcnWithOutOfPatchTerm(predictCorrection, labelVector, paramsTrain:dict=None, paramsEval:dict=None):
@@ -273,42 +303,57 @@ def IsPatchValid(patchFlatten, lowerIntensityThr=3):
         return True
 
 
-# %% Custom loss function for Moon Limb pixel extraction enhancer with vectorized computation modified from GPT code - 25-06-2024
-def MoonLimbPixConvEnhancer_VectorizedLossFcnWithOutOfPatchTerm(predictCorrection, labelVector, paramsTrain:dict=None, paramsEval:dict=None):
-    # Alternative loss: alfa*||xCorrT * ConicMatr* xCorr||^2 + (1-alfa)*MSE(label, prediction)
+# %% Custom normalized loss function for Moon Limb pixel extraction CNN enhancer tensorized evaluation - 27-06-2024
+def MoonLimbPixConvEnhancer_NormalizedLossFcnWithOutOfPatchTerm_asTensor(predictCorrection, labelVector, paramsTrain:dict=None, paramsEval:dict=None):
+
     # Get parameters and labels for computation of the loss
-
-    # TODO: Check code and test 
-
     if paramsTrain is None:
-        coeff = 0.5
+        coeff = 1
     else:
         coeff = paramsTrain['ConicLossWeightCoeff']
 
+    if paramsTrain is None:
+        RectExpWeightCoeff = 1
+    elif 'RectExpWeightCoeff' in paramsTrain.keys(): 
+        RectExpWeightCoeff = paramsTrain['RectExpWeightCoeff']
+
+
     # Temporary --> should come from params dictionary
     patchSize = 7
-    halfPatchSize = patchSize / 2
+    halfPatchSize = patchSize/2
     slopeMultiplier = 2
 
-    LimbConicMatrixImg = labelVector[:, 0:9].reshape(-1, 3, 3)
-    patchCentre = labelVector[:, 9:]
+    # Extract data from labelVector
+    batchSize = labelVector.size()[0]
+    device = labelVector.device
+    
+    LimbConicMatrixImg = torch.tensor((labelVector[:, 0:9].T).reshape(3, 3, labelVector.size()[0]).T, dtype=torch.float32, device=device)
 
-    RectExpWeightCoeff = paramsTrain.get('RectExpWeightCoeff', 1)
+    patchCentre = labelVector[:, 9:11]
+    baseCost2 = labelVector[:, 11]
 
-    # Compute corrected pixel positions
-    correctedPix = torch.cat([patchCentre + predictCorrection, torch.ones(patchCentre.size(0), 1, device=patchCentre.device)], dim=1).reshape(-1, 3, 1)
+    # Evaluate loss terms
+    normalizedConicLoss = torch.zeros(batchSize, 1, dtype=torch.float32, device=device) # Weighting violation of Horizon conic equation
+    outOfPatchoutLoss = torch.zeros(batchSize, 1, dtype=torch.float32, device=device)
 
-    # Compute conic loss
-    conicLoss = (correctedPix.transpose(1, 2) @ LimbConicMatrixImg @ correctedPix).squeeze()
+    # Compute corrected pixel
+    correctedPix = torch.zeros(batchSize, 3, 1, dtype=torch.float32, device=device)
 
-    # Compute out-of-patch loss
-    outOfPatchoutLoss = outOfPatchoutLoss_Quadratic(predictCorrection, halfPatchSize=halfPatchSize, slopeMultiplier=slopeMultiplier)
+    correctedPix[:, 0:2, 2] = 1
+    correctedPix[:, 0:2] = patchCentre + predictCorrection
 
-    # Compute L2 regularization loss
-    L2regLoss = torch.norm(predictCorrection, dim=1).sum()
+    normalizedConicLoss += torch.div((torch.bmm(correctedPix.transpose(1,2), torch.bmm(LimbConicMatrixImg, correctedPix)))**2, baseCost2)
+
+    # Add average of the two coordinates to the total cost term
+    outOfPatchoutLoss += outOfPatchoutLoss_Quadratic_asTensor(predictCorrection, halfPatchSize=halfPatchSize, slopeMultiplier=slopeMultiplier)
+
+    if coeff == 1:
+        L2regLoss = 0
+    else:
+        L2regLoss = torch.norm(predictCorrection, dim=1).sum()
 
     # Total loss function
-    lossValue = coeff * torch.norm(conicLoss)**2 + (1 - coeff) * L2regLoss + RectExpWeightCoeff * outOfPatchoutLoss.sum()
+    lossValue = coeff * (normalizedConicLoss/batchSize) + (1-coeff) * L2regLoss + RectExpWeightCoeff * outOfPatchoutLoss
 
     return lossValue
 
