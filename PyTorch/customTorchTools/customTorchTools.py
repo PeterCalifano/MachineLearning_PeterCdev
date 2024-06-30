@@ -72,7 +72,11 @@ def TrainModel(dataloader:DataLoader, model:nn.Module, lossFcn:nn.Module, optimi
     
     # Update learning rate if scheduler is provided
     if lr_scheduler is not None:
+        prev_lr = lr_scheduler.get_last_lr()
         lr_scheduler.step()
+        print('\n')
+        print('Learning rate modified from: ', prev_lr, ' to: ', lr_scheduler.get_lr())
+        print('\n')
 
     return trainLoss
     
