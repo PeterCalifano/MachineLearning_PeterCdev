@@ -39,9 +39,9 @@ def main(idSession:int):
     # SETTINGS and PARAMETERS 
     batch_size = 16*4 # Defines batch size in dataset
     #outChannelsSizes = [16, 32, 75, 15] 
-    outChannelsSizes = [256, 128, 64, 32] 
+    outChannelsSizes = [256, 128, 128, 32] 
     kernelSizes = [3, 3]
-    initialLearnRate = 1E-4
+    initialLearnRate = 1E-3
     momentumValue = 0.001
 
     #TODO: add log and printing of settings of optimizer for each epoch. Reduce the training loss value printings
@@ -49,7 +49,7 @@ def main(idSession:int):
     LOSS_TYPE = 4 # 0: Conic + L2, # 1: Conic + L2 + Quadratic OutOfPatch, # 2: Normalized Conic + L2 + OutOfPatch, 
                   # 3: Polar-n-direction distance + OutOfPatch, #4: MSE + OutOfPatch + ConicLoss
     # Loss function parameters
-    params = {'ConicLossWeightCoeff': 1, 'RectExpWeightCoeff': 1}
+    params = {'ConicLossWeightCoeff': 1, 'RectExpWeightCoeff': 0}
 
     optimizerID = 1 # 0
     UseMaxPooling = True
@@ -61,7 +61,7 @@ def main(idSession:int):
 
     # Options to restart training from checkpoint
     if idSession == 0:
-        runID = str(6)
+        runID = str(7)
         #modelSavePath = './checkpoints/HorizonPixCorrector_CNNv1_run3'
         modelSavePath = './checkpoints/HorizonPixCorrector_CNNv1max_largerCNN_run' + runID
         datasetSavePath = './datasets/HorizonPixCorrectorV1'
@@ -73,7 +73,7 @@ def main(idSession:int):
 
 
     elif idSession == 1:
-        runID = str(6)
+        runID = str(7)
         modelSavePath = './checkpoints/HorizonPixCorrector_CNNv2max_largerCNN_run' + runID
         datasetSavePath = './datasets/HorizonPixCorrectorV2'
         tensorboardLogDir = './tensorboardLogs/tensorboardLog_v2max_largerCNN_run'   + runID
@@ -92,7 +92,7 @@ def main(idSession:int):
 
     options = {'taskType': 'regression', 
                'device': device, 
-               'epochs': 100, 
+               'epochs': 20, 
                'Tensorboard':True,
                'saveCheckpoints':True,
                'checkpointsOutDir': modelSavePath,
