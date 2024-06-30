@@ -30,7 +30,7 @@ import torch.optim as optim
 USE_MULTIPROCESS = False
 USE_NORMALIZED_IMG = True
 USE_LR_SCHEDULING = True
-TRAIN_ALL = False
+TRAIN_ALL = True
 REGEN_DATASET = False
 USE_TENSOR_LOSS_EVAL = True
 
@@ -39,12 +39,15 @@ def main(idSession:int):
     # SETTINGS and PARAMETERS 
     batch_size = 16*4 # Defines batch size in dataset
     #outChannelsSizes = [16, 32, 75, 15] 
-    outChannelsSizes = [2*256, 2*128, 2*75, 50] 
+    outChannelsSizes = [256, 128, 64, 32] 
     kernelSizes = [3, 3]
-    initialLearnRate = 1E-2
+    initialLearnRate = 1E-4
     momentumValue = 0.001
 
-    LOSS_TYPE = 3 # 0: Conic + L2, # 1: Conic + L2 + Quadratic OutOfPatch, # 2: Normalized Conic + L2 + OutOfPatch, # 3: Polar-n-direction distance + OutOfPatch
+    #TODO: add log and printing of settings of optimizer for each epoch. Reduce the training loss value printings
+
+    LOSS_TYPE = 4 # 0: Conic + L2, # 1: Conic + L2 + Quadratic OutOfPatch, # 2: Normalized Conic + L2 + OutOfPatch, 
+                  # 3: Polar-n-direction distance + OutOfPatch, #4: MSE + OutOfPatch + ConicLoss
     # Loss function parameters
     params = {'ConicLossWeightCoeff': 1, 'RectExpWeightCoeff': 1}
 
@@ -58,7 +61,7 @@ def main(idSession:int):
 
     # Options to restart training from checkpoint
     if idSession == 0:
-        runID = str(5)
+        runID = str(6)
         #modelSavePath = './checkpoints/HorizonPixCorrector_CNNv1_run3'
         modelSavePath = './checkpoints/HorizonPixCorrector_CNNv1max_largerCNN_run' + runID
         datasetSavePath = './datasets/HorizonPixCorrectorV1'
@@ -70,7 +73,7 @@ def main(idSession:int):
 
 
     elif idSession == 1:
-        runID = str(5)
+        runID = str(6)
         modelSavePath = './checkpoints/HorizonPixCorrector_CNNv2max_largerCNN_run' + runID
         datasetSavePath = './datasets/HorizonPixCorrectorV2'
         tensorboardLogDir = './tensorboardLogs/tensorboardLog_v2max_largerCNN_run'   + runID
@@ -89,7 +92,7 @@ def main(idSession:int):
 
     options = {'taskType': 'regression', 
                'device': device, 
-               'epochs': 35, 
+               'epochs': 100, 
                'Tensorboard':True,
                'saveCheckpoints':True,
                'checkpointsOutDir': modelSavePath,
@@ -116,6 +119,7 @@ def main(idSession:int):
     # %% GENERATE OR LOAD TORCH DATASET
 
     dataPath = os.path.join('/home/peterc/devDir/MATLABcodes/syntheticRenderings/Datapairs')
+    dataPath = os.path.join('/home/peterc/devDir/lumio/lumio-prototype/src/dataset_gen/Datapairs')
     dirNamesRoot = os.listdir(dataPath)
 
     #os.scandir(dataDirPath)
@@ -126,7 +130,7 @@ def main(idSession:int):
     assert(len(dirNamesRoot) >= 2)
 
     # Select one of the available datapairs folders (each corresponding to a labels generation pipeline output)
-    datasetID = [0, 6] # TRAINING and VALIDATION datasets ID in folder (in this order)
+    datasetID = [2, 1] # TRAINING and VALIDATION datasets ID in folder (in this order)
 
     assert(len(datasetID) == 2)
 
@@ -172,7 +176,7 @@ def main(idSession:int):
             saveID = 0
 
             inputDataArray  = np.zeros((inputSize, nSamples), dtype=np.float32)
-            labelsDataArray = np.zeros((12, nSamples), dtype=np.float32)
+            labelsDataArray = np.zeros((14, nSamples), dtype=np.float32)
 
             imgID = 0
             for dataPair in dataFilenames:
@@ -190,11 +194,11 @@ def main(idSession:int):
 
                 ui16coarseLimbPixels = np.array(tmpdataDict['ui16coarseLimbPixels'], dtype=np.float32)
                 ui8flattenedWindows  = np.array(tmpdataDict['ui8flattenedWindows'], dtype=np.float32)
-
                 centreBaseCost2 = np.array(tmpdataDict['dPatchesCentreBaseCost2'], dtype=np.float32)
 
-                invalidPatchesToCheck = {'ID': [], 'flattenedPatch': []}
+                dTruePixOnConic = np.array(tmpdataDict['dTruePixOnConic'], dtype=np.float32)
 
+                invalidPatchesToCheck = {'ID': [], 'flattenedPatch': []}
 
                 if idSession == 1:
                     targetAvgRadiusInPix = np.array(metadataDict['dTargetPixAvgRadius'], dtype=np.float32)
@@ -214,9 +218,9 @@ def main(idSession:int):
                     flattenedWindSize = len(flattenedWindow)
                     # Validate patch counting how many pixels are completely black or white
 
-                    pathIsValid = limbPixelExtraction_CNN_NN.IsPatchValid(flattenedWindow, lowerIntensityThr=10)
+                    #pathIsValid = limbPixelExtraction_CNN_NN.IsPatchValid(flattenedWindow, lowerIntensityThr=10)
 
-                    #pathIsValid = True
+                    pathIsValid = True
 
                     if pathIsValid:
                         ptrToInput = 0
@@ -248,10 +252,11 @@ def main(idSession:int):
                         # Assign coarse Limb pixels to input data array
                         inputDataArray[ptrToInput::, saveID] = ui16coarseLimbPixels[:, sampleID]
 
-                        # Assign labels to labels data array
+                        # Assign labels to labels data array (DO NOT CHANGE ORDER OF VALUES)
                         labelsDataArray[0:9, saveID] = np.ravel(dLimbConicCoeffs_PixCoords)
                         labelsDataArray[9:11, saveID] = ui16coarseLimbPixels[:, sampleID]
                         labelsDataArray[11, saveID] = centreBaseCost2[sampleID]
+                        labelsDataArray[12:14, saveID] = dTruePixOnConic[:, sampleID]
 
                         saveID += 1
                     else:
@@ -339,6 +344,9 @@ def main(idSession:int):
             lossFcn = customTorchTools.CustomLossFcn(limbPixelExtraction_CNN_NN.MoonLimbPixConvEnhancer_NormalizedLossFcnWithOutOfPatchTerm, params)
     elif LOSS_TYPE == 3:
         lossFcn = customTorchTools.CustomLossFcn(limbPixelExtraction_CNN_NN.MoonLimbPixConvEnhancer_PolarNdirectionDistanceWithOutOfPatch_asTensor, params)
+
+    elif LOSS_TYPE == 4:
+        lossFcn = customTorchTools.CustomLossFcn(limbPixelExtraction_CNN_NN.MoonLimbPixConvEnhancer_NormalizedConicLossWithMSEandOutOfPatch_asTensor, params)
 
     # MODEL CLASS TYPE
     if UseMaxPooling == False:
