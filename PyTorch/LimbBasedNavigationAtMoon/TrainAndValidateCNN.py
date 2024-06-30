@@ -8,7 +8,7 @@ sys.path.append(os.path.join('/home/peterc/devDir/MachineLearning_PeterCdev/PyTo
 sys.path.append(os.path.join('/home/peterc/devDir/MachineLearning_PeterCdev/PyTorch/LimbBasedNavigationAtMoon'))
 
 import customTorchTools # Custom torch tools
-import limbPixelExtraction_CNN_NN
+import limbPixelExtraction_CNN_NN, ModelClasses # Custom model classes
 import datasetPreparation
 
 import torch
@@ -33,6 +33,8 @@ USE_LR_SCHEDULING = True
 TRAIN_ALL = True
 REGEN_DATASET = False
 USE_TENSOR_LOSS_EVAL = True
+MODEL_CLASS_ID = 3
+MANUAL_RUN = True
 
 def main(idSession:int):
 
@@ -40,13 +42,19 @@ def main(idSession:int):
     batch_size = 16*4 # Defines batch size in dataset
     #outChannelsSizes = [16, 32, 75, 15] 
     outChannelsSizes = [256, 128, 256, 64] 
+
+    if MODEL_CLASS_ID == 2:
+        outChannelsSizes = [256, 128, 256, 128, 64] 
+    elif MODEL_CLASS_ID == 3:
+        outChannelsSizes = [256, 128, 64, 32]
+
     kernelSizes = [3, 3]
-    initialLearnRate = 1E-4
+    initialLearnRate = 1E-3
     momentumValue = 0.001
 
     #TODO: add log and printing of settings of optimizer for each epoch. Reduce the training loss value printings
 
-    LOSS_TYPE = 3 # 0: Conic + L2, # 1: Conic + L2 + Quadratic OutOfPatch, # 2: Normalized Conic + L2 + OutOfPatch, 
+    LOSS_TYPE = 4 # 0: Conic + L2, # 1: Conic + L2 + Quadratic OutOfPatch, # 2: Normalized Conic + L2 + OutOfPatch, 
                   # 3: Polar-n-direction distance + OutOfPatch, #4: MSE + OutOfPatch + ConicLoss
     # Loss function parameters
     params = {'ConicLossWeightCoeff': 1, 'RectExpWeightCoeff': 0}
@@ -61,7 +69,7 @@ def main(idSession:int):
 
     # Options to restart training from checkpoint
     if idSession == 0:
-        runID = str(9)
+        runID = str(11)
         #modelSavePath = './checkpoints/HorizonPixCorrector_CNNv1_run3'
         modelSavePath = './checkpoints/HorizonPixCorrector_CNNv1max_largerCNN_run' + runID
         datasetSavePath = './datasets/HorizonPixCorrectorV1'
@@ -70,10 +78,11 @@ def main(idSession:int):
         
         modelArchName = 'HorizonPixCorrector_CNNv1max_largerCNN_run' + runID
         inputSize = 56 # TODO: update this according to new model
+        numOfEpochs = 30
 
 
     elif idSession == 1:
-        runID = str(9)
+        runID = str(11)
         modelSavePath = './checkpoints/HorizonPixCorrector_CNNv2max_largerCNN_run' + runID
         datasetSavePath = './datasets/HorizonPixCorrectorV2'
         tensorboardLogDir = './tensorboardLogs/tensorboardLog_v2max_largerCNN_run'   + runID
@@ -81,6 +90,32 @@ def main(idSession:int):
 
         modelArchName = 'HorizonPixCorrector_CNNv2max_largerCNN_run' + runID
         inputSize = 57 # TODO: update this according to new model
+        numOfEpochs = 30
+
+    elif idSession == 2:
+        runID = str(0)
+        modelSavePath = './checkpoints/HorizonPixCorrector_CNNv3max_largerCNNdeeperNN_run' + runID
+        datasetSavePath = './datasets/HorizonPixCorrectorV3'
+        tensorboardLogDir = './tensorboardLogs/tensorboardLog_v3max_largerCNNdeeperNN_run'   + runID
+        tensorBoardPortNum = 6010
+
+        modelArchName = 'HorizonPixCorrector_CNNv3max_largerCNNdeeperNN_run' + runID
+        inputSize = 57 # TODO: update this according to new model
+        numOfEpochs = 30
+
+
+    elif idSession == 3:
+        runID = str(0)
+        modelSavePath = './checkpoints/HorizonPixCorrector_deepNNv4_run' + runID
+        datasetSavePath = './datasets/HorizonPixCorrector_v4'
+        tensorboardLogDir = './tensorboardLogs/tensorboardLog_deepNNv4_run'   + runID
+        tensorBoardPortNum = 6011
+
+        modelArchName = 'HorizonPixCorrector_deepNNv4_run' + runID
+        inputSize = 57 # TODO: update this according to new model
+        numOfEpochs = 30
+
+
 
 
 
@@ -92,7 +127,7 @@ def main(idSession:int):
 
     options = {'taskType': 'regression', 
                'device': device, 
-               'epochs': 10, 
+               'epochs': numOfEpochs, 
                'Tensorboard':True,
                'saveCheckpoints':True,
                'checkpointsOutDir': modelSavePath,
@@ -200,7 +235,7 @@ def main(idSession:int):
 
                 invalidPatchesToCheck = {'ID': [], 'flattenedPatch': []}
 
-                if idSession == 1:
+                if idSession == 1 or idSession == 2 or idSession == 3:
                     targetAvgRadiusInPix = np.array(metadataDict['dTargetPixAvgRadius'], dtype=np.float32)
 
                 if USE_NORMALIZED_IMG:
@@ -245,7 +280,7 @@ def main(idSession:int):
                         ptrToInput += len(tmpVal) # Update index
 
                         #inputDataArray[55:58, saveID] = dPosCam_TF
-                        if idSession == 1:
+                        if idSession == 1 or idSession == 2 or idSession == 3:
                             inputDataArray[ptrToInput, saveID] = targetAvgRadiusInPix
                             ptrToInput += targetAvgRadiusInPix.size # Update index
 
@@ -266,15 +301,14 @@ def main(idSession:int):
                 imgID += 1
 
             # Save json with invalid patches to check
-            if idSession == 0:
-                fileName = './invalidPatchesToCheck_Training.json'
-            elif idSession == 1:
-                fileName = './invalidPatchesToCheck_Validation.json'
-
-            with open(os.path.join(fileName), 'w') as fileCheck:
-                invalidPatchesToCheck_string = json.dumps(invalidPatchesToCheck)
-                json.dump(invalidPatchesToCheck_string, fileCheck)
-                fileCheck.close()
+            #if idSession == 0:
+            #    fileName = './invalidPatchesToCheck_Training_.json'
+            #elif idSession == 1:
+            #    fileName = './invalidPatchesToCheck_Validation.json'
+            #with open(os.path.join(fileName), 'w') as fileCheck:
+            #    invalidPatchesToCheck_string = json.dumps(invalidPatchesToCheck)
+            #    json.dump(invalidPatchesToCheck_string, fileCheck)
+            #    fileCheck.close()
 
             # Shrink dataset remove entries which have not been filled due to invalid path
             print('\n')
@@ -359,6 +393,11 @@ def main(idSession:int):
             modelClass = limbPixelExtraction_CNN_NN.HorizonExtractionEnhancerCNNv1max
         elif idSession == 1:
             modelClass = limbPixelExtraction_CNN_NN.HorizonExtractionEnhancerCNNv2max
+        elif idSession == 2:
+            modelClass = ModelClasses.HorizonExtractionEnhancerCNNv3maxDeeper
+        elif idSession == 3:
+            modelClass = ModelClasses.HorizonExtractionEnhancer_FullyConnNNv4        
+    
 
     # MODEL DEFINITION
     if restartTraining:
@@ -373,7 +412,10 @@ def main(idSession:int):
         else:
             raise ValueError('Specified model state file not found. Check input path.')    
     else:
+        if idSession != 3:
             modelCNN_NN = modelClass(outChannelsSizes, kernelSizes).to(device=device)
+        elif idSession == 3:
+            modelCNN_NN = modelClass(outChannelsSizes).to(device=device)
 
 
     # ######### TEST DEBUG ############
@@ -398,7 +440,7 @@ def main(idSession:int):
 
     if USE_LR_SCHEDULING:
         #optimizer = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=2, threshold=0.01, threshold_mode='rel', cooldown=1, min_lr=1E-12, eps=1e-08)
-        lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.65, last_epoch=options['epochStart']-1)
+        lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.8, last_epoch=options['epochStart']-1)
         options['lr_scheduler'] = lr_scheduler
 
 
@@ -450,9 +492,11 @@ if __name__ == '__main__':
         process2.join()
 
         print("Training complete for both network classes. Check the logs for more information.")
-    else:
+    elif USE_MULTIPROCESS == False and MANUAL_RUN == False:
 
         for idSession in range(2 if TRAIN_ALL else 1):
             print('\n\n----------------------------------- RUNNING: TrainAndValidateCNN.py -----------------------------------\n')
             print("MAIN script operations: load dataset --> split dataset --> define dataloaders --> define model --> define loss function --> train and validate model --> export trained model\n")
             main(idSession)
+    else:
+        main(MODEL_CLASS_ID)
