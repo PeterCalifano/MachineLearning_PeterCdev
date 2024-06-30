@@ -449,7 +449,7 @@ def ComputePolarNdirectionDistance_asTensor(CconicMatrix:Union[np.array , torch.
     sqrDist_tensor[notIdsMask[:,0,0]] = 0.25 * (Cdist_tensor[notIdsMask]**2 / Gdist_tensor[notIdsMask])
 
     # Return mean over the whole batch
-    return torch.sum(sqrDist_tensor**2)
+    return abs(sqrDist_tensor)
 
 
 # %% MSE + Conic Loss function for Moon Limb pixel extraction CNN enhancer tensorized evaluation - 27-06-2024
@@ -482,24 +482,26 @@ def MoonLimbPixConvEnhancer_NormalizedConicLossWithMSEandOutOfPatch_asTensor(pre
 
     # Compute corrected pixel
     correctedPix = torch.zeros(batchSize, 3, 1, dtype=torch.float32, device=device)
-    correctedPix[:, 0:2, 2] = 1
-    correctedPix[:, 0:2] = patchCentre + predictCorrection
+    correctedPix[:, 2, 0] = 1
+    correctedPix[:, 0:2, 0] = patchCentre + predictCorrection
 
     # Compute the normalized conic loss
-    normalizedConicLoss += torch.div((torch.bmm(correctedPix.transpose(1,2), torch.bmm(LimbConicMatrixImg, correctedPix)))**2, baseCost2)
+    normalizedConicLoss += torch.div( ((torch.bmm(correctedPix.transpose(1,2), torch.bmm(LimbConicMatrixImg, correctedPix)) )**2).reshape(batchSize, 1), baseCost2.reshape(batchSize, 1))
 
     # Compute the MSE loss term
-    mseLoss = torch.nn.functional.mse_loss(predictCorrection, targetPrediction, size_average=None, reduce=None, reduction='sum')
+    mseLoss = torch.nn.functional.mse_loss(correctedPix[:, 0:2, 0], targetPrediction, size_average=None, reduce=None, reduction='sum')
 
-    # Add average of the two coordinates to the out of patch cost term
-    outOfPatchoutLoss += outOfPatchoutLoss_Quadratic_asTensor(predictCorrection, halfPatchSize=halfPatchSize, slopeMultiplier=slopeMultiplier)
-
+    if 'RectExpWeightCoeff' != 0:
+        # Add average of the two coordinates to the out of patch cost term
+        outOfPatchoutLoss += outOfPatchoutLoss_Quadratic_asTensor(predictCorrection, halfPatchSize=halfPatchSize, slopeMultiplier=slopeMultiplier)
+    else:
+        outOfPatchoutLoss = 0
 
     # Total loss function
-    lossValue =  normalizedConicLoss + mseLoss + (RectExpWeightCoeff * outOfPatchoutLoss)
+    lossValue =  torch.sum(normalizedConicLoss) + mseLoss + torch.sum((RectExpWeightCoeff * outOfPatchoutLoss))
 
     # Return sum of loss for the whole batch
-    return torch.sum(lossValue/batchSize)
+    return lossValue/batchSize
 
 
 # %% ARCHITECTURES ############################################################################################################
