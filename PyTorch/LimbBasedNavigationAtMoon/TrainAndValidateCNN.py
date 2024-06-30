@@ -34,7 +34,7 @@ TRAIN_ALL = True
 REGEN_DATASET = False
 USE_TENSOR_LOSS_EVAL = True
 MODEL_CLASS_ID = 3
-MANUAL_RUN = True
+MANUAL_RUN = False # Uses MODEL_CLASS_ID to run a specific model
 
 def main(idSession:int):
 
@@ -107,7 +107,7 @@ def main(idSession:int):
     elif idSession == 3:
         runID = str(0)
         modelSavePath = './checkpoints/HorizonPixCorrector_deepNNv4_run' + runID
-        datasetSavePath = './datasets/HorizonPixCorrector_v4'
+        datasetSavePath = './datasets/HorizonPixCorrectorV4'
         tensorboardLogDir = './tensorboardLogs/tensorboardLog_deepNNv4_run'   + runID
         tensorBoardPortNum = 6011
 
@@ -494,7 +494,7 @@ if __name__ == '__main__':
         print("Training complete for both network classes. Check the logs for more information.")
     elif USE_MULTIPROCESS == False and MANUAL_RUN == False:
 
-        for idSession in range(2 if TRAIN_ALL else 1):
+        for idSession in range(4 if TRAIN_ALL else 1):
             print('\n\n----------------------------------- RUNNING: TrainAndValidateCNN.py -----------------------------------\n')
             print("MAIN script operations: load dataset --> split dataset --> define dataloaders --> define model --> define loss function --> train and validate model --> export trained model\n")
             main(idSession)
