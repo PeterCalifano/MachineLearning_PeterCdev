@@ -460,6 +460,11 @@ def MoonLimbPixConvEnhancer_NormalizedConicLossWithMSEandOutOfPatch_asTensor(pre
     elif 'RectExpWeightCoeff' in paramsTrain.keys(): 
         RectExpWeightCoeff = paramsTrain['RectExpWeightCoeff']
 
+    if paramsTrain is None:
+        coeff = 1
+    else:
+        coeff = paramsTrain['ConicLossWeightCoeff']
+
     # Temporary --> should come from params dictionary
     patchSize = 7
     halfPatchSize = patchSize/2
@@ -486,7 +491,9 @@ def MoonLimbPixConvEnhancer_NormalizedConicLossWithMSEandOutOfPatch_asTensor(pre
     correctedPix[:, 0:2, 0] = patchCentre + predictCorrection
 
     # Compute the normalized conic loss
-    normalizedConicLoss += torch.div( ((torch.bmm(correctedPix.transpose(1,2), torch.bmm(LimbConicMatrixImg, correctedPix)) )**2).reshape(batchSize, 1), baseCost2.reshape(batchSize, 1))
+
+    if coeff != 0:
+        normalizedConicLoss += torch.div( ((torch.bmm(correctedPix.transpose(1,2), torch.bmm(LimbConicMatrixImg, correctedPix)) )**2).reshape(batchSize, 1), baseCost2.reshape(batchSize, 1))
 
     # Compute the MSE loss term
     mseLoss = torch.nn.functional.mse_loss(correctedPix[:, 0:2, 0], targetPrediction, size_average=None, reduce=None, reduction='sum')
@@ -498,7 +505,7 @@ def MoonLimbPixConvEnhancer_NormalizedConicLossWithMSEandOutOfPatch_asTensor(pre
         outOfPatchoutLoss = 0
 
     # Total loss function
-    lossValue =  torch.sum(normalizedConicLoss) + mseLoss + torch.sum((RectExpWeightCoeff * outOfPatchoutLoss))
+    lossValue =  coeff * torch.sum(normalizedConicLoss) + mseLoss + torch.sum((RectExpWeightCoeff * outOfPatchoutLoss))
 
     # Return sum of loss for the whole batch
     return lossValue/batchSize
