@@ -170,7 +170,7 @@ def main():
     # Plot distance as surface 
     fig2, ax2 = plt.subplots(subplot_kw={"projection": "3d"})
     
-    ax2.plot_surface(X, Y, sqrDist_np**2, cmap='viridis', edgecolor='none')
+    ax2.plot_surface(X, Y, abs(sqrDist_np), cmap='viridis', edgecolor='none')
 
     # Plot loop version
     fig3, ax3 = plt.subplots(subplot_kw={"projection": "3d"})
