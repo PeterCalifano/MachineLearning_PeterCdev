@@ -30,7 +30,7 @@ import torch.optim as optim
 import torch.nn.functional as torchFunc # Module to apply activation functions in forward pass instead of defining them in the model class
 
 
-# %% Custom training function for Moon limb pixel extraction enhancer V2max (with target average radius in pixels) - 23-06-2024
+# %% Custom training function for Moon limb pixel extraction enhancer FullyConnected NNv4 (with target average radius in pixels) - 30-06-2024
 class HorizonExtractionEnhancer_FullyConnNNv4(nn.Module):
     def __init__(self, outChannelsSizes:list, alphaDropCoeff=0.1, alphaLeaky=0.01, patchSize=7) -> None:
         super().__init__()
@@ -78,13 +78,13 @@ class HorizonExtractionEnhancer_FullyConnNNv4(nn.Module):
 
         return predictedPixCorrection
     
-# %% Custom training function for Moon limb pixel extraction enhancer V3maxDeeper (with target average radius in pixels) - 23-06-2024
+# %% Custom training function for Moon limb pixel extraction enhancer V3maxDeeper (with target average radius in pixels) - 30-06-2024
 '''
-Architecture characteristics: Conv. layers, max pooling, deeper fully connected layers, dropout, tanh and leaky ReLU activation, batch normalization
+Architecture characteristics: Conv. layers, max pooling, deeper fully connected layers, dropout, tanh and leaky ReLU activation
     Input: Image patch with Moon limb, contextual information: relative attitude, sun direction in pixels, patch centre coordinates, target average radius in pixels.
 '''
 class HorizonExtractionEnhancerCNNv3maxDeeper(nn.Module):
-    def __init__(self, outChannelsSizes:list, kernelSizes, poolingKernelSize=2, alphaDropCoeff=0.2, alphaLeaky=0.01, patchSize=7) -> None:
+    def __init__(self, outChannelsSizes:list, kernelSizes, poolingKernelSize=2, alphaDropCoeff=0.3, alphaLeaky=0.01, patchSize=7) -> None:
         super().__init__()
 
         # Model parameters
