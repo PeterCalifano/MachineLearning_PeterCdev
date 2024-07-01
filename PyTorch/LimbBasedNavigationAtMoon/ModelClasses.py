@@ -186,11 +186,11 @@ class HorizonExtractionEnhancer_FullyConnNNv4(nn.Module):
     
 # %% Custom training function for Moon limb pixel extraction enhancer V3maxDeeper (with target average radius in pixels) - 30-06-2024
 '''
-Architecture characteristics: Conv. layers, max pooling, deeper fully connected layers, dropout, tanh and leaky ReLU activation
+Architecture characteristics: Conv. layers, max pooling, deeper fully connected layers, dropout, tanh and leaky ReLU activation and batch normalization
     Input: Image patch with Moon limb, contextual information: relative attitude, sun direction in pixels, patch centre coordinates, target average radius in pixels.
 '''
 class HorizonExtractionEnhancerCNNv3maxDeeper(nn.Module):
-    def __init__(self, outChannelsSizes:list, kernelSizes, poolingKernelSize=2, alphaDropCoeff=0.3, alphaLeaky=0.01, patchSize=7) -> None:
+    def __init__(self, outChannelsSizes:list, kernelSizes, useBatchNorm = False, poolingKernelSize=2, alphaDropCoeff=0.3, alphaLeaky=0.01, patchSize=7) -> None:
         super().__init__()
 
         # Model parameters
@@ -198,6 +198,7 @@ class HorizonExtractionEnhancerCNNv3maxDeeper(nn.Module):
         self.patchSize = patchSize
         self.imagePixSize = self.patchSize**2
         self.numOfConvLayers = 2
+        self.useBatchNorm = useBatchNorm
 
         convBlockOutputSize = AutoComputeConvBlocksOutput(self, kernelSizes, poolingKernelSize)
 
@@ -226,9 +227,11 @@ class HorizonExtractionEnhancerCNNv3maxDeeper(nn.Module):
         self.dropoutL4 = nn.Dropout2d(alphaDropCoeff)
         self.DenseL4 = nn.Linear(int(self.LinearInputSize), self.outChannelsSizes[2], bias=False)
 
+        self.batchNormL5 = nn.BatchNorm1d(self.outChannelsSizes[2], eps=1E-5, momentum=0.1, affine=True)
         self.dropoutL5 = nn.Dropout1d(alphaDropCoeff)
         self.DenseL5 = nn.Linear(self.outChannelsSizes[2], self.outChannelsSizes[3], bias=True)
-        
+
+        self.batchNormL6 = nn.BatchNorm1d(self.outChannelsSizes[3], eps=1E-5, momentum=0.1, affine=True)
         self.dropoutL6 = nn.Dropout1d(alphaDropCoeff)
         self.DenseL6 = nn.Linear(self.outChannelsSizes[3], self.outChannelsSizes[4], bias=True)
 
@@ -265,10 +268,16 @@ class HorizonExtractionEnhancerCNNv3maxDeeper(nn.Module):
         #val = self.batchNormL3(val)
         val = self.dropoutL4(val)
         val = torchFunc.tanh(self.DenseL4(val))
+
         # L5
+        if self.useBatchNorm:
+            val = self.batchNormL5(val)
         val = self.dropoutL5(val)
         val = torchFunc.tanh(self.DenseL5(val))
+
         # L6
+        if self.useBatchNorm:
+            val = self.batchNormL6(val)
         val = self.dropoutL6(val)
         val = torchFunc.leaky_relu(self.DenseL6(val), self.alphaLeaky)
 

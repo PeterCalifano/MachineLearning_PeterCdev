@@ -34,12 +34,14 @@ TRAIN_ALL = True
 REGEN_DATASET = False
 USE_TENSOR_LOSS_EVAL = True
 MODEL_CLASS_ID = 2
-MANUAL_RUN = True # Uses MODEL_CLASS_ID to run a specific model
+MANUAL_RUN = False # Uses MODEL_CLASS_ID to run a specific model
+
+USE_BATCH_NORM = True
 
 def main(idSession:int):
 
     # SETTINGS and PARAMETERS 
-    batch_size = 16*4 # Defines batch size in dataset
+    batch_size = 16*2 # Defines batch size in dataset
     #outChannelsSizes = [16, 32, 75, 15] 
     outChannelsSizes = [256, 128, 256, 64] 
 
@@ -57,7 +59,7 @@ def main(idSession:int):
     LOSS_TYPE = 4 # 0: Conic + L2, # 1: Conic + L2 + Quadratic OutOfPatch, # 2: Normalized Conic + L2 + OutOfPatch, 
                   # 3: Polar-n-direction distance + OutOfPatch, #4: MSE + OutOfPatch + ConicLoss
     # Loss function parameters
-    params = {'ConicLossWeightCoeff': 1, 'RectExpWeightCoeff': 0}
+    params = {'ConicLossWeightCoeff': 0, 'RectExpWeightCoeff': 0}
 
     optimizerID = 1 # 0
     UseMaxPooling = True
@@ -69,7 +71,7 @@ def main(idSession:int):
 
     # Options to restart training from checkpoint
     if idSession == 0:
-        runID = str(11)
+        runID = f"{0000:04d}"
         #modelSavePath = './checkpoints/HorizonPixCorrector_CNNv1_run3'
         modelSavePath = './checkpoints/HorizonPixCorrector_CNNv1max_largerCNN_run' + runID
         datasetSavePath = './datasets/HorizonPixCorrectorV1'
@@ -78,11 +80,11 @@ def main(idSession:int):
         
         modelArchName = 'HorizonPixCorrector_CNNv1max_largerCNN_run' + runID
         inputSize = 56 # TODO: update this according to new model
-        numOfEpochs = 30
+        numOfEpochs = 15
 
 
     elif idSession == 1:
-        runID = str(11)
+        runID = f"{0000:04d}"
         modelSavePath = './checkpoints/HorizonPixCorrector_CNNv2max_largerCNN_run' + runID
         datasetSavePath = './datasets/HorizonPixCorrectorV2'
         tensorboardLogDir = './tensorboardLogs/tensorboardLog_v2max_largerCNN_run'   + runID
@@ -90,10 +92,10 @@ def main(idSession:int):
 
         modelArchName = 'HorizonPixCorrector_CNNv2max_largerCNN_run' + runID
         inputSize = 57 # TODO: update this according to new model
-        numOfEpochs = 30
+        numOfEpochs = 15
 
     elif idSession == 2:
-        runID = str(2)
+        runID = f"{0000:04d}"
         modelSavePath = './checkpoints/HorizonPixCorrector_CNNv3max_largerCNNdeeperNN_run' + runID
         datasetSavePath = './datasets/HorizonPixCorrectorV3'
         tensorboardLogDir = './tensorboardLogs/tensorboardLog_v3max_largerCNNdeeperNN_run'   + runID
@@ -101,11 +103,11 @@ def main(idSession:int):
 
         modelArchName = 'HorizonPixCorrector_CNNv3max_largerCNNdeeperNN_run' + runID
         inputSize = 57 # TODO: update this according to new model
-        numOfEpochs = 30
+        numOfEpochs = 20
 
 
     elif idSession == 3:
-        runID = str(0)
+        runID = f"{0000:04d}"
         modelSavePath = './checkpoints/HorizonPixCorrector_deepNNv4_run' + runID
         datasetSavePath = './datasets/HorizonPixCorrectorV4'
         tensorboardLogDir = './tensorboardLogs/tensorboardLog_deepNNv4_run'   + runID
@@ -113,10 +115,7 @@ def main(idSession:int):
 
         modelArchName = 'HorizonPixCorrector_deepNNv4_run' + runID
         inputSize = 57 # TODO: update this according to new model
-        numOfEpochs = 30
-
-
-
+        numOfEpochs = 15
 
 
     if USE_MULTIPROCESS == True:
@@ -165,14 +164,16 @@ def main(idSession:int):
     assert(len(dirNamesRoot) >= 2)
 
     # Select one of the available datapairs folders (each corresponding to a labels generation pipeline output)
-    datasetID = [2, 1] # TRAINING and VALIDATION datasets ID in folder (in this order)
+    datasetID = [5, 7] # TRAINING and VALIDATION datasets ID in folder (in this order)
 
     assert(len(datasetID) == 2)
 
     TrainingDatasetTag = dirNamesRoot[datasetID[0]]
     ValidationDatasetTag = dirNamesRoot[datasetID[1]]
 
-    if REGEN_DATASET == True:
+    datasetNotFound = not(os.path.isfile(os.path.join(datasetSavePath, 'TrainingDataset_'+TrainingDatasetTag+'.pt'))) or not((os.path.isfile(os.path.join(datasetSavePath, 'ValidationDataset_'+ValidationDatasetTag+'.pt'))))
+
+    if REGEN_DATASET == True or datasetNotFound:
         # REGENERATE the dataset
         # TODO: add printing of loaded dataset information
 
@@ -412,8 +413,10 @@ def main(idSession:int):
         else:
             raise ValueError('Specified model state file not found. Check input path.')    
     else:
-        if idSession != 3:
+        if idSession == 0 or idSession == 1:
             modelCNN_NN = modelClass(outChannelsSizes, kernelSizes).to(device=device)
+        elif idSession == 2:
+            modelCNN_NN = modelClass(outChannelsSizes, kernelSizes, USE_BATCH_NORM).to(device=device)
         elif idSession == 3:
             modelCNN_NN = modelClass(outChannelsSizes).to(device=device)
 
@@ -494,7 +497,7 @@ if __name__ == '__main__':
         print("Training complete for both network classes. Check the logs for more information.")
     elif USE_MULTIPROCESS == False and MANUAL_RUN == False:
 
-        for idSession in [2, 3]: #range(4 if TRAIN_ALL else 1):
+        for idSession in range(4 if TRAIN_ALL else 1):
             print('\n\n----------------------------------- RUNNING: TrainAndValidateCNN.py -----------------------------------\n')
             print("MAIN script operations: load dataset --> split dataset --> define dataloaders --> define model --> define loss function --> train and validate model --> export trained model\n")
             main(idSession)
