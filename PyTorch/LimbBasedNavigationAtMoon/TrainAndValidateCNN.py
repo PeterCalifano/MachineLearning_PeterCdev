@@ -33,8 +33,8 @@ USE_LR_SCHEDULING = True
 TRAIN_ALL = True
 REGEN_DATASET = False
 USE_TENSOR_LOSS_EVAL = True
-MODEL_CLASS_ID = 3
-MANUAL_RUN = False # Uses MODEL_CLASS_ID to run a specific model
+MODEL_CLASS_ID = 2
+MANUAL_RUN = True # Uses MODEL_CLASS_ID to run a specific model
 
 def main(idSession:int):
 
@@ -43,9 +43,9 @@ def main(idSession:int):
     #outChannelsSizes = [16, 32, 75, 15] 
     outChannelsSizes = [256, 128, 256, 64] 
 
-    if MODEL_CLASS_ID == 2:
-        outChannelsSizes = [256, 128, 256, 128, 64] 
-    elif MODEL_CLASS_ID == 3:
+    if MODEL_CLASS_ID == 2 or idSession == 2:
+        outChannelsSizes = [128, 64, 64+8, 32, 16] 
+    elif MODEL_CLASS_ID == 3 or idSession == 3:
         outChannelsSizes = [256, 128, 64, 32]
 
     kernelSizes = [3, 3]
@@ -93,7 +93,7 @@ def main(idSession:int):
         numOfEpochs = 30
 
     elif idSession == 2:
-        runID = str(0)
+        runID = str(2)
         modelSavePath = './checkpoints/HorizonPixCorrector_CNNv3max_largerCNNdeeperNN_run' + runID
         datasetSavePath = './datasets/HorizonPixCorrectorV3'
         tensorboardLogDir = './tensorboardLogs/tensorboardLog_v3max_largerCNNdeeperNN_run'   + runID
@@ -494,7 +494,7 @@ if __name__ == '__main__':
         print("Training complete for both network classes. Check the logs for more information.")
     elif USE_MULTIPROCESS == False and MANUAL_RUN == False:
 
-        for idSession in range(4 if TRAIN_ALL else 1):
+        for idSession in [2, 3]: #range(4 if TRAIN_ALL else 1):
             print('\n\n----------------------------------- RUNNING: TrainAndValidateCNN.py -----------------------------------\n')
             print("MAIN script operations: load dataset --> split dataset --> define dataloaders --> define model --> define loss function --> train and validate model --> export trained model\n")
             main(idSession)
