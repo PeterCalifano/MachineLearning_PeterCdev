@@ -350,10 +350,11 @@ def KillTensorboard():
     """Kill all running TensorBoard instances."""
     for process in psutil.process_iter(['pid', 'name', 'cmdline']):
         if 'tensorboard' in process.info['name']:
-            for cmd in process.info['cmdline']:
-                if 'tensorboard' in cmd:
-                    print(f"Killing process {process.info['pid']}: {process.info['cmdline']}")
-                    os.kill(process.info['pid'], signal.SIGTERM)
+            if process.info['cmdline'] != None:
+                for cmd in process.info['cmdline']:
+                    if 'tensorboard' in cmd:
+                        print(f"Killing process {process.info['pid']}: {process.info['cmdline']}")
+                        os.kill(process.info['pid'], signal.SIGTERM)
 
 # Function to initialize Tensorboard session and writer
 def ConfigTensorboardSession(logDir:str='./tensorboardLogs', portNum:int=6006) -> SummaryWriter:
@@ -758,8 +759,9 @@ class TorchModel_MATLABwrap():
 # 1) Multi-process/multi-threading support for training and validation of multiple models in parallel
 # 2) Logging of all relevat options and results to file (either csv or text from std output)
 # 3) Main training logbook to store all data to be used for model selection and hyperparameter tuning, this should be "per project"
+# 4) Training mode: k-fold cross validation leveraging scikit-learn    
 
-class TrainAndValidationManager():
+class ModelTrainingManager():
     '''Class to manage training and validation of PyTorch models using specified datasets and loss functions.'''
 
     def __init__(self, model:nn.Module, lossFcn: nn.Module, optimizer, options:dict={'taskType': 'classification', 
@@ -808,10 +810,19 @@ class TrainAndValidationManager():
         pass
     
 
+# %% EXPERIMENTAL: Network AutoBuilder class - 02-07-2024 (WIP)
+class ModelAutoBuilder():
+    print('TODO')
+    def __init__(self):
+        pass
+
+    
+
+
 
 # %% MAIN 
 def main():
-    print('In this script, main does actually nothing ^_^.')
+    print('In this script, main does actually nothing lol ^_^.')
     
 if __name__== '__main__':
     main()

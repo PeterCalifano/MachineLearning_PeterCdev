@@ -16,6 +16,7 @@ import numpy as np
 import customTorchTools
 import tcpServerPy
 
+from torch.utils.tensorboard import SummaryWriter 
 
 # MAIN SCRIPT
 def main():
@@ -29,8 +30,8 @@ def main():
     #tracedModelName = 'HorizonPixCorrector_CNNv2_' + customTorchTools.AddZerosPadding(modelID, 3) + '_cpu'
 
     #tracedModelName = 'HorizonPixCorrector_CNNv1max_largerCNN_run3_005_cpu' + '.pt'
-    tracedModelName = '/home/peterc/devDir/MachineLearning_PeterCdev/checkpoints/HorizonPixCorrector_CNNv1max_largerCNN_run6/HorizonPixCorrector_CNNv1max_largerCNN_run6_0088_cuda0.pt'
-
+    #tracedModelName = '/home/peterc/devDir/MachineLearning_PeterCdev/checkpoints/HorizonPixCorrector_CNNv1max_largerCNN_run6/HorizonPixCorrector_CNNv1max_largerCNN_run6_0088_cuda0.pt'
+    tracedModelName = '/home/peterc/devDir/MachineLearning_PeterCdev/checkpoints/HorizonPixCorrector_CNNv3max_largerCNNdeeperNN_run0/HorizonPixCorrector_CNNv3max_largerCNNdeeperNN_run0_0029_cuda0.pt'
 
     # Parameters
 

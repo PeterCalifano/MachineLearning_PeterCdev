@@ -15,8 +15,9 @@ import mlflow
 
 
 
-def mlflowTracking():
-
+def StartMLflowUI(port:int=5000):
+    # Start MLflow UI
+    os.system('mlflow ui --port ' + str(port))
 
 
 def main():
