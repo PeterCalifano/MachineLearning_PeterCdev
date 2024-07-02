@@ -226,14 +226,15 @@ class HorizonExtractionEnhancerCNNv3maxDeeper(nn.Module):
 
         self.dropoutL4 = nn.Dropout2d(alphaDropCoeff)
         self.DenseL4 = nn.Linear(int(self.LinearInputSize), self.outChannelsSizes[2], bias=False)
+        self.batchNormL4 = nn.BatchNorm1d(self.outChannelsSizes[2], eps=1E-5, momentum=0.1, affine=True)
 
-        self.batchNormL5 = nn.BatchNorm1d(self.outChannelsSizes[2], eps=1E-5, momentum=0.1, affine=True)
         self.dropoutL5 = nn.Dropout1d(alphaDropCoeff)
         self.DenseL5 = nn.Linear(self.outChannelsSizes[2], self.outChannelsSizes[3], bias=True)
+        self.batchNormL5 = nn.BatchNorm1d(self.outChannelsSizes[3], eps=1E-5, momentum=0.1, affine=True)
 
-        self.batchNormL6 = nn.BatchNorm1d(self.outChannelsSizes[3], eps=1E-5, momentum=0.1, affine=True)
         self.dropoutL6 = nn.Dropout1d(alphaDropCoeff)
         self.DenseL6 = nn.Linear(self.outChannelsSizes[3], self.outChannelsSizes[4], bias=True)
+        self.batchNormL6 = nn.BatchNorm1d(self.outChannelsSizes[4], eps=1E-5, momentum=0.1, affine=True)
 
         # Output layer
         self.DenseOutput = nn.Linear(self.outChannelsSizes[4], 2, bias=True)
@@ -267,19 +268,25 @@ class HorizonExtractionEnhancerCNNv3maxDeeper(nn.Module):
         # L4 
         #val = self.batchNormL3(val)
         val = self.dropoutL4(val)
-        val = torchFunc.tanh(self.DenseL4(val))
+        val = self.DenseL4(val)
+        if self.useBatchNorm:
+            val = self.batchNormL4(val)
+        val = torchFunc.tanh(val)
 
         # L5
+        val = self.dropoutL5(val)
+        val = self.DenseL5(val)
         if self.useBatchNorm:
             val = self.batchNormL5(val)
-        val = self.dropoutL5(val)
-        val = torchFunc.tanh(self.DenseL5(val))
 
-        # L6
+        val = torchFunc.tanh(val)
+
+        # L6 
+        val = self.dropoutL6(val)
+        val = self.DenseL6(val)
         if self.useBatchNorm:
             val = self.batchNormL6(val)
-        val = self.dropoutL6(val)
-        val = torchFunc.leaky_relu(self.DenseL6(val), self.alphaLeaky)
+        val = torchFunc.leaky_relu(val, self.alphaLeaky)
 
         # Output layer
         predictedPixCorrection = self.DenseOutput(val)
