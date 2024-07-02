@@ -10,6 +10,8 @@ sys.path.append(os.path.join('/home/peterc/devDir/MachineLearning_PeterCdev/PyTo
 import customTorchTools # Custom torch tools
 import limbPixelExtraction_CNN_NN, ModelClasses # Custom model classes
 import datasetPreparation
+from sklearn import StandardScaler # Import scikit-learn for dataset preparation
+
 
 import torch
 import datetime, json
@@ -320,6 +322,10 @@ def main(idSession:int):
             inputDataArray = inputDataArray[:, 0:saveID]           
             labelsDataArray = labelsDataArray[:, 0:saveID]
 
+            # Apply standardization to input data # TODO: check if T is necessart
+            inputDataArray = torch.tensor(StandardScaler().fit_transform(inputDataArray.T).T,
+                                        dtype=torch.float32, device=device)
+
             if idDataset == 0:
                 dataDictTraining = {'labelsDataArray': labelsDataArray, 'inputDataArray': inputDataArray}
             elif idDataset == 1:   
@@ -350,6 +356,13 @@ def main(idSession:int):
 
         datasetTraining = customTorchTools.LoadTorchDataset(datasetSavePath, datasetName='TrainingDataset_'+TrainingDatasetTag)
         datasetValidation = customTorchTools.LoadTorchDataset(datasetSavePath, datasetName='ValidationDataset_'+ValidationDatasetTag)
+    
+        # Apply standardization to input data
+        inputDataArray = datasetTraining.inputDataArray
+        inputDataArray = torch.tensor(StandardScaler().fit_transform(inputDataArray.T).T,
+                                        dtype=torch.float32, device=device)
+        
+        datasetTraining.inputDataArray = inputDataArray
     ################################################################################################
 
     # SUPERSEDED CODE --> move this to function for dataset splitting (add rng seed for reproducibility)
