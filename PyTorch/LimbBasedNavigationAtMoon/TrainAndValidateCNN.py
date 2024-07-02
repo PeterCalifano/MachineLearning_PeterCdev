@@ -34,7 +34,7 @@ TRAIN_ALL = True
 REGEN_DATASET = False
 USE_TENSOR_LOSS_EVAL = True
 MODEL_CLASS_ID = 2
-MANUAL_RUN = False # Uses MODEL_CLASS_ID to run a specific model
+MANUAL_RUN = True # Uses MODEL_CLASS_ID to run a specific model
 
 USE_BATCH_NORM = True
 
@@ -52,7 +52,7 @@ def main(idSession:int):
 
     kernelSizes = [3, 3]
     initialLearnRate = 1E-3
-    momentumValue = 0.001
+    momentumValue = 0.9
 
     #TODO: add log and printing of settings of optimizer for each epoch. Reduce the training loss value printings
 
@@ -61,7 +61,7 @@ def main(idSession:int):
     # Loss function parameters
     params = {'ConicLossWeightCoeff': 0, 'RectExpWeightCoeff': 0}
 
-    optimizerID = 1 # 0
+    optimizerID = 0 # 0
     UseMaxPooling = True
 
     device = customTorchTools.GetDevice()
@@ -71,7 +71,8 @@ def main(idSession:int):
 
     # Options to restart training from checkpoint
     if idSession == 0:
-        runID = f"{0000:04d}"
+        ID = 0
+        runID = "{num:04d}".format(num=ID)
         #modelSavePath = './checkpoints/HorizonPixCorrector_CNNv1_run3'
         modelSavePath = './checkpoints/HorizonPixCorrector_CNNv1max_largerCNN_run' + runID
         datasetSavePath = './datasets/HorizonPixCorrectorV1'
@@ -84,7 +85,8 @@ def main(idSession:int):
 
 
     elif idSession == 1:
-        runID = f"{0000:04d}"
+        ID = 0
+        runID = "{num:04d}".format(num=ID)
         modelSavePath = './checkpoints/HorizonPixCorrector_CNNv2max_largerCNN_run' + runID
         datasetSavePath = './datasets/HorizonPixCorrectorV2'
         tensorboardLogDir = './tensorboardLogs/tensorboardLog_v2max_largerCNN_run'   + runID
@@ -95,7 +97,8 @@ def main(idSession:int):
         numOfEpochs = 15
 
     elif idSession == 2:
-        runID = f"{0000:04d}"
+        ID = 1
+        runID = "{num:04d}".format(num=ID) 
         modelSavePath = './checkpoints/HorizonPixCorrector_CNNv3max_largerCNNdeeperNN_run' + runID
         datasetSavePath = './datasets/HorizonPixCorrectorV3'
         tensorboardLogDir = './tensorboardLogs/tensorboardLog_v3max_largerCNNdeeperNN_run'   + runID
@@ -107,7 +110,8 @@ def main(idSession:int):
 
 
     elif idSession == 3:
-        runID = f"{0000:04d}"
+        ID = 0
+        runID = "{num:04d}".format(num=ID)
         modelSavePath = './checkpoints/HorizonPixCorrector_deepNNv4_run' + runID
         datasetSavePath = './datasets/HorizonPixCorrectorV4'
         tensorboardLogDir = './tensorboardLogs/tensorboardLog_deepNNv4_run'   + runID
