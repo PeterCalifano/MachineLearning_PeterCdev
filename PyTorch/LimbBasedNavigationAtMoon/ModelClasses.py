@@ -403,3 +403,144 @@ class HorizonExtractionEnhancerResCNNv5maxDeeper(nn.Module):
         correctedPix = self.DenseOutput(val)
 
         return correctedPix
+    
+class HorizonExtractionEnhancer_ShortCNNv6maxDeeper(nn.Module):
+    '''Experimental model with semi-automatic initialization. Structure of the architecture is fixed, but hyperparameters of this are specified at instantiation using
+    the "parametersConfig" dictionary with the following keys: kernelSizes, useBatchNorm, poolingKernelSize, alphaDropCoeff, alphaLeaky, patchSize, LinearInputSkipSize'''
+    def __init__(self, outChannelsSizes:list, parametersConfig) -> None:
+        super().__init__()
+
+        # Extract all the inputs of the class init method from dictionary parametersConfig, else use default values
+        if 'kernelSizes' not in parametersConfig:
+            kernelSizes = [3, 3]
+        else:
+            kernelSizes = parametersConfig['kernelSizes']
+
+        if 'useBatchNorm' not in parametersConfig:
+            useBatchNorm = False
+        else:
+            useBatchNorm = parametersConfig['useBatchNorm']
+
+        if 'poolingKernelSize' not in parametersConfig:
+            poolingKernelSize = 2
+        else:
+            poolingKernelSize = parametersConfig['poolingKernelSize']
+
+        if 'alphaDropCoeff' not in parametersConfig:
+            alphaDropCoeff = 0.1
+        else:
+            alphaDropCoeff = parametersConfig['alphaDropCoeff']
+
+        if 'alphaLeaky' not in parametersConfig:
+            alphaLeaky = 0.01
+        else:
+            alphaLeaky = parametersConfig['alphaLeaky']
+            
+        if 'patchSize' not in parametersConfig:
+            patchSize = 7
+        else:
+            patchSize = parametersConfig['patchSize']
+            
+        assert(len(outChannelsSizes) == 4) # 7 layers in the model
+        assert(len(kernelSizes) == 1)
+        
+        # Model parameters
+        self.outChannelsSizes = outChannelsSizes
+        self.patchSize = patchSize
+        self.imagePixSize = self.patchSize**2
+        self.numOfConvLayers = 1
+        self.useBatchNorm = useBatchNorm
+
+        convBlockOutputSize = AutoComputeConvBlocksOutput(self, kernelSizes, poolingKernelSize)
+
+        #self.LinearInputFeaturesSize = (patchSize - self.numOfConvLayers * np.floor(float(kernelSizes[-1])/2.0)) * self.outChannelsSizes[-1] # Number of features arriving as input to FC layer
+        self.LinearInputFeaturesSize = convBlockOutputSize[self.numOfConvLayers-1] 
+    
+        self.LinearInputSkipSize = parametersConfig['LinearInputSkipSize'] #11 # CHANGE TO 7 removing R_DEM and PosTF
+        self.LinearInputSize = self.LinearInputSkipSize + self.LinearInputFeaturesSize
+
+        self.alphaLeaky = alphaLeaky
+
+        # Model architecture
+        idLayer = 0
+        # Convolutional Features extractor
+        self.conv2dL1 = nn.Conv2d(1, self.outChannelsSizes[0], kernelSizes[0]) 
+        self.maxPoolL1 = nn.MaxPool2d(poolingKernelSize, 1)
+        idLayer += 1
+
+        #self.conv2dL2 = nn.Conv2d(self.outChannelsSizes[0], self.outChannelsSizes[1], kernelSizes[1]) 
+        #self.maxPoolL2 = nn.MaxPool2d(poolingKernelSize, 1) 
+
+        # Fully Connected predictor
+        # NOTE: Add batch normalization here?
+        self.FlattenL2 = nn.Flatten()
+        
+        self.dropoutL3 = nn.Dropout2d(alphaDropCoeff)
+        self.DenseL3 = nn.Linear(int(self.LinearInputSize), self.outChannelsSizes[idLayer], bias=False)
+        self.batchNormL3 = nn.BatchNorm1d(self.outChannelsSizes[idLayer+1], eps=1E-5, momentum=0.1, affine=True)
+        idLayer += 1
+
+        self.dropoutL4 = nn.Dropout1d(alphaDropCoeff)
+        self.DenseL4 = nn.Linear(self.outChannelsSizes[idLayer], self.outChannelsSizes[idLayer+1], bias=True)
+        self.batchNormL4 = nn.BatchNorm1d(self.outChannelsSizes[idLayer+1], eps=1E-5, momentum=0.1, affine=True)
+        idLayer += 1
+
+        self.dropoutL5 = nn.Dropout1d(alphaDropCoeff)
+        self.DenseL5 = nn.Linear(self.outChannelsSizes[idLayer], self.outChannelsSizes[idLayer+1], bias=True)
+        self.batchNormL5 = nn.BatchNorm1d(self.outChannelsSizes[idLayer+1], eps=1E-5, momentum=0.1, affine=True)
+        idLayer += 1
+
+        # Output layer
+        self.DenseOutput = nn.Linear(self.outChannelsSizes[idLayer], 2, bias=True)
+
+    def forward(self, inputSample):
+        
+        # Extract image and contextual information from inputSample
+        # ACHTUNG: transpose, reshape, transpose operation assumes that input vector was reshaped column-wise (FORTRAN style)
+        #img2Dinput = (((inputSample[:, 0:self.imagePixSize]).T).reshape(int(np.sqrt(float(self.imagePixSize))), -1, 1, inputSample.size(0))).T # First portion of the input vector reshaped to 2D
+        
+        assert(inputSample.size(1) == (self.imagePixSize + self.LinearInputSkipSize))
+        #img2Dinput =  ( ( (inputSample[:, 0:self.imagePixSize]).T).reshape(int(torch.sqrt( torch.tensor(self.imagePixSize) )), -1, 1, inputSample.size(0) ) ).T # First portion of the input vector reshaped to 2D
+        
+        imgWidth = int(sqrt( self.imagePixSize ))
+        img2Dinput =  ( ( (inputSample[:, 0:self.imagePixSize]).T).reshape(imgWidth, -1, 1, inputSample.size(0) ) ).T # First portion of the input vector reshaped to 2D
+        contextualInfoInput = inputSample[:, self.imagePixSize:]
+
+        # Convolutional layers
+        # L1 (Input)
+        val = self.maxPoolL1(torchFunc.leaky_relu(self.conv2dL1(img2Dinput), self.alphaLeaky))
+
+        # Fully Connected Layers
+        # L2
+        val = self.FlattenL2(val) # Flatten data to get input to Fully Connected layers
+
+        # Concatenate and batch normalize data
+        val = torch.cat((val, contextualInfoInput), dim=1)
+
+        # L3 
+        #val = self.batchNormL3(val)
+        val = self.dropoutL3(val)
+        val = self.DenseL3(val)
+        if self.useBatchNorm:
+            val = self.batchNormL3(val)
+        val = torchFunc.tanh(val)
+
+        # L4
+        val = self.dropoutL4(val)
+        val = self.DenseL4(val)
+        if self.useBatchNorm:
+            val = self.batchNormL4(val)
+
+        val = torchFunc.tanh(val)
+
+        # L5
+        val = self.dropoutL5(val)
+        val = self.DenseL5(val)
+        if self.useBatchNorm:
+            val = self.batchNormL5(val)
+        val = torchFunc.leaky_relu(val, self.alphaLeaky)
+
+        # Output layer
+        predictedPixCorrection = self.DenseOutput(val)
+
+        return predictedPixCorrection
