@@ -328,7 +328,7 @@ def main(idSession:int):
 
             # Apply standardization to input data # TODO: check if T is necessary
             #ACHTUNG: image may not be standardized?
-            #inputDataArray = torch.tensor(StandardScaler().fit_transform(inputDataArray.T).T,
+            #inputDataArray = torch.tensor(preprocessing.StandardScaler().fit_transform(inputDataArray.T).T,
             #                            dtype=torch.float32, device=device)
 
             if idDataset == 0:
