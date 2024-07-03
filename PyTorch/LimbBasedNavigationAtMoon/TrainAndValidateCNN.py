@@ -10,7 +10,7 @@ sys.path.append(os.path.join('/home/peterc/devDir/MachineLearning_PeterCdev/PyTo
 import customTorchTools # Custom torch tools
 import limbPixelExtraction_CNN_NN, ModelClasses # Custom model classes
 import datasetPreparation
-from sklearn import StandardScaler # Import scikit-learn for dataset preparation
+#from sklearn import StandardScaler # Import scikit-learn for dataset preparation
 
 
 import torch
@@ -43,7 +43,7 @@ USE_BATCH_NORM = True
 def main(idSession:int):
 
     # SETTINGS and PARAMETERS 
-    batch_size = 16*2 # Defines batch size in dataset
+    batch_size = 16*5 # Defines batch size in dataset
     #outChannelsSizes = [16, 32, 75, 15] 
     outChannelsSizes = [256, 128, 256, 64] 
 
@@ -53,8 +53,8 @@ def main(idSession:int):
         outChannelsSizes = [256, 128, 64, 32]
 
     kernelSizes = [3, 3]
-    initialLearnRate = 1E-3
-    momentumValue = 0.9
+    initialLearnRate = 5E-2
+    momentumValue = 0.6
 
     #TODO: add log and printing of settings of optimizer for each epoch. Reduce the training loss value printings
 
@@ -99,7 +99,7 @@ def main(idSession:int):
         numOfEpochs = 15
 
     elif idSession == 2:
-        ID = 1
+        ID = 2
         runID = "{num:04d}".format(num=ID) 
         modelSavePath = './checkpoints/HorizonPixCorrector_CNNv3max_largerCNNdeeperNN_run' + runID
         datasetSavePath = './datasets/HorizonPixCorrectorV3'
@@ -108,7 +108,7 @@ def main(idSession:int):
 
         modelArchName = 'HorizonPixCorrector_CNNv3max_largerCNNdeeperNN_run' + runID
         inputSize = 57 # TODO: update this according to new model
-        numOfEpochs = 20
+        numOfEpochs = 5
 
 
     elif idSession == 3:
