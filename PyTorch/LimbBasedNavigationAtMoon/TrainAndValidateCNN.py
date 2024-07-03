@@ -10,7 +10,7 @@ sys.path.append(os.path.join('/home/peterc/devDir/MachineLearning_PeterCdev/PyTo
 import customTorchTools # Custom torch tools
 import limbPixelExtraction_CNN_NN, ModelClasses # Custom model classes
 import datasetPreparation
-from sklearn import StandardScaler # Import scikit-learn for dataset preparation
+from sklearn import preprocessing # Import scikit-learn for dataset preparation
 
 
 import torch
@@ -328,7 +328,7 @@ def main(idSession:int):
 
             # Apply standardization to input data # TODO: check if T is necessary
             #ACHTUNG: image may not be standardized?
-            #inputDataArray = torch.tensor(StandardScaler().fit_transform(inputDataArray.T).T,
+            #inputDataArray = torch.tensor(preprocessing.StandardScaler().fit_transform(inputDataArray.T).T,
             #                            dtype=torch.float32, device=device)
 
             if idDataset == 0:
