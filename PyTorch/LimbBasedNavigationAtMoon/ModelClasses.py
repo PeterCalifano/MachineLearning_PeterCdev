@@ -36,7 +36,7 @@ Architecture characteristics: Conv. layers, max pooling, deeper fully connected 
     Input: Image patch with Moon limb, contextual information: relative attitude, sun direction in pixels, patch centre coordinates, target average radius in pixels.
 '''
 class HorizonExtractionEnhancerCNNv3maxDeeper(nn.Module):
-    def __init__(self, outChannelsSizes:list, kernelSizes, useBatchNorm = False, poolingKernelSize=2, alphaDropCoeff=0.3, alphaLeaky=0.01, patchSize=7) -> None:
+    def __init__(self, outChannelsSizes:list, kernelSizes, useBatchNorm = False, poolingKernelSize=2, alphaDropCoeff=0.1, alphaLeaky=0.01, patchSize=7) -> None:
         super().__init__()
 
         # Model parameters
@@ -45,6 +45,9 @@ class HorizonExtractionEnhancerCNNv3maxDeeper(nn.Module):
         self.imagePixSize = self.patchSize**2
         self.numOfConvLayers = 2
         self.useBatchNorm = useBatchNorm
+
+        if useBatchNorm:
+            print('Batch normalization layers: enabled.')
 
         convBlockOutputSize = AutoComputeConvBlocksOutput(self, kernelSizes, poolingKernelSize)
 
@@ -63,26 +66,25 @@ class HorizonExtractionEnhancerCNNv3maxDeeper(nn.Module):
 
         self.conv2dL2 = nn.Conv2d(self.outChannelsSizes[0], self.outChannelsSizes[1], kernelSizes[1]) 
         self.maxPoolL2 = nn.MaxPool2d(poolingKernelSize, 1) 
+        self.batchNormL2 = nn.BatchNorm2d(self.outChannelsSizes[1], eps=1E-5, momentum=0.1, affine=True)
 
         # Fully Connected predictor
-        # NOTE: Add batch normalization here?
         self.FlattenL3 = nn.Flatten()
-        #self.batchNormL3 = nn.BatchNorm1d(int(self.LinearInputSize), eps=1E-5, momentum=0.1, affine=True) # affine=True set gamma and beta parameters as learnable
-        #self.batchNormL3 = nn.BatchNorm1d(41, eps=1E-5, momentum=0.1, affine=True) # affine=True set gamma and beta parameters as learnable
 
         self.dropoutL4 = nn.Dropout2d(alphaDropCoeff)
         self.DenseL4 = nn.Linear(int(self.LinearInputSize), self.outChannelsSizes[2], bias=False)
-
         self.batchNormL5 = nn.BatchNorm1d(self.outChannelsSizes[2], eps=1E-5, momentum=0.1, affine=True) # affine=True set gamma and beta parameters as learnable
+
         self.dropoutL5 = nn.Dropout1d(alphaDropCoeff)
         self.DenseL5 = nn.Linear(self.outChannelsSizes[2], self.outChannelsSizes[3], bias=True)
-        
-        self.batchNormL6 = nn.BatchNorm1d(self.outChannelsSizes[3], eps=1E-5, momentum=0.1, affine=True) # affine=True set gamma and beta parameters as learnable
+        self.batchNormL5 = nn.BatchNorm1d(self.outChannelsSizes[3], eps=1E-5, momentum=0.1, affine=True) # affine=True set gamma and beta parameters as learnable
+
         self.dropoutL6 = nn.Dropout1d(alphaDropCoeff)
         self.DenseL6 = nn.Linear(self.outChannelsSizes[3], self.outChannelsSizes[4], bias=True)
+        self.batchNormL6 = nn.BatchNorm1d(self.outChannelsSizes[4], eps=1E-5, momentum=0.1, affine=True) # affine=True set gamma and beta parameters as learnable
 
         # Output layer
-        self.batchNormL7 = nn.BatchNorm1d(self.outChannelsSizes[4], eps=1E-5, momentum=0.1, affine=True) # affine=True set gamma and beta parameters as learnable
+        #self.batchNormL7 = nn.BatchNorm1d(self.outChannelsSizes[4], eps=1E-5, momentum=0.1, affine=True) # affine=True set gamma and beta parameters as learnable
         self.DenseOutput = nn.Linear(self.outChannelsSizes[4], 2, bias=True)
 
     def forward(self, inputSample):
@@ -101,8 +103,12 @@ class HorizonExtractionEnhancerCNNv3maxDeeper(nn.Module):
         # Convolutional layers
         # L1 (Input)
         val = self.maxPoolL1(torchFunc.leaky_relu(self.conv2dL1(img2Dinput), self.alphaLeaky))
+
         # L2
-        val = self.maxPoolL2(torchFunc.leaky_relu(self.conv2dL2(val), self.alphaLeaky))
+        val = self.conv2dL2(val)
+        if self.useBatchNorm:
+            val = self.batchNormL2(val)
+        val = self.maxPoolL2(torchFunc.leaky_relu(val, self.alphaLeaky))
 
         # Fully Connected Layers
         # L3
@@ -113,24 +119,30 @@ class HorizonExtractionEnhancerCNNv3maxDeeper(nn.Module):
 
         # L4 
         #val = self.batchNormL3(val)
+        val = self.DenseL4(val)
         val = self.dropoutL4(val)
-        val = torchFunc.tanh(self.DenseL4(val))
+
+        if self.useBatchNorm:
+            val = self.batchNormL4(val)
+        val = torchFunc.tanh(val)
 
         # L5
+        val = self.DenseL5(val)
+        val = self.dropoutL5(val)
+
         if self.useBatchNorm:
             val = self.batchNormL5(val)
-        val = self.dropoutL5(val)
-        val = torchFunc.tanh(self.DenseL5(val))
+        val = torchFunc.tanh(val)
 
         # L6
+        val = self.DenseL6(val)
+        val = self.dropoutL6(val)
+
         if self.useBatchNorm:
             val = self.batchNormL6(val)
-        val = self.dropoutL6(val)
-        val = torchFunc.leaky_relu(self.DenseL6(val), self.alphaLeaky)
+        val = torchFunc.leaky_relu(val, self.alphaLeaky)
 
         # Output layer
-        if self.useBatchNorm:
-            val = self.batchNormL7(val)
         predictedPixCorrection = self.DenseOutput(val)
 
         return predictedPixCorrection
