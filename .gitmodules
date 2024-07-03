@@ -19,3 +19,6 @@
 [submodule "mlflow_PeterCdev"]
 	path = mlflow_PeterCdev
 	url = git@github.com:PeterCalifano/mlflow_PeterCdev.git
+[submodule "loss-landscape_PeterCdev"]
+	path = loss-landscape_PeterCdev
+	url = git@github.com:PeterCalifano/loss-landscape_PeterCdev.git
