@@ -91,19 +91,19 @@ class HorizonExtractionEnhancer_CNNv3maxDeeper(nn.Module):
         self.DenseOutput = nn.Linear(self.outChannelsSizes[4], 2, bias=True)
 
         # Initialize weights of layers
-        self.__initialize_weights(self)
+        self.__initialize_weights__()
 
         ############################################################################################################
-    def __initialize_weights(self):
+    def __initialize_weights__(self):
         '''Weights Initialization function for layers of the model. Xavier --> layers with tanh and sigmoid, Kaiming --> layers with ReLU activation'''
         # Leaky_ReLU activation layers
-        init.kaiming_uniform_(self.conv2dL1, nonlinearity='leaky_relu') 
-        init.kaiming_uniform_(self.conv2dL2, nonlinearity='leaky_relu') 
-        init.kaiming_uniform_(self.DenseL6, nonlinearity='leaky_relu') 
+        init.kaiming_uniform_(self.conv2dL1.weight, nonlinearity='leaky_relu') 
+        init.kaiming_uniform_(self.conv2dL2.weight, nonlinearity='leaky_relu') 
+        init.kaiming_uniform_(self.DenseL6.weight, nonlinearity='leaky_relu') 
 
         # Tanh activation layers
-        init.xavier_uniform_(self.DenseL4) 
-        init.xavier_uniform_(self.DenseL5) 
+        init.xavier_uniform_(self.DenseL4.weight) 
+        init.xavier_uniform_(self.DenseL5.weight) 
 
         ############################################################################################################
     def forward(self, inputSample):

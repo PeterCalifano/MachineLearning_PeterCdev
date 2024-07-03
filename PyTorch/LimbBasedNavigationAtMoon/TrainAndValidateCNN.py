@@ -407,7 +407,7 @@ def main(idSession:int):
         elif idSession == 1:
             modelClass = limbPixelExtraction_CNN_NN.HorizonExtractionEnhancerCNNv2max
         elif idSession == 2:
-            modelClass = ModelClasses.HorizonExtractionEnhancerCNNv3maxDeeper
+            modelClass = ModelClasses.HorizonExtractionEnhancer_CNNv3maxDeeper
         elif idSession == 3:
             modelClass = ModelClasses.HorizonExtractionEnhancer_FullyConnNNv4        
     
