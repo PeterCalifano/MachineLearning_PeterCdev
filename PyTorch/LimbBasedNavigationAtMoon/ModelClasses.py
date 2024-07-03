@@ -37,7 +37,8 @@ import torch.nn.init as init
 Architecture characteristics: Conv. layers, max pooling, deeper fully connected layers, dropout, tanh and leaky ReLU activation
     Input: Image patch with Moon limb, contextual information: relative attitude, sun direction in pixels, patch centre coordinates, target average radius in pixels.
 '''
-class HorizonExtractionEnhancerCNNv3maxDeeper(nn.Module):
+class HorizonExtractionEnhancer_CNNv3maxDeeper(nn.Module):
+        ############################################################################################################    
     def __init__(self, outChannelsSizes:list, kernelSizes, useBatchNorm = False, poolingKernelSize=2, alphaDropCoeff=0.1, alphaLeaky=0.01, patchSize=7) -> None:
         super().__init__()
 
@@ -89,7 +90,10 @@ class HorizonExtractionEnhancerCNNv3maxDeeper(nn.Module):
         #self.batchNormL7 = nn.BatchNorm1d(self.outChannelsSizes[4], eps=1E-5, momentum=0.1, affine=True) # affine=True set gamma and beta parameters as learnable
         self.DenseOutput = nn.Linear(self.outChannelsSizes[4], 2, bias=True)
 
+        # Initialize weights of layers
+        self.__initialize_weights(self)
 
+        ############################################################################################################
     def __initialize_weights(self):
         '''Weights Initialization function for layers of the model. Xavier --> layers with tanh and sigmoid, Kaiming --> layers with ReLU activation'''
         # Leaky_ReLU activation layers
@@ -101,6 +105,7 @@ class HorizonExtractionEnhancerCNNv3maxDeeper(nn.Module):
         init.xavier_uniform_(self.DenseL4) 
         init.xavier_uniform_(self.DenseL5) 
 
+        ############################################################################################################
     def forward(self, inputSample):
         '''Forward prediction method'''
         # Extract image and contextual information from inputSample
@@ -161,7 +166,7 @@ class HorizonExtractionEnhancerCNNv3maxDeeper(nn.Module):
 
         return predictedPixCorrection
     
-
+#############################################################################################################################################
 # %% Custom training function for Moon limb pixel extraction enhancer FullyConnected NNv4 (with target average radius in pixels) - 30-06-2024
 class HorizonExtractionEnhancer_FullyConnNNv4(nn.Module):
     def __init__(self, outChannelsSizes:list, alphaDropCoeff=0.1, alphaLeaky=0.01, patchSize=7) -> None:
@@ -210,119 +215,12 @@ class HorizonExtractionEnhancer_FullyConnNNv4(nn.Module):
 
         return predictedPixCorrection
     
-# %% Custom training function for Moon limb pixel extraction enhancer V3maxDeeper (with target average radius in pixels) - 30-06-2024
-'''
-Architecture characteristics: Conv. layers, max pooling, deeper fully connected layers, dropout, tanh and leaky ReLU activation and batch normalization
-    Input: Image patch with Moon limb, contextual information: relative attitude, sun direction in pixels, patch centre coordinates, target average radius in pixels.
-'''
-class HorizonExtractionEnhancerCNNv3maxDeeper(nn.Module):
-    def __init__(self, outChannelsSizes:list, kernelSizes, useBatchNorm = False, poolingKernelSize=2, alphaDropCoeff=0.3, alphaLeaky=0.01, patchSize=7) -> None:
-        super().__init__()
+#############################################################################################################################################
 
-        # Model parameters
-        self.outChannelsSizes = outChannelsSizes
-        self.patchSize = patchSize
-        self.imagePixSize = self.patchSize**2
-        self.numOfConvLayers = 2
-        self.useBatchNorm = useBatchNorm
-
-        convBlockOutputSize = AutoComputeConvBlocksOutput(self, kernelSizes, poolingKernelSize)
-
-        #self.LinearInputFeaturesSize = (patchSize - self.numOfConvLayers * np.floor(float(kernelSizes[-1])/2.0)) * self.outChannelsSizes[-1] # Number of features arriving as input to FC layer
-        self.LinearInputFeaturesSize = convBlockOutputSize[1] 
-        
-        self.LinearInputSkipSize = 8 #11 # CHANGE TO 7 removing R_DEM and PosTF
-        self.LinearInputSize = self.LinearInputSkipSize + self.LinearInputFeaturesSize
-
-        self.alphaLeaky = alphaLeaky
-
-        # Model architecture
-        # Convolutional Features extractor
-        self.conv2dL1 = nn.Conv2d(1, self.outChannelsSizes[0], kernelSizes[0]) 
-        self.maxPoolL1 = nn.MaxPool2d(poolingKernelSize, 1)
-
-        self.conv2dL2 = nn.Conv2d(self.outChannelsSizes[0], self.outChannelsSizes[1], kernelSizes[1]) 
-        self.maxPoolL2 = nn.MaxPool2d(poolingKernelSize, 1) 
-
-        # Fully Connected predictor
-        # NOTE: Add batch normalization here?
-        self.FlattenL3 = nn.Flatten()
-        #self.batchNormL3 = nn.BatchNorm1d(int(self.LinearInputSize), eps=1E-5, momentum=0.1, affine=True) # affine=True set gamma and beta parameters as learnable
-        #self.batchNormL3 = nn.BatchNorm1d(41, eps=1E-5, momentum=0.1, affine=True) # affine=True set gamma and beta parameters as learnable
-
-        self.dropoutL4 = nn.Dropout2d(alphaDropCoeff)
-        self.DenseL4 = nn.Linear(int(self.LinearInputSize), self.outChannelsSizes[2], bias=False)
-        self.batchNormL4 = nn.BatchNorm1d(self.outChannelsSizes[2], eps=1E-5, momentum=0.1, affine=True)
-
-        self.dropoutL5 = nn.Dropout1d(alphaDropCoeff)
-        self.DenseL5 = nn.Linear(self.outChannelsSizes[2], self.outChannelsSizes[3], bias=True)
-        self.batchNormL5 = nn.BatchNorm1d(self.outChannelsSizes[3], eps=1E-5, momentum=0.1, affine=True)
-
-        self.dropoutL6 = nn.Dropout1d(alphaDropCoeff)
-        self.DenseL6 = nn.Linear(self.outChannelsSizes[3], self.outChannelsSizes[4], bias=True)
-        self.batchNormL6 = nn.BatchNorm1d(self.outChannelsSizes[4], eps=1E-5, momentum=0.1, affine=True)
-
-        # Output layer
-        self.DenseOutput = nn.Linear(self.outChannelsSizes[4], 2, bias=True)
-
-    def forward(self, inputSample):
-        
-        # Extract image and contextual information from inputSample
-        # ACHTUNG: transpose, reshape, transpose operation assumes that input vector was reshaped column-wise (FORTRAN style)
-        #img2Dinput = (((inputSample[:, 0:self.imagePixSize]).T).reshape(int(np.sqrt(float(self.imagePixSize))), -1, 1, inputSample.size(0))).T # First portion of the input vector reshaped to 2D
-        
-        assert(inputSample.size(1) == (self.imagePixSize + self.LinearInputSkipSize))
-        #img2Dinput =  ( ( (inputSample[:, 0:self.imagePixSize]).T).reshape(int(torch.sqrt( torch.tensor(self.imagePixSize) )), -1, 1, inputSample.size(0) ) ).T # First portion of the input vector reshaped to 2D
-        
-        imgWidth = int(sqrt( self.imagePixSize ))
-        img2Dinput =  ( ( (inputSample[:, 0:self.imagePixSize]).T).reshape(imgWidth, -1, 1, inputSample.size(0) ) ).T # First portion of the input vector reshaped to 2D
-        contextualInfoInput = inputSample[:, self.imagePixSize:]
-
-        # Convolutional layers
-        # L1 (Input)
-        val = self.maxPoolL1(torchFunc.leaky_relu(self.conv2dL1(img2Dinput), self.alphaLeaky))
-        # L2
-        val = self.maxPoolL2(torchFunc.leaky_relu(self.conv2dL2(val), self.alphaLeaky))
-
-        # Fully Connected Layers
-        # L3
-        val = self.FlattenL3(val) # Flatten data to get input to Fully Connected layers
-
-        # Concatenate and batch normalize data
-        val = torch.cat((val, contextualInfoInput), dim=1)
-
-        # L4 
-        #val = self.batchNormL3(val)
-        val = self.dropoutL4(val)
-        val = self.DenseL4(val)
-        if self.useBatchNorm:
-            val = self.batchNormL4(val)
-        val = torchFunc.tanh(val)
-
-        # L5
-        val = self.dropoutL5(val)
-        val = self.DenseL5(val)
-        if self.useBatchNorm:
-            val = self.batchNormL5(val)
-
-        val = torchFunc.tanh(val)
-
-        # L6 
-        val = self.dropoutL6(val)
-        val = self.DenseL6(val)
-        if self.useBatchNorm:
-            val = self.batchNormL6(val)
-        val = torchFunc.leaky_relu(val, self.alphaLeaky)
-
-        # Output layer
-        predictedPixCorrection = self.DenseOutput(val)
-
-        return predictedPixCorrection
-
-
-
+#############################################################################################################################################
 # %% Custom training function for Moon limb pixel extraction enhancer ResNet-like V5maxDeeper (with target average radius in pixels) - 01-07-2024
-class HorizonExtractionEnhancerResCNNv5maxDeeper(nn.Module):
+class HorizonExtractionEnhancer_ResCNNv5maxDeeper(nn.Module):
+    ############################################################################################################
     def __init__(self, outChannelsSizes:list, kernelSizes, useBatchNorm = False, poolingKernelSize=2, alphaDropCoeff=0.3, alphaLeaky=0.01, patchSize=7) -> None:
         super().__init__()
 
@@ -373,6 +271,7 @@ class HorizonExtractionEnhancerResCNNv5maxDeeper(nn.Module):
         self.DensePreOutput = nn.Linear(self.outChannelsSizes[4]+2, 2, bias=True)  # PATCH CENTRE SKIP CONNECTION
         self.DenseOutput = nn.Linear(2, 2, bias=True)
 
+    ############################################################################################################
     def forward(self, inputSample):
         '''Forward prediction method'''
         # Extract image and contextual information from inputSample
@@ -430,6 +329,7 @@ class HorizonExtractionEnhancerResCNNv5maxDeeper(nn.Module):
 
         return correctedPix
     
+#############################################################################################################################################
 class HorizonExtractionEnhancer_ShortCNNv6maxDeeper(nn.Module):
     '''Experimental model with semi-automatic initialization. Structure of the architecture is fixed, but hyperparameters of this are specified at instantiation using
     the "parametersConfig" dictionary with the following keys: kernelSizes, useBatchNorm, poolingKernelSize, alphaDropCoeff, alphaLeaky, patchSize, LinearInputSkipSize'''
