@@ -76,7 +76,7 @@ class HorizonExtractionEnhancer_CNNv3maxDeeper(nn.Module):
 
         self.dropoutL4 = nn.Dropout2d(alphaDropCoeff)
         self.DenseL4 = nn.Linear(int(self.LinearInputSize), self.outChannelsSizes[2], bias=False)
-        self.batchNormL5 = nn.BatchNorm1d(self.outChannelsSizes[2], eps=1E-5, momentum=0.1, affine=True) # affine=True set gamma and beta parameters as learnable
+        self.batchNormL4 = nn.BatchNorm1d(self.outChannelsSizes[2], eps=1E-5, momentum=0.1, affine=True) # affine=True set gamma and beta parameters as learnable
 
         self.dropoutL5 = nn.Dropout1d(alphaDropCoeff)
         self.DenseL5 = nn.Linear(self.outChannelsSizes[2], self.outChannelsSizes[3], bias=True)
@@ -98,12 +98,22 @@ class HorizonExtractionEnhancer_CNNv3maxDeeper(nn.Module):
         '''Weights Initialization function for layers of the model. Xavier --> layers with tanh and sigmoid, Kaiming --> layers with ReLU activation'''
         # Leaky_ReLU activation layers
         init.kaiming_uniform_(self.conv2dL1.weight, nonlinearity='leaky_relu') 
+        init.constant_(self.conv2dL1.bias, 0)
+
         init.kaiming_uniform_(self.conv2dL2.weight, nonlinearity='leaky_relu') 
+        init.constant_(self.conv2dL2.bias, 0)
+
         init.kaiming_uniform_(self.DenseL6.weight, nonlinearity='leaky_relu') 
+        init.constant_(self.DenseL6.bias, 0)
 
         # Tanh activation layers
         init.xavier_uniform_(self.DenseL4.weight) 
         init.xavier_uniform_(self.DenseL5.weight) 
+        init.constant_(self.DenseL5.bias, 0)
+
+        # TODO: make initi automatic and not structure specific
+        #for module in self.modules():
+        #    print('Module:', module)
 
         ############################################################################################################
     def forward(self, inputSample):
