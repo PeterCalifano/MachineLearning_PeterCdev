@@ -29,6 +29,8 @@ from torch.utils.tensorboard import SummaryWriter
 import torch.optim as optim
 import torch.nn.functional as torchFunc # Module to apply activation functions in forward pass instead of defining them in the model class
 
+# For initialization
+import torch.nn.init as init
 
 # %% Custom training function for Moon limb pixel extraction enhancer V3maxDeeper (with target average radius in pixels) - 30-06-2024
 '''
@@ -86,6 +88,18 @@ class HorizonExtractionEnhancerCNNv3maxDeeper(nn.Module):
         # Output layer
         #self.batchNormL7 = nn.BatchNorm1d(self.outChannelsSizes[4], eps=1E-5, momentum=0.1, affine=True) # affine=True set gamma and beta parameters as learnable
         self.DenseOutput = nn.Linear(self.outChannelsSizes[4], 2, bias=True)
+
+
+    def __initialize_weights(self):
+        '''Weights Initialization function for layers of the model. Xavier --> layers with tanh and sigmoid, Kaiming --> layers with ReLU activation'''
+        # Leaky_ReLU activation layers
+        init.kaiming_uniform_(self.conv2dL1, nonlinearity='leaky_relu') 
+        init.kaiming_uniform_(self.conv2dL2, nonlinearity='leaky_relu') 
+        init.kaiming_uniform_(self.DenseL6, nonlinearity='leaky_relu') 
+
+        # Tanh activation layers
+        init.xavier_uniform_(self.DenseL4) 
+        init.xavier_uniform_(self.DenseL5) 
 
     def forward(self, inputSample):
         '''Forward prediction method'''
