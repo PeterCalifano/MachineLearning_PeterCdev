@@ -4,11 +4,13 @@ aniso8601==9.0.1
 asttokens==2.4.1
 astunparse==1.6.3
 blinker==1.8.2
+bottle==0.12.25
 cachetools==5.3.3
 certifi==2024.2.2
 charset-normalizer==3.3.2
 click==8.1.7
 cloudpickle==3.0.0
+colorlog==6.8.2
 comm==0.2.2
 contourpy==1.2.0
 cycler==0.12.1
@@ -88,6 +90,8 @@ opentelemetry-sdk==1.25.0
 opentelemetry-semantic-conventions==0.46b0
 opt-einsum==3.3.0
 optree==0.10.0
+optuna==3.6.1
+optuna-dashboard==0.15.1
 packaging==24.0
 pandas==2.2.1
 parso==0.8.4
@@ -139,6 +143,7 @@ torch-tb-profiler==0.4.3
 torchaudio==2.2.1
 torchvision==0.17.1
 tornado==6.4
+tqdm==4.66.4
 traitlets==5.14.3
 triton==2.2.0
 typing_extensions==4.10.0
