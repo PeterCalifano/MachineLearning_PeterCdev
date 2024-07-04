@@ -26,8 +26,38 @@ from torch.utils.tensorboard import SummaryWriter # Key class to use tensorboard
 import torch.optim as optim
 
 
-def ComputeRandomDisplacements():
+def GetRandomDirection(state_dict):
+    """
+        Produce a random direction that is a list of random Gaussian tensors
+        with the same shape as the network's state_dict(), so one direction entry
+        per weight, including BN's running_mean/var.
+    """
+    return [torch.randn(w.size()) for k, w in state_dict.items()] # Note: here list comprehension is used
+
+def ComputeRandomDisplacementsForModel(model):
+    '''Function to compute filter normalized directions of random displacements to get loss function values'''
+
+    # Compute first random directions from model state dictionary
+    randomDir1 = GetRandomDirection(model.state_dict())
     
+    # Compute second random directions from model state dictionary
+    randomDir2 = GetRandomDirection(model.state_dict())
+
+
+
+    # Apply filter normalization to random directions
+    for d1, d2, weight in zip(randomDir1, randomDir2, model.parameters()):
+        
+        wNorm  = weight.view((weight.shape[0],-1)).norm(dim=(1),keepdim=True)[:,:,None,None]
+        dirNorm1 = d1.view((d1.shape[0],-1)).norm(dim=(1),keepdim=True)[:,:,None,None]
+        dirNorm2 = d2.view((d2.shape[0],-1)).norm(dim=(1),keepdim=True)[:,:,None,None]
+
+        d1.data = d1.cuda() * (wNorm/(dirNorm1.cuda()+1e-10))
+        d2.data = d2.cuda() * (wNorm/(dirNorm2.cuda()+1e-10))
+
+
+    return filterNormalizedDir1, filterNormalizedDir2
+
 
 
 def main():
@@ -50,6 +80,7 @@ def main():
     torchWrapper = customTorchTools.TorchModel_MATLABwrap(tracedModelName, tracedModelSavePath)
 
     modelParams = torchWrapper.trainedModel.parameters()
+
 
 
 

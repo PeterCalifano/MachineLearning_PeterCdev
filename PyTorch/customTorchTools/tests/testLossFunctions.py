@@ -6,7 +6,7 @@ import customTorchTools.customTorchTools
 sys.path.append(os.path.join('/home/peterc/devDir/MachineLearning_PeterCdev/PyTorch/LimbBasedNavigationAtMoon'))
 
 import customTorchTools # Custom torch tools
-import limbPixelExtraction_CNN_NN,  # Custom model classes
+import limbPixelExtraction_CNN_NN  # Custom model classes
 import datasetPreparation
 from sklearn import preprocessing # Import scikit-learn for dataset preparation
 
