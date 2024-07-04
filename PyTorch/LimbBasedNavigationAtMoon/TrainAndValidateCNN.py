@@ -10,7 +10,7 @@ sys.path.append(os.path.join('/home/peterc/devDir/MachineLearning_PeterCdev/PyTo
 import customTorchTools # Custom torch tools
 import limbPixelExtraction_CNN_NN, ModelClasses # Custom model classes
 import datasetPreparation
-#from sklearn import StandardScaler # Import scikit-learn for dataset preparation
+from sklearn import preprocessing # Import scikit-learn for dataset preparation
 
 
 import torch
@@ -35,35 +35,44 @@ USE_LR_SCHEDULING = True
 TRAIN_ALL = True
 REGEN_DATASET = False
 USE_TENSOR_LOSS_EVAL = True
-MODEL_CLASS_ID = 2
+MODEL_CLASS_ID = 4
 MANUAL_RUN = True # Uses MODEL_CLASS_ID to run a specific model
-
+LOSS_TYPE = 4 # 0: Conic + L2, # 1: Conic + L2 + Quadratic OutOfPatch, # 2: Normalized Conic + L2 + OutOfPatch,            
+            # 3: Polar-n-direction distance + OutOfPatch, #4: MSE + OutOfPatch + ConicLoss
+RUN_ID = 0
 USE_BATCH_NORM = True
 
-def main(idSession:int):
+def main(idRun:int, idModelClass:int, idLossType:int):
 
     # SETTINGS and PARAMETERS 
     batch_size = 16*5 # Defines batch size in dataset
     #outChannelsSizes = [16, 32, 75, 15] 
-    outChannelsSizes = [256, 128, 256, 64] 
+    
+    if idModelClass < 2:
+        outChannelsSizes = [256, 128, 256, 64] 
 
-    if MODEL_CLASS_ID == 2 or idSession == 2:
-        outChannelsSizes = [128, 64, 64+8, 32, 16] 
-    elif MODEL_CLASS_ID == 3 or idSession == 3:
+    if idModelClass == 2:
+        outChannelsSizes = [32, 16, 16+8, 16, 8] 
+
+    elif idModelClass == 3:
         outChannelsSizes = [256, 128, 64, 32]
 
+    elif idModelClass == 4:
+        outChannelsSizes = [1024, 128, 64, 32]
+    else:
+        raise ValueError('Model class ID not found.')
+
     kernelSizes = [3, 3]
-    initialLearnRate = 5E-2
+    initialLearnRate = 1E-1
     momentumValue = 0.6
 
     #TODO: add log and printing of settings of optimizer for each epoch. Reduce the training loss value printings
 
-    LOSS_TYPE = 4 # 0: Conic + L2, # 1: Conic + L2 + Quadratic OutOfPatch, # 2: Normalized Conic + L2 + OutOfPatch, 
-                  # 3: Polar-n-direction distance + OutOfPatch, #4: MSE + OutOfPatch + ConicLoss
+
     # Loss function parameters
     params = {'ConicLossWeightCoeff': 0, 'RectExpWeightCoeff': 0}
 
-    optimizerID = 0 # 0
+    optimizerID = 1 # 0: SGD, 1: Adam
     UseMaxPooling = True
 
     device = customTorchTools.GetDevice()
@@ -72,7 +81,7 @@ def main(idSession:int):
     tracedModelSavePath = 'tracedModelsArchive' 
 
     # Options to restart training from checkpoint
-    if idSession == 0:
+    if idModelClass == 0:
         ID = 0
         runID = "{num:04d}".format(num=ID)
         #modelSavePath = './checkpoints/HorizonPixCorrector_CNNv1_run3'
@@ -86,7 +95,7 @@ def main(idSession:int):
         numOfEpochs = 15
 
 
-    elif idSession == 1:
+    elif idModelClass == 1:
         ID = 0
         runID = "{num:04d}".format(num=ID)
         modelSavePath = './checkpoints/HorizonPixCorrector_CNNv2max_largerCNN_run' + runID
@@ -98,8 +107,8 @@ def main(idSession:int):
         inputSize = 57 # TODO: update this according to new model
         numOfEpochs = 15
 
-    elif idSession == 2:
-        ID = 2
+    elif idModelClass == 2:
+        ID = 6
         runID = "{num:04d}".format(num=ID) 
         modelSavePath = './checkpoints/HorizonPixCorrector_CNNv3max_largerCNNdeeperNN_run' + runID
         datasetSavePath = './datasets/HorizonPixCorrectorV3'
@@ -108,10 +117,9 @@ def main(idSession:int):
 
         modelArchName = 'HorizonPixCorrector_CNNv3max_largerCNNdeeperNN_run' + runID
         inputSize = 57 # TODO: update this according to new model
-        numOfEpochs = 5
+        numOfEpochs = 10
 
-
-    elif idSession == 3:
+    elif idModelClass == 3:
         ID = 0
         runID = "{num:04d}".format(num=ID)
         modelSavePath = './checkpoints/HorizonPixCorrector_deepNNv4_run' + runID
@@ -121,8 +129,20 @@ def main(idSession:int):
 
         modelArchName = 'HorizonPixCorrector_deepNNv4_run' + runID
         inputSize = 57 # TODO: update this according to new model
-        numOfEpochs = 15
+        numOfEpochs = 5
 
+    elif idModelClass == 4:
+        runID = "{num:04d}".format(num=idRun)
+        modelSavePath = './checkpoints/HorizonExtractionEnhancer_ShortCNNv6maxDeeperMaxKernel' + runID
+        datasetSavePath = './datasets/HorizonPixCorrectorV6'
+        tensorboardLogDir = './tensorboardLogs/tensorboardLog_ShortCNNv6maxDeeperMaxKernel_run'   + runID
+        tensorBoardPortNum = 6012
+
+        modelArchName = 'HorizonPixCorrector_ShortCNNv6maxDeeperMaxKernel_run' + runID
+        inputSize = 57 # TODO: update this according to new model
+        numOfEpochs = 20
+
+    EPOCH_START = 0
 
     if USE_MULTIPROCESS == True:
         # Start tensorboard session
@@ -141,10 +161,8 @@ def main(idSession:int):
                'checkpointsInDir': modelSavePath,
                'lossLogName': 'LossOutOfPatch_MoonHorizonExtraction',
                'logDirectory': tensorboardLogDir,
-               'epochStart': 0,
+               'epochStart': EPOCH_START,
                'tensorBoardPortNum': tensorBoardPortNum}
-
-
 
     if options['epochStart'] == 0:
         restartTraining = False
@@ -242,7 +260,7 @@ def main(idSession:int):
 
                 invalidPatchesToCheck = {'ID': [], 'flattenedPatch': []}
 
-                if idSession == 1 or idSession == 2 or idSession == 3:
+                if idModelClass in [1,2,3,4]:
                     targetAvgRadiusInPix = np.array(metadataDict['dTargetPixAvgRadius'], dtype=np.float32)
 
                 if USE_NORMALIZED_IMG:
@@ -287,7 +305,7 @@ def main(idSession:int):
                         ptrToInput += len(tmpVal) # Update index
 
                         #inputDataArray[55:58, saveID] = dPosCam_TF
-                        if idSession == 1 or idSession == 2 or idSession == 3:
+                        if idModelClass in [1,2,3,4]:
                             inputDataArray[ptrToInput, saveID] = targetAvgRadiusInPix
                             ptrToInput += targetAvgRadiusInPix.size # Update index
 
@@ -308,9 +326,9 @@ def main(idSession:int):
                 imgID += 1
 
             # Save json with invalid patches to check
-            #if idSession == 0:
+            #if idModelClass == 0:
             #    fileName = './invalidPatchesToCheck_Training_.json'
-            #elif idSession == 1:
+            #elif idModelClass == 1:
             #    fileName = './invalidPatchesToCheck_Validation.json'
             #with open(os.path.join(fileName), 'w') as fileCheck:
             #    invalidPatchesToCheck_string = json.dumps(invalidPatchesToCheck)
@@ -327,9 +345,8 @@ def main(idSession:int):
             labelsDataArray = labelsDataArray[:, 0:saveID]
 
             # Apply standardization to input data # TODO: check if T is necessary
-            #ACHTUNG: image may not be standardized?
-            #inputDataArray = torch.tensor(preprocessing.StandardScaler().fit_transform(inputDataArray.T).T,
-            #                            dtype=torch.float32, device=device)
+            #ACHTUNG: image may not be standardized? --> TBC
+            inputDataArray[flattenedWindSize:, :] = preprocessing.StandardScaler().fit_transform(inputDataArray[flattenedWindSize:, :].T).T
 
             if idDataset == 0:
                 dataDictTraining = {'labelsDataArray': labelsDataArray, 'inputDataArray': inputDataArray}
@@ -391,26 +408,33 @@ def main(idSession:int):
             lossFcn = customTorchTools.CustomLossFcn(limbPixelExtraction_CNN_NN.MoonLimbPixConvEnhancer_NormalizedLossFcnWithOutOfPatchTerm, params)
     elif LOSS_TYPE == 3:
         lossFcn = customTorchTools.CustomLossFcn(limbPixelExtraction_CNN_NN.MoonLimbPixConvEnhancer_PolarNdirectionDistanceWithOutOfPatch_asTensor, params)
-
     elif LOSS_TYPE == 4:
         lossFcn = customTorchTools.CustomLossFcn(limbPixelExtraction_CNN_NN.MoonLimbPixConvEnhancer_NormalizedConicLossWithMSEandOutOfPatch_asTensor, params)
+    else:
+        raise ValueError('Loss function ID not found.')
 
     # MODEL CLASS TYPE
     if UseMaxPooling == False:
-        if idSession == 0:
+        if idModelClass == 0:
             modelClass = limbPixelExtraction_CNN_NN.HorizonExtractionEnhancerCNNv1avg
-        elif idSession == 1:
+        elif idModelClass == 1:
             modelClass = limbPixelExtraction_CNN_NN.HorizonExtractionEnhancerCNNv2avg
+        else:
+            raise ValueError('Model class ID using average pooling not found.')
     else:
-        if idSession == 0:
+        if idModelClass == 0:
             modelClass = limbPixelExtraction_CNN_NN.HorizonExtractionEnhancerCNNv1max
-        elif idSession == 1:
+        elif idModelClass == 1:
             modelClass = limbPixelExtraction_CNN_NN.HorizonExtractionEnhancerCNNv2max
-        elif idSession == 2:
+        elif idModelClass == 2:
             modelClass = ModelClasses.HorizonExtractionEnhancer_CNNv3maxDeeper
-        elif idSession == 3:
-            modelClass = ModelClasses.HorizonExtractionEnhancer_FullyConnNNv4        
-    
+        elif idModelClass == 3:
+            modelClass = ModelClasses.HorizonExtractionEnhancer_FullyConnNNv4     
+        elif idModelClass == 4:
+            modelClass = ModelClasses.HorizonExtractionEnhancer_ShortCNNv6maxDeeper
+        else:
+            raise ValueError('Model class ID using max pooling not found.')
+        
 
     # MODEL DEFINITION
     if restartTraining:
@@ -425,12 +449,23 @@ def main(idSession:int):
         else:
             raise ValueError('Specified model state file not found. Check input path.')    
     else:
-        if idSession == 0 or idSession == 1:
+        if idModelClass == 0 or idModelClass == 1:
             modelCNN_NN = modelClass(outChannelsSizes, kernelSizes).to(device=device)
-        elif idSession == 2:
+        elif idModelClass == 2:
             modelCNN_NN = modelClass(outChannelsSizes, kernelSizes, USE_BATCH_NORM).to(device=device)
-        elif idSession == 3:
+        elif idModelClass == 3:
             modelCNN_NN = modelClass(outChannelsSizes).to(device=device)
+        elif idModelClass == 4:
+
+            parametersConfig = {'kernelSizes': [7],
+                                'useBatchNorm': USE_BATCH_NORM, 
+                                'poolingKernelSize': 1,
+                                'alphaDropCoeff': 0.1,
+                                'alphaLeaky': 0.01,
+                                'patchSize': 7,
+                                'LinearInputSkipSize': 8}
+
+            modelCNN_NN = modelClass(outChannelsSizes, parametersConfig).to(device=device)
 
 
     # ######### TEST DEBUG ############
@@ -452,6 +487,9 @@ def main(idSession:int):
     elif optimizerID == 1:
         optimizer = torch.optim.Adam(modelCNN_NN.parameters(), lr=initialLearnRate, betas=(0.9, 0.999), 
                                      eps=1e-08, weight_decay=1E-6, amsgrad=False, foreach=None, fused=True)
+
+    for param_group in optimizer.param_groups:
+        param_group['initial_lr'] = param_group['lr']
 
     if USE_LR_SCHEDULING:
         #optimizer = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=2, threshold=0.01, threshold_mode='rel', cooldown=1, min_lr=1E-12, eps=1e-08)
@@ -493,6 +531,7 @@ if __name__ == '__main__':
 
     # Setup multiprocessing for training the two models in parallel
     if USE_MULTIPROCESS == True:
+
         # Use the "spawn" start method (REQUIRED by CUDA)
         multiprocessing.set_start_method('spawn')
         process1 = multiprocessing.Process(target=main, args=(0,))
@@ -508,10 +547,17 @@ if __name__ == '__main__':
 
         print("Training complete for both network classes. Check the logs for more information.")
     elif USE_MULTIPROCESS == False and MANUAL_RUN == False:
+        
+        modelClassesToTrain = [0, 1, 2, 3]
+        idLossType = 4
+        idRun = 0
 
-        for idSession in range(4 if TRAIN_ALL else 1):
+        for idModelClass in modelClassesToTrain:
             print('\n\n----------------------------------- RUNNING: TrainAndValidateCNN.py -----------------------------------\n')
             print("MAIN script operations: load dataset --> split dataset --> define dataloaders --> define model --> define loss function --> train and validate model --> export trained model\n")
-            main(idSession)
+            main(idRun, idModelClass, idLossType)
+    
     else:
-        main(MODEL_CLASS_ID)
+        idLossType = LOSS_TYPE
+        idRun = RUN_ID
+        main(idRun, MODEL_CLASS_ID, idLossType)
