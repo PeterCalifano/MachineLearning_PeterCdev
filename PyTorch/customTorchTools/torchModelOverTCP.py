@@ -25,15 +25,15 @@ def main():
     
     # %% TORCH MODEL LOADING
     # Model path
-    tracedModelSavePath = '/home/peterc/devDir/MachineLearning_PeterCdev/tracedModelsArchive/'
+    tracedModelSavePath = '/home/peterc/devDir/MachineLearning_PeterCdev/checkpoints/'
     modelID = 5
     #tracedModelName = 'HorizonPixCorrector_CNNv2_' + customTorchTools.AddZerosPadding(modelID, 3) + '_cpu'
 
     #tracedModelName = 'HorizonPixCorrector_CNNv1max_largerCNN_run3_005_cpu' + '.pt'
     #tracedModelName = '/home/peterc/devDir/MachineLearning_PeterCdev/checkpoints/HorizonPixCorrector_CNNv1max_largerCNN_run6/HorizonPixCorrector_CNNv1max_largerCNN_run6_0088_cuda0.pt'
-    tracedModelName = '/home/peterc/devDir/MachineLearning_PeterCdev/checkpoints/HorizonPixCorrector_CNNv3max_largerCNNdeeperNN_run0/HorizonPixCorrector_CNNv3max_largerCNNdeeperNN_run0_0029_cuda0.pt'
-
+    tracedModelName = 'HorizonPixCorrector_CNNv3max_largerCNNdeeperNN_run0003/HorizonPixCorrector_CNNv3max_largerCNNdeeperNN_run0003_0004_cuda0.pt'
     # Parameters
+    # ACHTUNG: check which model is being loaded!
 
     # Load torch traced model from file
     torchWrapper = customTorchTools.TorchModel_MATLABwrap(tracedModelName, tracedModelSavePath)
