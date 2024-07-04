@@ -348,7 +348,7 @@ class HorizonExtractionEnhancer_ShortCNNv6maxDeeper(nn.Module):
 
         # Extract all the inputs of the class init method from dictionary parametersConfig, else use default values
         if 'kernelSizes' not in parametersConfig:
-            kernelSizes = [3, 3]
+            kernelSizes = [7]
         else:
             kernelSizes = parametersConfig['kernelSizes']
 
@@ -379,7 +379,8 @@ class HorizonExtractionEnhancer_ShortCNNv6maxDeeper(nn.Module):
             
         assert(len(outChannelsSizes) == 4) # 7 layers in the model
         assert(len(kernelSizes) == 1)
-        
+        assert('LinearInputSkipSize' in parametersConfig.keys())
+
         # Model parameters
         self.outChannelsSizes = outChannelsSizes
         self.patchSize = patchSize
@@ -390,7 +391,7 @@ class HorizonExtractionEnhancer_ShortCNNv6maxDeeper(nn.Module):
         convBlockOutputSize = AutoComputeConvBlocksOutput(self, kernelSizes, poolingKernelSize)
 
         #self.LinearInputFeaturesSize = (patchSize - self.numOfConvLayers * np.floor(float(kernelSizes[-1])/2.0)) * self.outChannelsSizes[-1] # Number of features arriving as input to FC layer
-        self.LinearInputFeaturesSize = convBlockOutputSize[self.numOfConvLayers-1] 
+        self.LinearInputFeaturesSize = convBlockOutputSize[1] # convBlockOutputSize is tuple ((imgWidth, imgHeight), flattenedSize*nOutFeatures)
     
         self.LinearInputSkipSize = parametersConfig['LinearInputSkipSize'] #11 # CHANGE TO 7 removing R_DEM and PosTF
         self.LinearInputSize = self.LinearInputSkipSize + self.LinearInputFeaturesSize
@@ -400,7 +401,7 @@ class HorizonExtractionEnhancer_ShortCNNv6maxDeeper(nn.Module):
         # Model architecture
         idLayer = 0
         # Convolutional Features extractor
-        self.conv2dL1 = nn.Conv2d(1, self.outChannelsSizes[0], kernelSizes[0]) 
+        self.conv2dL1 = nn.Conv2d(1, self.outChannelsSizes[idLayer], kernelSizes[0]) 
         self.maxPoolL1 = nn.MaxPool2d(poolingKernelSize, 1)
         idLayer += 1
 
@@ -408,26 +409,25 @@ class HorizonExtractionEnhancer_ShortCNNv6maxDeeper(nn.Module):
         #self.maxPoolL2 = nn.MaxPool2d(poolingKernelSize, 1) 
 
         # Fully Connected predictor
-        # NOTE: Add batch normalization here?
         self.FlattenL2 = nn.Flatten()
         
         self.dropoutL3 = nn.Dropout2d(alphaDropCoeff)
         self.DenseL3 = nn.Linear(int(self.LinearInputSize), self.outChannelsSizes[idLayer], bias=False)
-        self.batchNormL3 = nn.BatchNorm1d(self.outChannelsSizes[idLayer+1], eps=1E-5, momentum=0.1, affine=True)
+        self.batchNormL3 = nn.BatchNorm1d(self.outChannelsSizes[idLayer], eps=1E-5, momentum=0.1, affine=True)
         idLayer += 1
 
         self.dropoutL4 = nn.Dropout1d(alphaDropCoeff)
-        self.DenseL4 = nn.Linear(self.outChannelsSizes[idLayer], self.outChannelsSizes[idLayer+1], bias=True)
-        self.batchNormL4 = nn.BatchNorm1d(self.outChannelsSizes[idLayer+1], eps=1E-5, momentum=0.1, affine=True)
+        self.DenseL4 = nn.Linear(self.outChannelsSizes[idLayer-1], self.outChannelsSizes[idLayer], bias=True)
+        self.batchNormL4 = nn.BatchNorm1d(self.outChannelsSizes[idLayer], eps=1E-5, momentum=0.1, affine=True)
         idLayer += 1
 
         self.dropoutL5 = nn.Dropout1d(alphaDropCoeff)
-        self.DenseL5 = nn.Linear(self.outChannelsSizes[idLayer], self.outChannelsSizes[idLayer+1], bias=True)
-        self.batchNormL5 = nn.BatchNorm1d(self.outChannelsSizes[idLayer+1], eps=1E-5, momentum=0.1, affine=True)
+        self.DenseL5 = nn.Linear(self.outChannelsSizes[idLayer-1], self.outChannelsSizes[idLayer], bias=True)
+        self.batchNormL5 = nn.BatchNorm1d(self.outChannelsSizes[idLayer], eps=1E-5, momentum=0.1, affine=True)
         idLayer += 1
 
         # Output layer
-        self.DenseOutput = nn.Linear(self.outChannelsSizes[idLayer], 2, bias=True)
+        self.DenseOutput = nn.Linear(self.outChannelsSizes[idLayer-1], 2, bias=True)
 
     def forward(self, inputSample):
         
@@ -455,23 +455,23 @@ class HorizonExtractionEnhancer_ShortCNNv6maxDeeper(nn.Module):
 
         # L3 
         #val = self.batchNormL3(val)
-        val = self.dropoutL3(val)
         val = self.DenseL3(val)
+        val = self.dropoutL3(val)
         if self.useBatchNorm:
             val = self.batchNormL3(val)
         val = torchFunc.tanh(val)
 
         # L4
-        val = self.dropoutL4(val)
         val = self.DenseL4(val)
+        val = self.dropoutL4(val)
         if self.useBatchNorm:
             val = self.batchNormL4(val)
 
         val = torchFunc.tanh(val)
 
         # L5
-        val = self.dropoutL5(val)
         val = self.DenseL5(val)
+        val = self.dropoutL5(val)
         if self.useBatchNorm:
             val = self.batchNormL5(val)
         val = torchFunc.leaky_relu(val, self.alphaLeaky)
