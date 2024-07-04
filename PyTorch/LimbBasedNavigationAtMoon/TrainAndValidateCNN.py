@@ -58,12 +58,12 @@ def main(idRun:int, idModelClass:int, idLossType:int):
         outChannelsSizes = [256, 128, 64, 32]
 
     elif idModelClass == 4:
-        outChannelsSizes = [1024, 128, 64, 32]
+        outChannelsSizes = [1024, 256, 64, 32]
     else:
         raise ValueError('Model class ID not found.')
 
     kernelSizes = [3, 3]
-    initialLearnRate = 1E-1
+    initialLearnRate = 5E-2
     momentumValue = 0.6
 
     #TODO: add log and printing of settings of optimizer for each epoch. Reduce the training loss value printings
@@ -493,7 +493,7 @@ def main(idRun:int, idModelClass:int, idLossType:int):
 
     if USE_LR_SCHEDULING:
         #optimizer = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=2, threshold=0.01, threshold_mode='rel', cooldown=1, min_lr=1E-12, eps=1e-08)
-        lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.8, last_epoch=options['epochStart']-1)
+        lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.9, last_epoch=options['epochStart']-1)
         options['lr_scheduler'] = lr_scheduler
 
 
