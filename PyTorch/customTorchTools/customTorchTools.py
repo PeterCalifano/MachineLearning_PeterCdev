@@ -45,12 +45,14 @@ def GetDevice():
 # %% Function to perform one step of training of a model using dataset and specified loss function - 04-05-2024
 # Updated by PC 04-06-2024
 
-def TrainModel(dataloader:DataLoader, model:nn.Module, lossFcn:nn.Module, optimizer, device=GetDevice(), taskType:str='classification', lr_scheduler=None):
+def TrainModel(dataloader:DataLoader, model:nn.Module, lossFcn:nn.Module, 
+               optimizer, device=GetDevice(), taskType:str='classification', lr_scheduler=None):
 
     size=len(dataloader.dataset) # Get size of dataloader dataset object
     model.train() # Set model instance in training mode ("informing" backend that the training is going to start)
 
     batchValueForPrint = np.floor(len(dataloader)/100)
+    numOfUpdates = 0
 
     for batchCounter, (X, Y) in enumerate(dataloader): # Recall that enumerate gives directly both ID and value in iterable object
 
@@ -66,6 +68,8 @@ def TrainModel(dataloader:DataLoader, model:nn.Module, lossFcn:nn.Module, optimi
         optimizer.step()      # Apply gradients from the loss
         optimizer.zero_grad() # Reset gradients for next iteration
 
+        numOfUpdates += 1
+
         if batchCounter % batchValueForPrint == 0: # Print loss value 
             trainLoss, currentStep = trainLoss.item(), (batchCounter + 1) * len(X)
             print(f"Training loss value: {trainLoss:>7f}  [{currentStep:>5d}/{size:>5d}]")
@@ -75,10 +79,10 @@ def TrainModel(dataloader:DataLoader, model:nn.Module, lossFcn:nn.Module, optimi
         prev_lr = lr_scheduler.get_last_lr()
         lr_scheduler.step()
         print('\n')
-        print('Learning rate modified from: ', prev_lr, ' to: ', lr_scheduler.get_lr())
+        print('Learning rate modified from: ', prev_lr, ' to: ', lr_scheduler.get_last_lr())
         print('\n')
 
-    return trainLoss
+    return trainLoss, numOfUpdates
     
 # %% Function to validate model using dataset and specified loss function - 04-05-2024
 # Updated by PC 04-06-2024
@@ -90,6 +94,7 @@ def ValidateModel(dataloader:DataLoader, model:nn.Module, lossFcn:nn.Module, dev
 
     model.eval() # Set the model in evaluation mode
     validationLoss = 0 # Accumulation variables
+    maxBatchLoss = 0
 
     # Initialize variables based on task type
     if taskType.lower() == 'classification': 
@@ -103,13 +108,18 @@ def ValidateModel(dataloader:DataLoader, model:nn.Module, lossFcn:nn.Module, dev
         print('TODO')
 
     with torch.no_grad(): # Tell torch that gradients are not required
+        # TODO: try to modify function to perform one single forward pass for the entire dataset
         for X,Y in dataloader:
             # Get input and labels and move to target device memory
             X, Y = X.to(device), Y.to(device)  
 
             # Perform FORWARD PASS
             predVal = model(X) # Evaluate model at input
-            validationLoss += lossFcn(predVal, Y).item() # Evaluate loss function and accumulate
+            tmpLossVal = lossFcn(predVal, Y).item() # Evaluate loss function and accumulate
+            validationLoss += tmpLossVal
+
+            if maxBatchLoss < tmpLossVal:
+                maxBatchLoss = tmpLossVal
 
             if taskType.lower() == 'classification': 
                 # Determine if prediction is correct and accumulate
@@ -119,20 +129,37 @@ def ValidateModel(dataloader:DataLoader, model:nn.Module, lossFcn:nn.Module, dev
 
             #elif taskType.lower() == 'regression':
             #    #print('TODO')
-#
             #elif taskType.lower() == 'custom':
             #    print('TODO')
+
+        # EXPERIMENTAL: Try to perform one single forward pass for the entire dataset
+        TENSOR_VALIDATION_EVAL = False
+
+        if TENSOR_VALIDATION_EVAL:
+            dataX = []
+            dataY = []
+
+            for X, Y in dataloader:
+                dataX.append(X.to(device))
+                dataY.append(Y.to(device))
+
+            # Concatenate all data in a single tensor
+            dataX = torch.cat(dataX, dim=0)
+            dataY = torch.cat(dataY, dim=0)
+
+            predVal = model(dataX) # Evaluate model at input
+            validationLoss += lossFcn(predVal, dataY).item() # Evaluate loss function and accumulate
 
 
     if taskType.lower() == 'classification': 
         validationLoss /= numberOfBatches # Compute batch size normalized loss value
         correctOuputs /= size # Compute percentage of correct classifications over batch size
-        print(f"\n VALIDATION ((Classification) Accuracy: {(100*correctOuputs):>0.1f}%, Avg loss: {validationLoss:>8f} \n")
+        print(f"\n VALIDATION ((Classification) Accuracy: {(100*correctOuputs):>0.2f}%, Avg loss: {validationLoss:>8f} \n")
 
     elif taskType.lower() == 'regression':
         #print('TODO')
         validationLoss /= numberOfBatches
-        print(f"\n VALIDATION (Regression) Avg loss: {validationLoss:>0.1f}\n")
+        print(f"\n VALIDATION (Regression) Avg loss: {validationLoss:>0.5f}, Max batch loss: {maxBatchLoss:>0.5f}\n")
         #print(f"Validation (Regression): \n Avg absolute accuracy: {avgAbsAccuracy:>0.1f}, Avg relative accuracy: {(100*avgRelAccuracy):>0.1f}%, Avg loss: {validationLoss:>8f} \n")
 
     elif taskType.lower() == 'custom':
@@ -497,11 +524,17 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
     trainLossHistory = np.zeros(numOfEpochs)
     validationLossHistory = np.zeros(numOfEpochs)
 
+    numOfUpdates = 0
+
     for epochID in range(numOfEpochs):
 
         print(f"\n\t\t\tTRAINING EPOCH: {epochID + epochStart} of {epochStart + numOfEpochs-1}\n-------------------------------")
         # Do training over all batches
-        trainLossHistory[epochID] = TrainModel(trainingDataset, model, lossFcn, optimizer, device, taskType, lr_scheduler) 
+        trainLossHistory[epochID], numOfUpdatesForEpoch = TrainModel(trainingDataset, model, lossFcn, optimizer, device, 
+                                                                     taskType, lr_scheduler) 
+        numOfUpdates += numOfUpdatesForEpoch
+        print('Current total number of updates: ', numOfUpdates)
+
         # Do validation over all batches
         validationLossHistory[epochID] = ValidateModel(validationDataset, model, lossFcn, device, taskType) 
 
@@ -530,6 +563,7 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
 
         print('\n  Random Sample predictions from validation dataset:\n')
         torch.set_printoptions(precision=2)
+
         for id in range(examplePrediction.shape[0]):
             print('\tPrediction: ', examplePrediction[id, :].tolist(), ' --> Loss: ',exampleLosses[id].tolist())
             imgTag = 'RandomSampleImg_' + str(id) + '_Epoch' + str(torch.round(exampleLosses[id], decimals=3))
@@ -708,6 +742,10 @@ def ComputeConvBlockOutputSize(inputSize:Union[list, np.array, torch.tensor], ou
 
     # Compute output size of Conv2d and Pooling2d layers
     conv2dOutputSize = ComputeConv2dOutputSize(inputSize, convKernelSize, convStrideSize, convPaddingSize)
+    
+    if conv2dOutputSize[0] < poolingkernelSize or conv2dOutputSize[1] < poolingkernelSize:
+        raise ValueError('Pooling kernel size is larger than output size of Conv2d layer. Check configuration.')
+    
     convBlockOutputSize = ComputePooling2dOutputSize(conv2dOutputSize, poolingkernelSize, poolingStrideSize, poolingPaddingSize)
 
     # Compute total number of features after ConvBlock as required for the fully connected layers
