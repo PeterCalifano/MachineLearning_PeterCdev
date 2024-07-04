@@ -429,6 +429,23 @@ class HorizonExtractionEnhancer_ShortCNNv6maxDeeper(nn.Module):
         # Output layer
         self.DenseOutput = nn.Linear(self.outChannelsSizes[idLayer-1], 2, bias=True)
 
+        # Initialize weights of layers
+        self.__initialize_weights__()
+
+    def __initialize_weights__(self):
+        '''Weights Initialization function for layers of the model. Xavier --> layers with tanh and sigmoid, Kaiming --> layers with ReLU activation'''
+        # Leaky_ReLU activation layers
+        init.kaiming_uniform_(self.conv2dL1.weight, nonlinearity='leaky_relu') 
+        init.constant_(self.conv2dL1.bias, 0)
+
+        init.kaiming_uniform_(self.DenseL5.weight, nonlinearity='leaky_relu') 
+        init.constant_(self.DenseL5.bias, 0)
+
+        # Tanh activation layers
+        init.xavier_uniform_(self.DenseL3.weight) 
+        init.xavier_uniform_(self.DenseL4.weight) 
+        init.constant_(self.DenseL4.bias, 0)
+
     def forward(self, inputSample):
         
         # Extract image and contextual information from inputSample
