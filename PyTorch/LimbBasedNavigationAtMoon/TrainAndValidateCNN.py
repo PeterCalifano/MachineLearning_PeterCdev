@@ -178,17 +178,19 @@ def main(idRun:int, idModelClass:int, idLossType:int):
 
     dataPath = os.path.join('/home/peterc/devDir/MATLABcodes/syntheticRenderings/Datapairs')
     dataPath = os.path.join('/home/peterc/devDir/lumio/lumio-prototype/src/dataset_gen/Datapairs')
-    dirNamesRoot = os.listdir(dataPath)
+    #dirNamesRoot = os.listdir(dataPath)
 
-    #os.scandir(dataDirPath)
-    #with os.scandir(modelSavePath) as it:
-    #    modelNamesWithTime = [(entry.name, entry.stat().st_mtime) for entry in it if entry.is_file()]
-    #    modelName = sorted(modelNamesWithTime, key=lambda x: x[1])[-1][0]
+    with os.scandir(dataPath) as it:
+        modelNamesWithID = [(entry.name, entry.name[3:6]) for entry in it if entry.is_dir()]
+        dirNamesRootTuples = sorted(modelNamesWithID, key=lambda x: int(x[1]))
+
+    dirNamesRoot = [stringVal for stringVal, _ in dirNamesRootTuples]
 
     assert(len(dirNamesRoot) >= 2)
 
     # Select one of the available datapairs folders (each corresponding to a labels generation pipeline output)
-    datasetID = [5, 7] # TRAINING and VALIDATION datasets ID in folder (in this order)
+    datasetID = [3, 4] # TRAINING and VALIDATION datasets ID in folder (in this order)
+
 
     assert(len(datasetID) == 2)
 
