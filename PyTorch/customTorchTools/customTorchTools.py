@@ -1,5 +1,11 @@
-# Module collecting utilities function building upon PyTorch to speed up prototyping, training and testing of Neural Nets 
-# Created by PeterC - 04-05-2024
+'''
+Module collecting utilities function building upon PyTorch to speed up prototyping, training and testing of Neural Nets.
+Utilities for monitoring training, validation and testing of models, as well as saving and loading models and datasets are included.
+The module also includes functions to export and load models to/from ONNx format, as well as a MATLAB wrapper class for model evaluation.
+NOTE: This however, requires TorchTCP module (not included yet) and a MATLAB tcpclient based interface.
+Created by PeterC - 04-05-2024. Current version: v0.1 (30-06-2024)
+'''
+
 
 # Import modules
 import torch
@@ -17,6 +23,7 @@ import psutil
 import inspect
 import onnx
 from onnx import version_converter
+from typing import Union
 
 from torch.utils.tensorboard import SummaryWriter # Key class to use tensorboard with PyTorch. VSCode will automatically ask if you want to load tensorboard in the current session.
 import torch.optim as optim
@@ -38,10 +45,14 @@ def GetDevice():
 # %% Function to perform one step of training of a model using dataset and specified loss function - 04-05-2024
 # Updated by PC 04-06-2024
 
-def TrainModel(dataloader:DataLoader, model:nn.Module, lossFcn:nn.Module, optimizer, device=GetDevice(), taskType:str='classification'):
+def TrainModel(dataloader:DataLoader, model:nn.Module, lossFcn:nn.Module, 
+               optimizer, device=GetDevice(), taskType:str='classification', lr_scheduler=None):
 
     size=len(dataloader.dataset) # Get size of dataloader dataset object
     model.train() # Set model instance in training mode ("informing" backend that the training is going to start)
+
+    batchValueForPrint = np.floor(len(dataloader)/100)
+    numOfUpdates = 0
 
     for batchCounter, (X, Y) in enumerate(dataloader): # Recall that enumerate gives directly both ID and value in iterable object
 
@@ -57,11 +68,21 @@ def TrainModel(dataloader:DataLoader, model:nn.Module, lossFcn:nn.Module, optimi
         optimizer.step()      # Apply gradients from the loss
         optimizer.zero_grad() # Reset gradients for next iteration
 
-        if batchCounter % 100 == 0: # Print loss value every 100 steps
+        numOfUpdates += 1
+
+        if batchCounter % batchValueForPrint == 0: # Print loss value 
             trainLoss, currentStep = trainLoss.item(), (batchCounter + 1) * len(X)
             print(f"Training loss value: {trainLoss:>7f}  [{currentStep:>5d}/{size:>5d}]")
+    
+    # Update learning rate if scheduler is provided
+    if lr_scheduler is not None:
+        prev_lr = lr_scheduler.get_last_lr()
+        lr_scheduler.step()
+        print('\n')
+        print('Learning rate modified from: ', prev_lr, ' to: ', lr_scheduler.get_last_lr())
+        print('\n')
 
-    return trainLoss
+    return trainLoss, numOfUpdates
     
 # %% Function to validate model using dataset and specified loss function - 04-05-2024
 # Updated by PC 04-06-2024
@@ -73,6 +94,7 @@ def ValidateModel(dataloader:DataLoader, model:nn.Module, lossFcn:nn.Module, dev
 
     model.eval() # Set the model in evaluation mode
     validationLoss = 0 # Accumulation variables
+    maxBatchLoss = 0
 
     # Initialize variables based on task type
     if taskType.lower() == 'classification': 
@@ -86,13 +108,18 @@ def ValidateModel(dataloader:DataLoader, model:nn.Module, lossFcn:nn.Module, dev
         print('TODO')
 
     with torch.no_grad(): # Tell torch that gradients are not required
+        # TODO: try to modify function to perform one single forward pass for the entire dataset
         for X,Y in dataloader:
             # Get input and labels and move to target device memory
             X, Y = X.to(device), Y.to(device)  
 
             # Perform FORWARD PASS
             predVal = model(X) # Evaluate model at input
-            validationLoss += lossFcn(predVal, Y).item() # Evaluate loss function and accumulate
+            tmpLossVal = lossFcn(predVal, Y).item() # Evaluate loss function and accumulate
+            validationLoss += tmpLossVal
+
+            if maxBatchLoss < tmpLossVal:
+                maxBatchLoss = tmpLossVal
 
             if taskType.lower() == 'classification': 
                 # Determine if prediction is correct and accumulate
@@ -102,20 +129,37 @@ def ValidateModel(dataloader:DataLoader, model:nn.Module, lossFcn:nn.Module, dev
 
             #elif taskType.lower() == 'regression':
             #    #print('TODO')
-#
             #elif taskType.lower() == 'custom':
             #    print('TODO')
+
+        # EXPERIMENTAL: Try to perform one single forward pass for the entire dataset
+        TENSOR_VALIDATION_EVAL = False
+
+        if TENSOR_VALIDATION_EVAL:
+            dataX = []
+            dataY = []
+
+            for X, Y in dataloader:
+                dataX.append(X.to(device))
+                dataY.append(Y.to(device))
+
+            # Concatenate all data in a single tensor
+            dataX = torch.cat(dataX, dim=0)
+            dataY = torch.cat(dataY, dim=0)
+
+            predVal = model(dataX) # Evaluate model at input
+            validationLoss += lossFcn(predVal, dataY).item() # Evaluate loss function and accumulate
 
 
     if taskType.lower() == 'classification': 
         validationLoss /= numberOfBatches # Compute batch size normalized loss value
         correctOuputs /= size # Compute percentage of correct classifications over batch size
-        print(f"\n VALIDATION ((Classification) Accuracy: {(100*correctOuputs):>0.1f}%, Avg loss: {validationLoss:>8f} \n")
+        print(f"\n VALIDATION ((Classification) Accuracy: {(100*correctOuputs):>0.2f}%, Avg loss: {validationLoss:>8f} \n")
 
     elif taskType.lower() == 'regression':
         #print('TODO')
         validationLoss /= numberOfBatches
-        print(f"\n VALIDATION (Regression) Avg loss: {validationLoss:>0.1f}\n")
+        print(f"\n VALIDATION (Regression) Avg loss: {validationLoss:>0.5f}, Max batch loss: {maxBatchLoss:>0.5f}\n")
         #print(f"Validation (Regression): \n Avg absolute accuracy: {avgAbsAccuracy:>0.1f}, Avg relative accuracy: {(100*avgRelAccuracy):>0.1f}%, Avg loss: {validationLoss:>8f} \n")
 
     elif taskType.lower() == 'custom':
@@ -129,18 +173,29 @@ def ValidateModel(dataloader:DataLoader, model:nn.Module, lossFcn:nn.Module, dev
 # NOTE: Function EvalLossFcn must be implemented using Torch operations to work!
 
 class CustomLossFcn(nn.Module):
-    # Class constructor
-    def __init__(self, EvalLossFcn:callable) -> None:
+    '''Custom loss function based class, instantiated by specifiying a loss function (callable object) and optionally, a dictionary containing parameters required for the evaluation'''
+    def __init__(self, EvalLossFcn:callable, paramsTrain:dict = None, paramsEval:dict = None) -> None:
+        '''Constructor for CustomLossFcn class'''
         super(CustomLossFcn, self).__init__() # Call constructor of nn.Module
         if len((inspect.signature(EvalLossFcn)).parameters) >= 2:
             self.LossFcnObj = EvalLossFcn
         else: 
             raise ValueError('Custom EvalLossFcn must take at least two inputs: inputVector, labelVector')    
 
-    # Forward Pass evaluation method using defined EvalLossFcn
-    def forward(self, predictVector, labelVector, params=None):
-        lossBatch = self.LossFcnObj(predictVector, labelVector, params)
-        return lossBatch.mean()
+        # Store loss function parameters dictionary
+        self.paramsTrain = paramsTrain 
+
+        if paramsEval == None:
+            # Assign training parameters to evaluation parameters if not specified
+            self.paramsEval = self.paramsTrain 
+
+    def forward(self, predictVector, labelVector):
+        ''''Forward pass method to evaluate loss function on input and label vectors using EvalLossFcn'''
+        lossBatch = self.LossFcnObj(predictVector, labelVector, self.paramsTrain, self.paramsEval)
+
+        assert(lossBatch.dim() == 0)
+
+        return lossBatch
    
 
 # %% Function to save model state - 04-05-2024, updated 11-06-2024
@@ -153,6 +208,10 @@ def SaveTorchModel(model:nn.Module, modelName:str="trainedModel", saveAsTraced:b
     else:
         extension = '.pth'
         
+    # Format target device string to remove ':' from name
+    targetDeviceName = targetDevice
+    targetDeviceName = targetDeviceName.replace(':', '') 
+
     if modelName == 'trainedModel': 
         if not(os.path.isdir('./testModels')):
             os.mkdir('testModels')
@@ -167,9 +226,9 @@ def SaveTorchModel(model:nn.Module, modelName:str="trainedModel", saveAsTraced:b
                 gitignoreFile.write("\ntestModels/*")
                 gitignoreFile.close()
 
-        filename = "testModels/" + modelName + '_' + targetDevice + extension 
+        filename = "testModels/" + modelName + '_' + targetDeviceName + extension 
     else:
-        filename = modelName  + '_' + targetDevice + extension 
+        filename = modelName  + '_' + targetDeviceName + extension 
     
     # Attach timetag to model checkpoint
     #currentTime = datetime.datetime.now()
@@ -243,11 +302,11 @@ def SaveTorchDataset(datasetObj:Dataset, datasetFilePath:str='', datasetName:str
 
     if not(os.path.isdir(datasetFilePath)):
         os.makedirs(datasetFilePath)
-    torch.save(datasetObj, datasetFilePath + datasetName + ".pt")
+    torch.save(datasetObj, os.path.join(datasetFilePath, datasetName + ".pt"))
 
 # %% Function to load Dataset object - 01-06-2024
-def LoadTorchDataset(datasetFilePath:str) -> Dataset:
-    return torch.load(datasetFilePath + ".pt")
+def LoadTorchDataset(datasetFilePath:str, datasetName:str='dataset') -> Dataset:
+    return torch.load(os.path.join(datasetFilePath, datasetName + ".pt"))
 
 
 # %% Generic Dataset class for Supervised learning - 30-05-2024
@@ -298,39 +357,43 @@ def IsTensorboardRunning() -> bool:
     return False
 
 # Function to start TensorBoard process
-def StartTensorboard(logDir:str) -> None:
-    if not(IsTensorboardRunning):
-        try:
-            subprocess.Popen(['tensorboard', '--logdir', logDir, '--host', '0.0.0.0', '--port', '6006'])
-            print('Tensorboard session successfully started using logDir:', logDir)
-        except Exception as errMsg:
-            print('Failed due to:', errMsg, '. Continuing without opening session.')
-    else:
-        print('Tensorboard seems to be running in this session! Restarting with new directory...')
+def StartTensorboard(logDir:str, portNum:int=6006) -> None:
+    subprocess.Popen(['tensorboard', '--logdir', logDir, '--host', '0.0.0.0', '--port', str(portNum)])
+
+    #if not(IsTensorboardRunning):
+    #    try:
+    #        subprocess.Popen(['tensorboard', '--logdir', logDir, '--host', '0.0.0.0', '--port', str(portNum)])
+    #        print('Tensorboard session successfully started using logDir:', logDir)
+    #    except Exception as errMsg:
+    #        print('Failed due to:', errMsg, '. Continuing without opening session.')
+    #else:
+    #    print('Tensorboard seems to be running in this session! Restarting with new directory...')
         #kill_tensorboard()
         #subprocess.Popen(['tensorboard', '--logdir', logDir, '--host', '0.0.0.0', '--port', '6006'])
         #print('Tensorboard session successfully started using logDir:', logDir)
 
 # Function to stop TensorBoard process
-def kill_tensorboard():
+def KillTensorboard():
     """Kill all running TensorBoard instances."""
     for process in psutil.process_iter(['pid', 'name', 'cmdline']):
         if 'tensorboard' in process.info['name']:
-            for cmd in process.info['cmdline']:
-                if 'tensorboard' in cmd:
-                    print(f"Killing process {process.info['pid']}: {process.info['cmdline']}")
-                    os.kill(process.info['pid'], signal.SIGTERM)
+            if process.info['cmdline'] != None:
+                for cmd in process.info['cmdline']:
+                    if 'tensorboard' in cmd:
+                        print(f"Killing process {process.info['pid']}: {process.info['cmdline']}")
+                        os.kill(process.info['pid'], signal.SIGTERM)
 
 # Function to initialize Tensorboard session and writer
-def ConfigTensorboardSession(logDir:str='./tensorboardLogs') -> SummaryWriter:
+def ConfigTensorboardSession(logDir:str='./tensorboardLogs', portNum:int=6006) -> SummaryWriter:
 
-    print('Tensorboard logging directory:', logDir)
-    StartTensorboard(logDir) 
+    print('Tensorboard logging directory:', logDir, ' Port number:', portNum)
+    StartTensorboard(logDir, portNum) 
     # Define writer # By default, this will write in a folder names "runs" in the directory of the main script. Else change providing path as first input.
     tensorBoardWriter = SummaryWriter(log_dir=logDir, comment='', purge_step=None, max_queue=10, flush_secs=120, filename_suffix='') 
 
     # Return initialized writer
     return tensorBoardWriter
+
 
 
 # %% Function to get model checkpoint and load it into nn.Module for training restart - 09-06-2024
@@ -373,16 +436,50 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
                                                                                                               'epochStart': 0}):
     # NOTE: is the default dictionary considered as "single" object or does python perform a merge of the fields?
 
+    # TODO: For merging of options: https://stackoverflow.com/questions/38987/how-do-i-merge-two-dictionaries-in-a-single-expression-taking-union-of-dictiona
+    #if options is None:
+    #    options = {}
+    #
+    ## Merge user-provided options with default options
+    # combined_options = {**default_options, **options}
+    # Now use combined_options in the function
+    # taskType = combined_options['taskType']
+    # device = combined_options['device']
+    # epochs = combined_options['epochs']
+    # tensorboard = combined_options['Tensorboard']
+    # save_checkpoints = combined_options['saveCheckpoints']
+    # checkpoints_out_dir = combined_options['checkpointsOutDir']
+    # model_name = combined_options['modelName']
+    # load_checkpoint = combined_options['loadCheckpoint']
+    # loss_log_name = combined_options['lossLogName']
+    # epoch_start = combined_options['epochStart']
+
+
     # Setup options from input dictionary
-    taskType          = options['taskType']
-    device            = options['device']
-    numOfEpochs       = options['epochs']
-    enableTensorBoard = options['Tensorboard']
-    enableSave        = options['saveCheckpoints']
-    checkpointDir     = options['checkpointsOutDir']
-    modelName         = options['modelName']
-    lossLogName       = options['lossLogName']
-    epochStart        = options['epochStart']
+    taskType            = options['taskType']
+    device              = options['device']
+    numOfEpochs         = options['epochs']
+    enableTensorBoard   = options['Tensorboard']
+    enableSave          = options['saveCheckpoints']
+    checkpointDir       = options['checkpointsOutDir']
+    modelName           = options['modelName']
+    lossLogName         = options['lossLogName']
+    epochStart          = options['epochStart']
+
+    if 'lr_scheduler' in options.keys():
+        lr_scheduler = options['lr_scheduler']
+    else:
+        lr_scheduler = None        
+    
+    if 'enableAddImageToTensorboard' in options.keys():
+        ADD_IMAGE_TO_TENSORBOARD = options['enableAddImageToTensorboard']
+    else: 
+        ADD_IMAGE_TO_TENSORBOARD = True
+
+    if ('tensorBoardPortNum' in options.keys()):
+        tensorBoardPortNum = options['tensorBoardPortNum']
+    else:
+        tensorBoardPortNum = 6006
 
     # Get Torch dataloaders
     if ('TrainingDataLoader' in dataloaderIndex.keys() and 'ValidationDataLoader' in dataloaderIndex.keys()):
@@ -407,7 +504,7 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
         
     if not(os.path.isdir(logDirectory)):
         os.mkdir(logDirectory)
-    tensorBoardWriter = ConfigTensorboardSession(logDirectory)
+    tensorBoardWriter = ConfigTensorboardSession(logDirectory, portNum=tensorBoardPortNum)
 
     # If training is being restarted, attempt to load model
     if options['loadCheckpoint'] == True:
@@ -423,15 +520,21 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
 
 
     # Training and validation loop
-    input('\n-------- PRESS ENTER TO START TRAINING LOOP --------\n')
+    #input('\n-------- PRESS ENTER TO START TRAINING LOOP --------\n')
     trainLossHistory = np.zeros(numOfEpochs)
     validationLossHistory = np.zeros(numOfEpochs)
 
+    numOfUpdates = 0
+
     for epochID in range(numOfEpochs):
 
-        print(f"\n\t\t\tTRAINING EPOCH: {epochID + epochStart} of {epochStart + numOfEpochs}\n-------------------------------")
+        print(f"\n\t\t\tTRAINING EPOCH: {epochID + epochStart} of {epochStart + numOfEpochs-1}\n-------------------------------")
         # Do training over all batches
-        trainLossHistory[epochID] = TrainModel(trainingDataset, model, lossFcn, optimizer, device, taskType) 
+        trainLossHistory[epochID], numOfUpdatesForEpoch = TrainModel(trainingDataset, model, lossFcn, optimizer, device, 
+                                                                     taskType, lr_scheduler) 
+        numOfUpdates += numOfUpdatesForEpoch
+        print('Current total number of updates: ', numOfUpdates)
+
         # Do validation over all batches
         validationLossHistory[epochID] = ValidateModel(validationDataset, model, lossFcn, device, taskType) 
 
@@ -441,17 +544,17 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
             #tensorBoardWriter.add_scalar(lossLogName + "/validation", validationLossHistory[epochID], epochID + epochStart)
             entriesTagDict = {'Training': trainLossHistory[epochID], 'Validation': validationLossHistory[epochID]}
             tensorBoardWriter.add_scalars(lossLogName, entriesTagDict, epochID)
-            tensorBoardWriter.flush() 
         
         if enableSave:
             if not(os.path.isdir(checkpointDir)):
                 os.mkdir(checkpointDir)
 
+            exampleInput = GetSamplesFromDataset(validationDataset, 1)[0][0].reshape(1, -1) # Get single input sample for model saving
             modelSaveName = os.path.join(checkpointDir, modelName + '_' + AddZerosPadding(epochID + epochStart, stringLength=4))
-            SaveTorchModel(model, modelSaveName)
+            SaveTorchModel(model, modelSaveName, saveAsTraced=True, exampleInput=exampleInput, targetDevice=device)
         
         # %% MODEL PREDICTION EXAMPLES
-        examplePrediction, exampleLosses, inputSampleList = EvaluateModel(validationDataset, model, lossFcn, device, 10)
+        examplePrediction, exampleLosses, inputSampleList = EvaluateModel(validationDataset, model, lossFcn, device, 20)
 
         # Add model graph using samples from EvaluateModel
         #if enableTensorBoard:       
@@ -460,14 +563,22 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
 
         print('\n  Random Sample predictions from validation dataset:\n')
         torch.set_printoptions(precision=2)
+
         for id in range(examplePrediction.shape[0]):
             print('\tPrediction: ', examplePrediction[id, :].tolist(), ' --> Loss: ',exampleLosses[id].tolist())
-        
+            imgTag = 'RandomSampleImg_' + str(id) + '_Epoch' + str(torch.round(exampleLosses[id], decimals=3))
+
+            # DEBUG: Add image to tensorboard
+            if ADD_IMAGE_TO_TENSORBOARD:
+                tensorBoardWriter.add_image(imgTag, (inputSampleList[id][0:49]).reshape(7, 7).T, global_step=epochID, dataformats='HW')
+
         torch.set_printoptions(precision=5)
+        tensorBoardWriter.flush() # Force tensorboard to write data to disk
 
     return model, trainLossHistory, validationLossHistory, inputSampleList
 
 # %% Model evaluation function on a random number of samples from dataset - 06-06-2024
+# Possible way to solve the issue of having different cost function terms for training and validation --> add setTrain and setEval methods to switch between the two
 
 def EvaluateModel(dataloader:DataLoader, model:nn.Module, lossFcn: nn.Module, device=GetDevice(), numOfSamples:int=10, inputSample:torch.tensor=None) -> np.array:
     '''Torch model evaluation function to perform inference using either specified input samples or input dataloader'''
@@ -606,8 +717,42 @@ def AddZerosPadding(intNum:int, stringLength:str=4):
 
 
 #inputImageSize:list, kernelSizes:list, OutputChannelsSizes:list, PoolingLayersSizes:list, inputChannelSize:int=1, withBiases=True
-def ComputeConvLayerOutputSize(modelDescriptionDict: dict):
-    raise NotImplementedError('TODO') # Returns length of output of CNN as flatten
+
+# Auxiliar functions
+def ComputeConv2dOutputSize(inputSize:Union[list, np.array, torch.tensor], kernelSize=3, strideSize=1, paddingSize=0):
+    '''Compute output size and number of features maps (channels, i.e. volume) of a 2D convolutional layer. 
+       Input size must be a list, numpy array or a torch tensor with 2 elements: [height, width].'''
+    return int((inputSize[0] + 2*paddingSize - (kernelSize-1)-1) / strideSize + 1), int((inputSize[1] + 2*paddingSize - (kernelSize-1)-1) / strideSize + 1)
+
+def ComputePooling2dOutputSize(inputSize:Union[list, np.array, torch.tensor], kernelSize=2, strideSize=2, paddingSize=0):
+    '''Compute output size and number of features maps (channels, i.e. volume) of a 2D max/avg pooling layer. 
+       Input size must be a list, numpy array or a torch tensor with 2 elements: [height, width].'''
+    return int(( (inputSize[0] + 2*paddingSize - (kernelSize-1)-1) / strideSize) + 1), int(( (inputSize[1] + 2*paddingSize - (kernelSize-1)-1) / strideSize) + 1)
+
+# ConvBlock 2D and flatten sizes computation (SINGLE BLOCK)
+def ComputeConvBlockOutputSize(inputSize:Union[list, np.array, torch.tensor], outChannelsSize:int, 
+                               convKernelSize:int=3, poolingkernelSize:int=2, 
+                               convStrideSize:int=1, poolingStrideSize:int=1, 
+                               convPaddingSize:int=0, poolingPaddingSize:int=0):
+    
+    # TODO: modify interface to use something like a dictionary with the parameters, to make it more fexible and avoid the need to pass all the parameters
+
+    '''Compute output size and number of features maps (channels, i.e. volume) of a ConvBlock layer. 
+       Input size must be a list, numpy array or a torch tensor with 2 elements: [height, width].'''
+
+    # Compute output size of Conv2d and Pooling2d layers
+    conv2dOutputSize = ComputeConv2dOutputSize(inputSize, convKernelSize, convStrideSize, convPaddingSize)
+    
+    if conv2dOutputSize[0] < poolingkernelSize or conv2dOutputSize[1] < poolingkernelSize:
+        raise ValueError('Pooling kernel size is larger than output size of Conv2d layer. Check configuration.')
+    
+    convBlockOutputSize = ComputePooling2dOutputSize(conv2dOutputSize, poolingkernelSize, poolingStrideSize, poolingPaddingSize)
+
+    # Compute total number of features after ConvBlock as required for the fully connected layers
+    conv2dFlattenOutputSize = convBlockOutputSize[0] * convBlockOutputSize[1] * outChannelsSize
+
+    return convBlockOutputSize, conv2dFlattenOutputSize
+
 
 # %% MATLAB wrapper class for Torch models evaluation - 11-06-2024
 class TorchModel_MATLABwrap():
@@ -617,19 +762,21 @@ class TorchModel_MATLABwrap():
 
         # Load model state and state
         trainedModel = LoadTorchModel(None, trainedModelName, trainedModelPath, loadAsTraced=True)
-
+        trainedModel.eval() # Set model in evaluation mode
         self.trainedModel = trainedModel.to(self.device)
 
 
-    def forward(self, inputSample:np.array):
+    def forward(self, inputSample:np.array, numBatches:int=1):
         '''Forward method to perform inference for ONE sample input using trainedModel'''
         if inputSample.dtype is not np.float32:
             inputSample = np.float32(inputSample)
 
+        print('Performing formatting of input array to pass to model...')
+
         # TODO: check the input is exactly identical to what the model receives using EvaluateModel() loading from dataset!        
         # Convert numpy array into torch.tensor for model inference
-        X = torch.tensor(inputSample).reshape(1, -1)
-
+        X = torch.tensor(inputSample).reshape(numBatches, -1)
+                        
         # ########### DEBUG ######################: 
         print('Evaluating model using batch input: ', X)
         ############################################
@@ -645,16 +792,75 @@ class TorchModel_MATLABwrap():
     
         
 
+# %% Training and validation manager class - 22-06-2024 (WIP)
+# TODO: Features to include: 
+# 1) Multi-process/multi-threading support for training and validation of multiple models in parallel
+# 2) Logging of all relevat options and results to file (either csv or text from std output)
+# 3) Main training logbook to store all data to be used for model selection and hyperparameter tuning, this should be "per project"
+# 4) Training mode: k-fold cross validation leveraging scikit-learn    
 
+class ModelTrainingManager():
+    '''Class to manage training and validation of PyTorch models using specified datasets and loss functions.'''
 
-# %% TORCH to ONNX format model converter - TODO 11-06-2024
+    def __init__(self, model:nn.Module, lossFcn: nn.Module, optimizer, options:dict={'taskType': 'classification', 
+                                                                                     'device': GetDevice(), 
+                                                                                     'epochs': 10, 
+                                                                                     'Tensorboard':True,
+                                                                                     'saveCheckpoints':True,
+                                                                                     'checkpointsOutDir': './checkpoints',      
+                                                                                     'modelName': 'trainedModel',
+                                                                                     'loadCheckpoint': False,
+                                                                                     'lossLogName': 'Loss-value',
+                                                                                     'epochStart': 0}):
+        
+        '''Constructor for TrainAndValidationManager class. Initializes model, loss function, optimizer and training/validation options.'''
 
+        # Define manager parameters
+        self.model = model
+        self.lossFcn = lossFcn
+
+        # Optimizer --> # TODO: check how to modify learning rate and momentum while training
+        if isinstance(optimizer, optim.Optimizer):
+            self.optimizer = optimizer
+
+        elif isinstance(optimizer, int):
+                if optimizer == 0:
+                    optimizer = torch.optim.SGD(self.model.parameters(), lr=learnRate, momentum=momentumValue) 
+                elif optimizer == 1:
+                    optimizer = torch.optim.Adam(self.model.parameters(), lr=learnRate)
+                else:
+                    raise ValueError('Optimizer type not recognized. Use either 0 for SGD or 1 for Adam.')
+        else:
+            raise ValueError('Optimizer must be either an instance of torch.optim.Optimizer or an integer representing the optimizer type.')
+        
+        # Define training and validation options
+    
+    def LoadDatasets(self, dataloaderIndex:dict):
+        '''Method to load datasets from dataloaderIndex and use them depending on the specified criterion (e.g. "order", "merge)'''
+        # TODO: Load all datasets from dataloaderIndex and use them depending on the specified criterion (e.g. "order", "merge)
+        pass
+
+    def TrainAndValidateModel(self):
+        '''Method to train and validate model using loaded datasets and specified options'''
+        pass
+
+    def GetTracedModel(self):
+        pass
+    
+
+# %% EXPERIMENTAL: Network AutoBuilder class - 02-07-2024 (WIP)
+class ModelAutoBuilder():
+    print('TODO')
+    def __init__(self):
+        pass
+
+    
 
 
 
 # %% MAIN 
 def main():
-    print('In this script, main does actually nothing ^_^.')
+    print('In this script, main does actually nothing lol ^_^.')
     
 if __name__== '__main__':
     main()

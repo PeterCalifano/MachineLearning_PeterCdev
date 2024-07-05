@@ -12,6 +12,9 @@ testModels
 modelZoo
 checkpoints/*
 slprj
+*.sarif
+tracedModelsArchive
+multiprocessShellLog
 
 # PyTorch folders
 PyTorch/__pycache__

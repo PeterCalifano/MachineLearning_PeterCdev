@@ -1,16 +1,12 @@
-function [dataLength, dataBufferToWrite] = SerializeMsgToTorchTCP(ui8flattenedWindow, ...
-    dRmoonDEM, ...
-    dSunDir_PixCoords, ...
-    dAttMRP_fromTFtoCAM, ...
-    dPosCam_TF, ...
-    ui8coarseLimbPixels)%#codegen
+function [dataLength, dataBufferToWrite] = SerializeMsgToTorchTCP(i_ui8flattenedWindow, ...
+    i_dSunDir_PixCoords, ...
+    i_dAttMRP_fromTFtoCAM, ...
+    i_ui8coarseLimbPixels)%#codegen
 arguments
-    ui8flattenedWindow  (49,1)
-    dRmoonDEM           (1,1)
-    dSunDir_PixCoords   (2,1)
-    dAttMRP_fromTFtoCAM (3,1)
-    dPosCam_TF          (3,1)
-    ui8coarseLimbPixels (2,1)
+    i_ui8flattenedWindow  (49,1)  uint8
+    i_dSunDir_PixCoords   (2,1)   double
+    i_dAttMRP_fromTFtoCAM (3,1)   double
+    i_ui8coarseLimbPixels (2,1)   uint8
 end
 %% PROTOTYPE
 % -------------------------------------------------------------------------------------------------------------
@@ -20,23 +16,14 @@ end
 %% INPUT
 % in1 [dim] description
 % Name1                     []
-% Name2                     []
-% Name3                     []
-% Name4                     []
-% Name5                     []
-% Name6                     []
 % -------------------------------------------------------------------------------------------------------------
 %% OUTPUT
 % out1 [dim] description
 % Name1                     []
-% Name2                     []
-% Name3                     []
-% Name4                     []
-% Name5                     []
-% Name6                     []
 % -------------------------------------------------------------------------------------------------------------
 %% CHANGELOG
 % 17-06-2024        Pietro Califano         Adapted from script.
+% 20-06-2024        Pietro Califano         Update for integration with LUMIO IP
 % -------------------------------------------------------------------------------------------------------------
 %% DEPENDENCIES
 % [-]
@@ -55,26 +42,25 @@ end
 inputDataSample = zeros(56, 1, 'single');
 ptrToInput = 1;
 
-flattenedWindSize = length(flattenedWindow);
+flattenedWindSize = length(i_ui8flattenedWindow);
 
-inputDataSample(ptrToInput:ptrToInput+flattenedWindSize-1)  = single(flattenedWindow);
+inputDataSample(ptrToInput:ptrToInput+flattenedWindSize-1)  = single(i_ui8flattenedWindow);
 
 % Update index
 ptrToInput = ptrToInput + flattenedWindSize; 
 
-inputDataSample(ptrToInput:ptrToInput+length(datastruct.metadata.dSunDir_PixCoords)-1) = single(datastruct.metadata.dSunDir_PixCoords);
+inputDataSample(ptrToInput:ptrToInput+length(i_dSunDir_PixCoords)-1) = single(i_dSunDir_PixCoords);
 
 % Update index
-ptrToInput = ptrToInput + length(datastruct.metadata.dSunDir_PixCoords); % Update index
+ptrToInput = ptrToInput + length(i_dSunDir_PixCoords); % Update index
 
-tmpVal = quat2mrp( DCM2quat(reshape(datastruct.metadata.dAttDCM_fromTFtoCAM, 3, 3), false) );
 
-inputDataSample(ptrToInput : ptrToInput + length(tmpVal)-1) = single(tmpVal); % Convert Attitude matrix to MRP parameters
+inputDataSample(ptrToInput : ptrToInput + length(i_dAttMRP_fromTFtoCAM)-1) = single(i_dAttMRP_fromTFtoCAM); % Convert Attitude matrix to MRP parameters
 
 % Update index
-ptrToInput = ptrToInput + length(tmpVal); % Update index
+ptrToInput = ptrToInput + length(i_dAttMRP_fromTFtoCAM); % Update index
 
-inputDataSample(ptrToInput:end) = single(coarseLimbPixels);
+inputDataSample(ptrToInput:end) = single(i_ui8coarseLimbPixels);
 
 
 % dataBufferSize = uint16(60*8);

@@ -9,7 +9,7 @@ import sys, os
 sys.path.append(os.path.join('/home/peterc/devDir/MachineLearning_PeterCdev/PyTorch'))
 sys.path.append(os.path.join('/home/peterc/devDir/MachineLearning_PeterCdev/PyTorch/LimbBasedNavigationAtMoon'))
 
-import customTorch # Custom torch tools
+import customTorchTools # Custom torch tools
 import limbPixelExtraction_CNN_NN
 
 import datetime
@@ -21,7 +21,6 @@ from torchvision import datasets # Import vision default datasets from torchvisi
 from torchvision.transforms import ToTensor # Utils
 
 
-
 def main():
 
     # Define inputs
@@ -29,13 +28,13 @@ def main():
     modelSavePath = './checkpoints/HorizonPixCorrector_CNN_run8'
     tracedModelSavePath = '/home/peterc/devDir/MachineLearning_PeterCdev'
 
-    modelName = 'trainedModel_' + customTorch.AddZerosPadding(0, 4)
+    modelName = 'trainedModel_' + customTorchTools.AddZerosPadding(0, 4)
     tracedModelName = 'trainedTracedModel075.pt'
 
     datasetSavePath = modelSavePath + 'sampleDatasetToONNx'
     batch_size = 16
 
-    device = customTorch.GetDevice()
+    device = customTorchTools.GetDevice()
 
     # NOTE: these settings must be the same as the saved model. Current version does not check for this.
     outChannelsSizes = [16, 32, 75, 15]
@@ -44,25 +43,25 @@ def main():
     modelEmpty = limbPixelExtraction_CNN_NN.HorizonExtractionEnhancerCNN(outChannelsSizes, kernelSizes)
 
     # Load torch model and define loss function
-    trainedModel = customTorch.LoadTorchModel(modelEmpty, modelName, modelSavePath).to(device)
+    trainedModel = customTorchTools.LoadTorchModel(modelEmpty, modelName, modelSavePath).to(device)
 
-    trainedTracedModel = customTorch.LoadTorchModel(None, tracedModelName, tracedModelSavePath, True).to(device)
+    trainedTracedModel = customTorchTools.LoadTorchModel(None, tracedModelName, tracedModelSavePath, True).to(device)
 
-    lossFcn = customTorch.CustomLossFcn(customTorch.MoonLimbPixConvEnhancer_LossFcn)
+    lossFcn = customTorchTools.CustomLossFcn(customTorchTools.MoonLimbPixConvEnhancer_LossFcn)
 
     # Load sample dataset
-    sampleData = customTorch.LoadTorchDataset(datasetSavePath)
+    sampleData = customTorchTools.LoadTorchDataset(datasetSavePath)
     sampleDataset  = DataLoader(sampleData, batch_size, shuffle=True)
 
     # Test model and get sample inputs
-    examplePrediction, exampleLosses, inputSampleList = customTorch.EvaluateModel(sampleDataset, trainedModel, lossFcn)
+    examplePrediction, exampleLosses, inputSampleList = customTorchTools.EvaluateModel(sampleDataset, trainedModel, lossFcn)
     
-    examplePrediction, exampleLosses, inputSampleList = customTorch.EvaluateModel(sampleDataset, trainedTracedModel, lossFcn)
+    examplePrediction, exampleLosses, inputSampleList = customTorchTools.EvaluateModel(sampleDataset, trainedTracedModel, lossFcn)
 
-    customTorch.SaveTorchModel(trainedTracedModel.to('cpu'), os.path.join(tracedModelSavePath, 'trainedTracedModel075_cpu'), True, inputSampleList[0])
+    customTorchTools.SaveTorchModel(trainedTracedModel.to('cpu'), os.path.join(tracedModelSavePath, 'trainedTracedModel075_cpu'), True, inputSampleList[0])
 
     # %% TEST TORCH MATLAB WRAPPER
-    torchWrapper = customTorch.TorchModel_MATLABwrap(tracedModelName, tracedModelSavePath)
+    torchWrapper = customTorchTools.TorchModel_MATLABwrap(tracedModelName, tracedModelSavePath)
 
     testPrediction = torchWrapper.forward((inputSampleList[0].cpu()).numpy())
 

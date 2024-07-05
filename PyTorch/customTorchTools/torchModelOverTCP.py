@@ -13,10 +13,10 @@ sys.path.append(os.path.join('/home/peterc/devDir/MachineLearning_PeterCdev/PyTo
 import numpy as np
 
 # Custom imports
-import customTorch
+import customTorchTools
 import tcpServerPy
 
-
+from torch.utils.tensorboard import SummaryWriter 
 
 # MAIN SCRIPT
 def main():
@@ -25,20 +25,27 @@ def main():
     
     # %% TORCH MODEL LOADING
     # Model path
-    tracedModelSavePath = '/home/peterc/devDir/MachineLearning_PeterCdev'
-    tracedModelName = 'trainedTracedModel' + customTorch.AddZerosPadding(75, 3)
+    tracedModelSavePath = '/home/peterc/devDir/MachineLearning_PeterCdev/checkpoints/'
+    modelID = 5
+    #tracedModelName = 'HorizonPixCorrector_CNNv2_' + customTorchTools.AddZerosPadding(modelID, 3) + '_cpu'
+
+    #tracedModelName = 'HorizonPixCorrector_CNNv1max_largerCNN_run3_005_cpu' + '.pt'
+    #tracedModelName = '/home/peterc/devDir/MachineLearning_PeterCdev/checkpoints/HorizonPixCorrector_CNNv1max_largerCNN_run6/HorizonPixCorrector_CNNv1max_largerCNN_run6_0088_cuda0.pt'
+    tracedModelName = 'HorizonPixCorrector_CNNv3max_largerCNNdeeperNN_run0003/HorizonPixCorrector_CNNv3max_largerCNNdeeperNN_run0003_0004_cuda0.pt'
+    tracedModelName = '/home/peterc/devDir/MachineLearning_PeterCdev/checkpoints/HorizonExtractionEnhancer_ShortCNNv6maxDeeper0000/HorizonPixCorrector_ShortCNNv6maxDeeper_run0000_0031_cuda0.pt'
 
     # Parameters
+    # ACHTUNG: check which model is being loaded!
 
     # Load torch traced model from file
-    torchWrapper = customTorch.TorchModel_MATLABwrap(tracedModelName, tracedModelSavePath)
+    torchWrapper = customTorchTools.TorchModel_MATLABwrap(tracedModelName, tracedModelSavePath)
 
     # %% TCP SERVER INITIALIZATION
     HOST, PORT = "127.0.0.1", 50000 # Define host and port (random is ok)
 
     # Define DataProcessor object for RequestHandler
-    numOfBytes = 60*4 # Length of input * number of bytes in double
-    dataProcessorObj = tcpServerPy.DataProcessor(torchWrapper.forward, np.float32, numOfBytes)
+    numOfBytes = 56*4 # Length of input * number of bytes in double --> not used if DYNAMIC_BUFFER_MODE is True
+    dataProcessorObj = tcpServerPy.DataProcessor(torchWrapper.forward, np.float32, numOfBytes, ENDIANNESS='little', DYNAMIC_BUFFER_MODE=True)
 
     # Initialize TCP server and keep it running
     with tcpServerPy.pytcp_server((HOST, PORT), tcpServerPy.pytcp_requestHandler, dataProcessorObj, bindAndActivate=True) as server:

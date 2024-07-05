@@ -16,3 +16,9 @@
 [submodule "Event-based/v2e_PeterCdev"]
 	path = Event-based/v2e_PeterCdev
 	url = git@github.com:PeterCalifano/v2e_PeterCdev.git
+[submodule "mlflow_PeterCdev"]
+	path = mlflow_PeterCdev
+	url = git@github.com:PeterCalifano/mlflow_PeterCdev.git
+[submodule "loss-landscape_PeterCdev"]
+	path = loss-landscape_PeterCdev
+	url = git@github.com:PeterCalifano/loss-landscape_PeterCdev.git

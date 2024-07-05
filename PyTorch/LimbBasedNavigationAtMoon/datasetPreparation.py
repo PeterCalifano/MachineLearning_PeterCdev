@@ -11,7 +11,7 @@ import numpy as np
 import matplotlib as mpl
 
 # Torch modules
-import customTorch
+import customTorchTools
 
 
 def parse_args():
@@ -41,13 +41,13 @@ def LoadJSONdata(dataFilePath):
     if not (os.path.isfile(dataFilePath)):
         raise FileExistsError('Data file not found. Check specified dataPath.')
     
-    print('Data file FOUND, loading...')
+    #print('Data file FOUND, loading...')
     with open(dataFilePath, 'r') as json_file:
         try:
             dataJSONdict = json.load(json_file) # Load JSON as dict
         except Exception as exceptInstance:
             raise Exception('ERROR occurred:', exceptInstance.args)
-        print('Data file: LOADED.')
+        #print('Data file: LOADED.')
 
     if isinstance(dataJSONdict, dict):
         # Get JSONdict data keys

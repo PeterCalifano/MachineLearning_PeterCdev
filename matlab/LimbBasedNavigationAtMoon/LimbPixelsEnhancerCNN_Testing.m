@@ -19,6 +19,7 @@ addpath('/home/peterc/devDir/robots-api/matlab/CommManager')
 % 10-06-2024    Pietro Califano     First version of script completed.
 % 15-06-2024    Pietro Califano     Added code to use Torch over TCP server. Test passed.
 % 19-06-2024    Pietro Califano     Updated Torch Model to v2.0
+% 25-06-2024    Pietro Califano     Modified for batch evaluation
 % -------------------------------------------------------------------------------------------------------------
 % DEPENDENCIES
 % Deep Learning toolbox
@@ -27,7 +28,7 @@ addpath('/home/peterc/devDir/robots-api/matlab/CommManager')
 %% OPTIONS
 bUSE_TORCH_OVER_TCP = true;
 bUSE_PYENV = true;
-bRUN_SIMULINK_SIM = true;
+bRUN_SIMULINK_SIM = false;
 
 datasetID = 1;
 fileID   = 1;
@@ -42,8 +43,8 @@ dataJSONPath = fullfile(testDatapairsStruct(fileID).folder, testDatapairsStruct(
 datastruct = JSONdecoder(dataJSONPath);
 
 % Get flattened patch
-flattenedWindow  = datastruct.ui8flattenedWindows(:, sampleID);
-coarseLimbPixels = datastruct.ui16coarseLimbPixels(:, sampleID);
+% flattenedWindow  = datastruct.ui8flattenedWindows(:, sampleID);
+% coarseLimbPixels = datastruct.ui16coarseLimbPixels(:, sampleID);
 % Validate patch counting how many pixels are completely black or white
 % pathIsValid = customTorch.IsPatchValid(flattenedWindow, lowerIntensityThr=5);
 
@@ -53,33 +54,32 @@ coarseLimbPixels = datastruct.ui16coarseLimbPixels(:, sampleID);
 %   vector. Remove it unless generalization to other targets is required.
 % 2) Input image should be normalized wrt to the maximum. This tip applies to all the inputs.
 
-% Compose input sample
-inputDataSample = zeros(56, 1, 'single');
-
-
-% Assign labels to labels data array
-ptrToInput = 1;
-
-flattenedWindSize = length(flattenedWindow);
-
-inputDataSample(ptrToInput:ptrToInput+flattenedWindSize-1)  = single(flattenedWindow);
-
-% Update index
-ptrToInput = ptrToInput + flattenedWindSize; 
-
-inputDataSample(ptrToInput:ptrToInput+length(datastruct.metadata.dSunDir_PixCoords)-1) = single(datastruct.metadata.dSunDir_PixCoords);
-
-% Update index
-ptrToInput = ptrToInput + length(datastruct.metadata.dSunDir_PixCoords); % Update index
-
-tmpVal = quat2mrp( DCM2quat(reshape(datastruct.metadata.dAttDCM_fromTFtoCAM, 3, 3), false) );
-
-inputDataSample(ptrToInput : ptrToInput + length(tmpVal)-1) = single(tmpVal); % Convert Attitude matrix to MRP parameters
-
-% Update index
-ptrToInput = ptrToInput + length(tmpVal); % Update index
-
-inputDataSample(ptrToInput:end) = single(coarseLimbPixels);
+% % Compose input sample
+% inputDataSample = zeros(56, 1, 'single');
+% 
+% % Assign labels to labels data array
+% ptrToInput = 1;
+% 
+% flattenedWindSize = length(flattenedWindow);
+% 
+% inputDataSample(ptrToInput:ptrToInput+flattenedWindSize-1)  = single(flattenedWindow);
+% 
+% % Update index
+% ptrToInput = ptrToInput + flattenedWindSize; 
+% 
+% inputDataSample(ptrToInput:ptrToInput+length(datastruct.metadata.dSunDir_PixCoords)-1) = single(datastruct.metadata.dSunDir_PixCoords);
+% 
+% % Update index
+% ptrToInput = ptrToInput + length(datastruct.metadata.dSunDir_PixCoords); % Update index
+% 
+% tmpVal = quat2mrp( DCM2quat(reshape(datastruct.metadata.dAttDCM_fromTFtoCAM, 3, 3), false) );
+% 
+% inputDataSample(ptrToInput : ptrToInput + length(tmpVal)-1) = single(tmpVal); % Convert Attitude matrix to MRP parameters
+% 
+% % Update index
+% ptrToInput = ptrToInput + length(tmpVal); % Update index
+% 
+% inputDataSample(ptrToInput:end) = single(coarseLimbPixels);
 
 
 if bUSE_TORCH_OVER_TCP == true
@@ -98,6 +98,7 @@ if bUSE_TORCH_OVER_TCP == true
     
     % Serialize input data from array
     if SEND_SHUTDOWN == true
+
         dataMessage = 'shutdown';
         if isa(dataMessage, 'string')
             dataMessage = char(dataMessage);
@@ -105,30 +106,48 @@ if bUSE_TORCH_OVER_TCP == true
         dataLength = length(dataMessage);
         lengthAsBytes = typecast(uint32(dataLength), 'uint8');
         dataBufferToWrite = [lengthAsBytes, uint8(dataMessage)];
-    else
-        if iscolumn(inputDataSample)
-            dataMessage = transpose(inputDataSample);
-        else
-            dataMessage = (inputDataSample);
-        end
-        dataBuffer = typecast(dataMessage, 'uint8');
-        dataLength = typecast(uint32(length(dataBuffer)), 'uint8');
-        dataBufferToWrite = [dataLength, dataBuffer];
-        % dataBufferToWrite_Size = length(dataBufferToWrite);
-    end
 
-    % Send data to server
-    commHandler.WriteBuffer(dataBufferToWrite);
-    if SEND_SHUTDOWN == true
-        return;
+        commHandler.WriteBuffer(dataBufferToWrite);
+
+    else
+
+        % datastruct
+        
+        % Fields order:
+        % i_ui8flattenedWindow
+        % i_dSunDir_PixCoords
+        % i_dAttMRP_fromTFtoCAM
+        % i_ui8coarseLimbPixels
+        i_ui32Nbatches = 10;
+        i_ui32InputSize = 56;
+
+        i_strInputSamplesBatchStruct(i_ui32Nbatches) = struct();
+
+        for idB = 1:i_ui32Nbatches
+
+            i_strInputSamplesBatchStruct(idB).i_ui8flattenedWindow   = datastruct.ui8flattenedWindows(:, idB);
+            i_strInputSamplesBatchStruct(idB).i_dSunDir_PixCoords    = datastruct.metadata.dSunDir_PixCoords;
+            i_strInputSamplesBatchStruct(idB).i_dAttMRP_fromTFtoCAM  = quat2mrp( DCM2quat(reshape(datastruct.metadata.dAttDCM_fromTFtoCAM, 3, 3), false) );
+            i_strInputSamplesBatchStruct(idB).i_ui16coarseLimbPixels = datastruct.ui16coarseLimbPixels(:, idB);
+
+        end
+
+           
+        % Serialize message
+        [dataLength, dataBufferToWrite] = SerializeBatchMsgToTorchTCP(i_strInputSamplesBatchStruct, ...
+            i_ui32Nbatches, ...
+            i_ui32InputSize);
+
+        % Send buffer to server
+        commHandler.WriteBuffer(dataBufferToWrite);
+
+        % Read buffer from server
+        [recvBytes, recvDataBuffer] = commHandler.ReadBuffer();
+
+        % Deserialize data from server to get CNN prediction
+        [dPredictedPixCorrection] = DeserializeMsgFromTorchTCP(recvBytes, recvDataBuffer);
+
     end
-    % Test function to read data buffer
-    % [recvBytes, recvDataBuffer, commManager] = ReadBuffer(commManager)
-    [recvBytes, recvDataBuffer] = commHandler.ReadBuffer();
-    % Convert received bytes stream into matrix
-    dataBufferReceived = typecast(recvDataBuffer, 'single');
-    fprintf('\nReceived data length: %d. \nData vector: ', recvBytes);
-    disp(dataBufferReceived);
 
 else
     % Python API environment setup
@@ -239,3 +258,4 @@ if bRUN_SIMULINK_SIM == true
 
 end
 
+commHandler.Disconnect();
