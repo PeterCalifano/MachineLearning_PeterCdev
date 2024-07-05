@@ -1,3 +1,6 @@
+'''Script to test the loss visualization method suggested by Li et al. (2018) in the paper "Visualizing the Loss Landscape of Neural Nets"
+Using the code from the paper's GitHub repository: '''
+
 # Import modules
 import sys, os
 

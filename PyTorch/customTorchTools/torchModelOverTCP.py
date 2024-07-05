@@ -32,6 +32,8 @@ def main():
     #tracedModelName = 'HorizonPixCorrector_CNNv1max_largerCNN_run3_005_cpu' + '.pt'
     #tracedModelName = '/home/peterc/devDir/MachineLearning_PeterCdev/checkpoints/HorizonPixCorrector_CNNv1max_largerCNN_run6/HorizonPixCorrector_CNNv1max_largerCNN_run6_0088_cuda0.pt'
     tracedModelName = 'HorizonPixCorrector_CNNv3max_largerCNNdeeperNN_run0003/HorizonPixCorrector_CNNv3max_largerCNNdeeperNN_run0003_0004_cuda0.pt'
+    tracedModelName = '/home/peterc/devDir/MachineLearning_PeterCdev/checkpoints/HorizonExtractionEnhancer_ShortCNNv6maxDeeper0000/HorizonPixCorrector_ShortCNNv6maxDeeper_run0000_0031_cuda0.pt'
+
     # Parameters
     # ACHTUNG: check which model is being loaded!
 
