@@ -35,8 +35,8 @@ event-based_backup
 *.json
 *.slxc
 
-# Tensorboard logs
+# Logs
 tensorboardLog*
-
+mlruns/*
 
 

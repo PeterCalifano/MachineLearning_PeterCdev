@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 # Import modules
 import sys, os, subprocess, time
 # Append paths of custom modules
-#sys.path.append(os.path.join('/home/peterc/devDir/MachineLearning_PeterCdev/PyTorch'))
+sys.path.append(os.path.join('/home/peterc/devDir/MachineLearning_PeterCdev/PyTorch/customTorchTools'))
 sys.path.append(os.path.join('/home/peterc/devDir/MachineLearning_PeterCdev/PyTorch/LimbBasedNavigationAtMoon'))
 
 import customTorchTools # Custom torch tools
@@ -85,79 +85,82 @@ class SimpleCNN(nn.Module):
 
 # %% Optuna objective function
 def objective(trial):
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    # Create new run_IN within the current session
+    with mlflow.start_run():
 
-    # Create the trial model
-    model = SimpleCNN(trial).to(device)
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    # Select the optimizer
-    optimizer_name = trial.suggest_categorical('optimizer', ['Adam', 'RMSprop'])
-    lr = trial.suggest_float('lr', 1e-4, 1e-2, log=True) # NOTE: What are the inputs to suggest_float?
-    optimizer = getattr(optim, optimizer_name)(model.parameters(), lr=lr)
-    # NOTE: What is "getattr" function? It should be a pytorch function: likely a method of "model", TBC
+        # Create the trial model
+        model = SimpleCNN(trial).to(device)
+
+        # Select the optimizer
+        optimizer_name = trial.suggest_categorical('optimizer', ['Adam', 'RMSprop'])
+        lr = trial.suggest_float('lr', 1e-4, 1e-2, log=True) # NOTE: What are the inputs to suggest_float?
+        optimizer = getattr(optim, optimizer_name)(model.parameters(), lr=lr)
+        # NOTE: What is "getattr" function? It should be a pytorch function: likely a method of "model", TBC
     
-    # Loss function
-    criterion = nn.CrossEntropyLoss()
+        # Loss function
+        criterion = nn.CrossEntropyLoss()
 
-    # Training the current trial model
-    for epoch in range(10):
-        model.train()
-        for batch in train_loader:
-            inputs, targets = batch # Unpack tuples
-            inputs, targets = inputs.to(device), targets.to(device)
-            optimizer.zero_grad()
+        # Training the current trial model
+        for epoch in range(10):
+            model.train()
+            for batch in train_loader:
+                inputs, targets = batch # Unpack tuples
+                inputs, targets = inputs.to(device), targets.to(device)
+                optimizer.zero_grad()
 
-            # Evaluate model
-            outputs = model(inputs)
-            # Compute loss
-            loss = criterion(outputs, targets)
-            # Perform backpropagation
-            loss.backward()
-            optimizer.step()
+                # Evaluate model
+                outputs = model(inputs)
+                # Compute loss
+                loss = criterion(outputs, targets)
+                # Perform backpropagation
+                loss.backward()
+                optimizer.step()
 
-    # Model validation
-    model.eval()
-    correct = 0
-    total = 0
-    with torch.no_grad():
-        for batch in test_loader:
-            inputs, targets = batch
-            inputs, targets = inputs.to(device), targets.to(device)
-            outputs = model(inputs)
-            _, predicted = torch.max(outputs.data, 1)
-            total += targets.size(0)
-            correct += (predicted == targets).sum().item()
+        # Model validation
+        model.eval()
+        correct = 0
+        total = 0
+        with torch.no_grad():
+            for batch in test_loader:
+                inputs, targets = batch
+                inputs, targets = inputs.to(device), targets.to(device)
+                outputs = model(inputs)
+                _, predicted = torch.max(outputs.data, 1)
+                total += targets.size(0)
+                correct += (predicted == targets).sum().item()
 
-    accuracy = correct / total
+        accuracy = correct / total
 
-    # MLflow: log trial data (it will have a unique ID)
-    # NOTE: this could be matched with the AutoBuilder configuration such that the parameters 
-    # of config file are automatically logged by mlflow with their names
+        # MLflow: log trial data (it will have a unique ID)
+        # NOTE: this could be matched with the AutoBuilder configuration such that the parameters 
+        # of config file are automatically logged by mlflow with their names
 
-    mlflow.log_param('optimizer', optimizer_name)
-    mlflow.log_param('learning_rate', lr)
-    mlflow.log_param('num_conv_layers', trial.params.get('num_conv_layers')) 
-    # NOTE: integration with optuna --> parameters are got directly from the ith trial object under evaluation
-    mlflow.log_param('num_dense_layers', trial.params.get('num_dense_layers'))
+        mlflow.log_param('optimizer', optimizer_name)
+        mlflow.log_param('learning_rate', lr)
+        mlflow.log_param('num_conv_layers', trial.params.get('num_conv_layers')) 
+        # NOTE: integration with optuna --> parameters are got directly from the ith trial object under evaluation
+        mlflow.log_param('num_dense_layers', trial.params.get('num_dense_layers'))
 
-    for i in range(trial.params.get('num_conv_layers')):
-        mlflow.log_param(f'filters_{i}', trial.params.get(f'filters_{i}'))
-        mlflow.log_param(f'kernel_size_{i}', trial.params.get(f'kernel_size_{i}'))
+        for i in range(trial.params.get('num_conv_layers')):
+            mlflow.log_param(f'filters_{i}', trial.params.get(f'filters_{i}'))
+            mlflow.log_param(f'kernel_size_{i}', trial.params.get(f'kernel_size_{i}'))
 
-    for i in range(trial.params.get('num_dense_layers')):
-        mlflow.log_param(f'units_{i}', trial.params.get(f'units_{i}'))
-        mlflow.log_param(f'dropout_rate_{i}', trial.params.get(f'dropout_rate_{i}'))
+        for i in range(trial.params.get('num_dense_layers')):
+            mlflow.log_param(f'units_{i}', trial.params.get(f'units_{i}'))
+            mlflow.log_param(f'dropout_rate_{i}', trial.params.get(f'dropout_rate_{i}'))
 
-    mlflow.log_metric('accuracy', accuracy)
+        mlflow.log_metric('accuracy', accuracy)
 
-    return accuracy
+        return accuracy
 
 
 def StartMLflowUI(port:int=5000):
 
     # Start MLflow UI
     os.system('mlflow ui --port ' + str(port))
-    process = subprocess.Popen(['mlflow', 'ui', '--port ' + f'{port}'], 
+    process = subprocess.Popen(['mlflow', 'ui', '--port ' + f'{port}', '&'], 
                                stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     print(f'MLflow UI started with PID: {process.pid}, on port: {port}')
     time.sleep(1) # Ensure the server has started
@@ -166,17 +169,18 @@ def StartMLflowUI(port:int=5000):
     else:
         raise RuntimeError('MLflow UI failed to start. Run stopped.')
 
+    return process
 
 def main():
     print('TEST SCRIPT: MLflow and Optuna functionalities')
 
     # %% MLflow tracking initialization
     port = 7000
-    StartMLflowUI(port) # Start MLflow UI
+    #StartMLflowUI(port) # Start MLflow UI
     mlflow.set_experiment('CIFAR10_CNN_OptimizationExample') # Mlflow experiment name
 
     # %% Optuna study configuration
-    optunaStudyObj = optuna.create_study(direction='maximize')
+    optunaStudyObj = optuna.create_study(study_name='CIFAR10_CNN_OptimizationExample', direction='maximize')
 
     # %% Optuna optimization
     optunaStudyObj.optimize(objective, n_trials=10, timeout=600)
@@ -234,7 +238,7 @@ def calculate_loss(model, data_loader, loss_fn):
             loss += loss_fn(outputs, targets).item()
     return loss / len(data_loader)
 
-def Plot2DlossLandscape(model, data_loader, loss_fn, x_range=(-1, 1), y_range=(-1, 1), step_size=0.1):
+def Plot2DlossLandscape(model, dataloader, lossFcn, dir1Range=(-1, 1), dir2Range=(-1, 1), gridSize=0.1):
     # Get two sets of random directions and normalize them using filter normalization
     d1 = GetRandomTensorDirection(model)
     d2 = GetRandomTensorDirection(model)
@@ -242,8 +246,8 @@ def Plot2DlossLandscape(model, data_loader, loss_fn, x_range=(-1, 1), y_range=(-
     d1, d2 = FilterNormalizeDirections(d1, d2, model)
 
     # Pre-allocate plot grid
-    gammaVals = np.arange(x_range[0], x_range[1], step_size)
-    etaVals = np.arange(y_range[0], y_range[1], step_size)
+    gammaVals = np.arange(dir1Range[0], dir1Range[1], gridSize)
+    etaVals = np.arange(dir2Range[0], dir2Range[1], gridSize)
     losses = np.zeros((len(gammaVals), len(etaVals)))
 
     originalModelState = [param.clone() for param in model.parameters()]
@@ -256,7 +260,7 @@ def Plot2DlossLandscape(model, data_loader, loss_fn, x_range=(-1, 1), y_range=(-
             DisplaceModelParamsAlongDirections(model, d2, y)
 
             # Evaluate loss using displaced model
-            losses[i, j] = calculate_loss(model, data_loader, loss_fn)
+            losses[i, j] = calculate_loss(model, dataloader, lossFcn)
 
             # NOTE: Not sure what this does?
             for param, original_param in zip(model.parameters(), originalModelState):
