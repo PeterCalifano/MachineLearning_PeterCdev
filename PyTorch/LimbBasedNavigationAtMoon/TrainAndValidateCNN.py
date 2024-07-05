@@ -39,13 +39,13 @@ MODEL_CLASS_ID = 4
 MANUAL_RUN = True # Uses MODEL_CLASS_ID to run a specific model
 LOSS_TYPE = 4 # 0: Conic + L2, # 1: Conic + L2 + Quadratic OutOfPatch, # 2: Normalized Conic + L2 + OutOfPatch,            
             # 3: Polar-n-direction distance + OutOfPatch, #4: MSE + OutOfPatch + ConicLoss
-RUN_ID = 0
+RUN_ID = 1
 USE_BATCH_NORM = True
 
 def main(idRun:int, idModelClass:int, idLossType:int):
 
     # SETTINGS and PARAMETERS 
-    batch_size = 16*5 # Defines batch size in dataset
+    batch_size = 16*2 # Defines batch size in dataset
     #outChannelsSizes = [16, 32, 75, 15] 
     
     if idModelClass < 2:
@@ -58,12 +58,12 @@ def main(idRun:int, idModelClass:int, idLossType:int):
         outChannelsSizes = [256, 128, 64, 32]
 
     elif idModelClass == 4:
-        outChannelsSizes = [1024, 256, 64, 32]
+        outChannelsSizes = [512, 256, 64, 32]
     else:
         raise ValueError('Model class ID not found.')
 
     kernelSizes = [3, 3]
-    initialLearnRate = 5E-2
+    initialLearnRate = 1E-1
     momentumValue = 0.6
 
     #TODO: add log and printing of settings of optimizer for each epoch. Reduce the training loss value printings
@@ -133,14 +133,14 @@ def main(idRun:int, idModelClass:int, idLossType:int):
 
     elif idModelClass == 4:
         runID = "{num:04d}".format(num=idRun)
-        modelSavePath = './checkpoints/HorizonExtractionEnhancer_ShortCNNv6maxDeeperMaxKernel' + runID
+        modelSavePath = './checkpoints/HorizonExtractionEnhancer_ShortCNNv6maxDeeper' + runID
         datasetSavePath = './datasets/HorizonPixCorrectorV6'
-        tensorboardLogDir = './tensorboardLogs/tensorboardLog_ShortCNNv6maxDeeperMaxKernel_run'   + runID
+        tensorboardLogDir = './tensorboardLogs/tensorboardLog_ShortCNNv6maxDeeper_run'   + runID
         tensorBoardPortNum = 6012
 
-        modelArchName = 'HorizonPixCorrector_ShortCNNv6maxDeeperMaxKernel_run' + runID
+        modelArchName = 'HorizonPixCorrector_ShortCNNv6maxDeeper_run' + runID
         inputSize = 57 # TODO: update this according to new model
-        numOfEpochs = 20
+        numOfEpochs = 50
 
     EPOCH_START = 0
 
@@ -457,9 +457,9 @@ def main(idRun:int, idModelClass:int, idLossType:int):
             modelCNN_NN = modelClass(outChannelsSizes).to(device=device)
         elif idModelClass == 4:
 
-            parametersConfig = {'kernelSizes': [7],
+            parametersConfig = {'kernelSizes': [5],
                                 'useBatchNorm': USE_BATCH_NORM, 
-                                'poolingKernelSize': 1,
+                                'poolingKernelSize': 2,
                                 'alphaDropCoeff': 0.1,
                                 'alphaLeaky': 0.01,
                                 'patchSize': 7,
