@@ -8,7 +8,7 @@ Created by PeterC - 04-05-2024. Current version: v0.1 (30-06-2024)
 
 
 # Import modules
-import torch
+import torch, mlflow
 from torch import nn
 from torch.utils.data import Dataset
 from torchvision.transforms import ToTensor
@@ -544,7 +544,11 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
             #tensorBoardWriter.add_scalar(lossLogName + "/validation", validationLossHistory[epochID], epochID + epochStart)
             entriesTagDict = {'Training': trainLossHistory[epochID], 'Validation': validationLossHistory[epochID]}
             tensorBoardWriter.add_scalars(lossLogName, entriesTagDict, epochID)
-        
+            
+            mlflow.log_metric('Training loss - '+ lossLogName, trainLossHistory[epochID], step=epochID + epochStart)
+            mlflow.log_metric('Validation loss - '+ lossLogName, validationLossHistory[epochID], step=epochID + epochStart)
+
+
         if enableSave:
             if not(os.path.isdir(checkpointDir)):
                 os.mkdir(checkpointDir)
@@ -555,6 +559,8 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
         
         # %% MODEL PREDICTION EXAMPLES
         examplePrediction, exampleLosses, inputSampleList = EvaluateModel(validationDataset, model, lossFcn, device, 20)
+
+        #mlflow.log_artifacts('Prediction samples: ', validationLossHistory[epochID])
 
         # Add model graph using samples from EvaluateModel
         #if enableTensorBoard:       

@@ -13,8 +13,7 @@ import datasetPreparation
 from sklearn import preprocessing # Import scikit-learn for dataset preparation
 
 
-import torch
-import datetime, json
+import torch, mlflow
 from torch import nn
 from scipy.spatial.transform import Rotation
 
@@ -44,6 +43,8 @@ USE_BATCH_NORM = True
 
 def main(idRun:int, idModelClass:int, idLossType:int):
 
+    mlflow.start_run()
+
     # SETTINGS and PARAMETERS 
     batch_size = 16*2 # Defines batch size in dataset
     #outChannelsSizes = [16, 32, 75, 15] 
@@ -58,10 +59,12 @@ def main(idRun:int, idModelClass:int, idLossType:int):
         outChannelsSizes = [256, 128, 64, 32]
 
     elif idModelClass == 4:
-        outChannelsSizes = [512, 256, 64, 32]
+        outChannelsSizes = [2056, 1024, 512, 64]
     else:
         raise ValueError('Model class ID not found.')
 
+    mlflow.log_param('Output_channels_sizes', list(outChannelsSizes))
+    
     kernelSizes = [3, 3]
     initialLearnRate = 1E-1
     momentumValue = 0.6
@@ -70,7 +73,7 @@ def main(idRun:int, idModelClass:int, idLossType:int):
 
 
     # Loss function parameters
-    params = {'ConicLossWeightCoeff': 0, 'RectExpWeightCoeff': 0}
+    params = {'ConicLossWeightCoeff': 0, 'RectExpWeightCoeff': 1}
 
     optimizerID = 1 # 0: SGD, 1: Adam
     UseMaxPooling = True
@@ -140,7 +143,7 @@ def main(idRun:int, idModelClass:int, idLossType:int):
 
         modelArchName = 'HorizonPixCorrector_ShortCNNv6maxDeeper_run' + runID
         inputSize = 57 # TODO: update this according to new model
-        numOfEpochs = 50
+        numOfEpochs = 30
 
     EPOCH_START = 0
 
@@ -159,7 +162,7 @@ def main(idRun:int, idModelClass:int, idLossType:int):
                'modelName': modelArchName,
                'loadCheckpoint': False,
                'checkpointsInDir': modelSavePath,
-               'lossLogName': 'LossOutOfPatch_MoonHorizonExtraction',
+               'lossLogName': 'MSE_OutOfPatch',
                'logDirectory': tensorboardLogDir,
                'epochStart': EPOCH_START,
                'tensorBoardPortNum': tensorBoardPortNum}
@@ -173,6 +176,8 @@ def main(idRun:int, idModelClass:int, idLossType:int):
             modelNamesWithTime = [(entry.name, entry.stat().st_mtime) for entry in it if entry.is_file()]
         modelName = sorted(modelNamesWithTime, key=lambda x: x[1])[-1][0]
 
+
+    mlflow.log_params(options)
 
     # %% GENERATE OR LOAD TORCH DATASET
 
@@ -466,6 +471,8 @@ def main(idRun:int, idModelClass:int, idLossType:int):
                                 'alphaLeaky': 0.01,
                                 'patchSize': 7,
                                 'LinearInputSkipSize': 8}
+            
+            mlflow.log_params(parametersConfig)
 
             modelCNN_NN = modelClass(outChannelsSizes, parametersConfig).to(device=device)
 
@@ -493,12 +500,22 @@ def main(idRun:int, idModelClass:int, idLossType:int):
     for param_group in optimizer.param_groups:
         param_group['initial_lr'] = param_group['lr']
 
+    exponentialDecayGamma = 0.9
+
+    for name, param in modelCNN_NN.named_parameters():
+        mlflow.log_param(name, list(param.size()))
+    
     if USE_LR_SCHEDULING:
         #optimizer = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=2, threshold=0.01, threshold_mode='rel', cooldown=1, min_lr=1E-12, eps=1e-08)
-        lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.9, last_epoch=options['epochStart']-1)
+        lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=exponentialDecayGamma, last_epoch=options['epochStart']-1)
         options['lr_scheduler'] = lr_scheduler
 
+    # Log model parameters
+    mlflow.log_param('optimizer ID', optimizerID)
+    mlflow.log_param('learning_rate', initialLearnRate)
+    mlflow.log_param('ExponentialDecayGamma', exponentialDecayGamma)
 
+    # 
     # %% TRAIN and VALIDATE MODEL
     '''
     TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Module, optimizer, options:dict={'taskType': 'classification', 
@@ -512,6 +529,7 @@ def main(idRun:int, idModelClass:int, idLossType:int):
                                                                                                               'epochStart': 150}):
     '''
     (trainedModel, trainingLosses, validationLosses, inputSample) = customTorchTools.TrainAndValidateModel(dataloaderIndex, modelCNN_NN, lossFcn, optimizer, options)
+    mlflow.end_run()
 
     # %% Export trained model to ONNx and traced Pytorch format 
     if exportTracedModel:
@@ -527,6 +545,9 @@ def main(idRun:int, idModelClass:int, idLossType:int):
 
 # %% MAIN SCRIPT
 if __name__ == '__main__':
+    
+    # Set mlflow experiment
+    mlflow.set_experiment("HorizonEnhancerCNN_OptimizationRuns")
 
     # Stop any running tensorboard session before starting a new one
     customTorchTools.KillTensorboard()
@@ -536,8 +557,8 @@ if __name__ == '__main__':
 
         # Use the "spawn" start method (REQUIRED by CUDA)
         multiprocessing.set_start_method('spawn')
-        process1 = multiprocessing.Process(target=main, args=(0,))
-        process2 = multiprocessing.Process(target=main, args=(1,))
+        process1 = multiprocessing.Process(target=main, args=(10,1, 4))
+        process2 = multiprocessing.Process(target=main, args=(10,1, 4))
 
         # Start the processes
         process1.start()
