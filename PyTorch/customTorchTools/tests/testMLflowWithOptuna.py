@@ -35,7 +35,7 @@ class SimpleCNN(nn.Module):
         self.layers = nn.Sequential()
 
         # Convolutional layers
-        num_conv_layers = trial.suggest_int('num_conv_layers', 1, 3)
+        num_conv_layers = trial.suggest_int('num_conv_layers', 1, 2)
 
         # NOTE: What are the second inputs to suggest_int? Are they the lower and upper bounds?
 
@@ -64,10 +64,10 @@ class SimpleCNN(nn.Module):
         in_features = self._get_conv_output((3, 32, 32))
 
         for i in range(num_dense_layers):
-            out_features = trial.suggest_int(f'units_{i}', 32, 128)
+            out_features = trial.suggest_int(f'units_{i}', 32, 256)
             self.layers.add_module(f'fc{i}', nn.Linear(in_features, out_features))
             self.layers.add_module(f'relu_fc{i}', nn.ReLU())
-            dropout_rate = trial.suggest_float(f'dropout_rate_{i}', 0.2, 0.5)
+            dropout_rate = trial.suggest_float(f'dropout_rate_{i}', 0.1, 0.5)
             self.layers.add_module(f'dropout{i}', nn.Dropout(dropout_rate))
             in_features = out_features
 
@@ -95,7 +95,7 @@ def objective(trial):
 
         # Select the optimizer
         optimizer_name = trial.suggest_categorical('optimizer', ['Adam', 'RMSprop'])
-        lr = trial.suggest_float('lr', 1e-4, 1e-2, log=True) # NOTE: What are the inputs to suggest_float?
+        lr = trial.suggest_float('lr', 1e-6, 1e-2, log=True) # NOTE: What are the inputs to suggest_float?
         optimizer = getattr(optim, optimizer_name)(model.parameters(), lr=lr)
         # NOTE: What is "getattr" function? It should be a pytorch function: likely a method of "model", TBC
     
@@ -183,7 +183,7 @@ def main():
     optunaStudyObj = optuna.create_study(study_name='CIFAR10_CNN_OptimizationExample', direction='maximize')
 
     # %% Optuna optimization
-    optunaStudyObj.optimize(objective, n_trials=10, timeout=600)
+    optunaStudyObj.optimize(objective, n_trials=50, timeout=3600)
     
     # Print the best trial
     print('Number of finished trials:', len(optunaStudyObj.trials)) # Get number of finished trials
