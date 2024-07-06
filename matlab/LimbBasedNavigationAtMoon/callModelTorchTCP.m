@@ -3,6 +3,13 @@ function [dPredictedOutput] = callModelTorchTCP(i_strInputSamplesBatchStruct, ..
     i_ui32InputSize, ... 
     i_ui32outputSize, ...
     commHandler)
+arguments
+    i_strInputSamplesBatchStruct (1,1) {isstruct}
+    i_ui32Nbatches               (1,1) uint32
+    i_ui32InputSize              (1,1) uint32
+    i_ui32outputSize             (1,1) uint32
+    commHandler                  (1,1)
+end
 %% PROTOTYPE
 % [dPredictedPixCorrection] = callModelTorchTCP(i_strInputSamplesBatchStruct, ...
 %     i_ui32Nbatches, ...
@@ -14,27 +21,19 @@ function [dPredictedOutput] = callModelTorchTCP(i_strInputSamplesBatchStruct, ..
 % What the function does
 % -------------------------------------------------------------------------------------------------------------
 %% INPUT
-% in1 [dim] description
-% Name1                     []
-% Name2                     []
-% Name3                     []
-% Name4                     []
-% Name5                     []
-% Name6                     []
+% i_strInputSamplesBatchStruct (1,1) {isstruct}
+% i_ui32Nbatches               (1,1) uint32
+% i_ui32InputSize              (1,1) uint32
+% i_ui32outputSize             (1,1) uint32
+% commHandler                  (1,1)
 % -------------------------------------------------------------------------------------------------------------
 %% OUTPUT
-% out1 [dim] description
-% Name1                     []
-% Name2                     []
-% Name3                     []
-% Name4                     []
-% Name5                     []
-% Name6                     []
+% dPredictedOutput   (2,1)  
 % -------------------------------------------------------------------------------------------------------------
 %% CHANGELOG
 % 17-06-2024        Pietro Califano         Function 1st version.
-% 20-06-2024        Pietro Califano         Updated version with reduced input size
-% 25-06-2024        Pietro Califano         Modified to make function agnostic to input data
+% 20-06-2024        Pietro Califano         Updated version with reduced input size.
+% 25-06-2024        Pietro Califano         Modified to make function agnostic to input data.
 % -------------------------------------------------------------------------------------------------------------
 %% DEPENDENCIES
 % [-]
@@ -43,13 +42,7 @@ function [dPredictedOutput] = callModelTorchTCP(i_strInputSamplesBatchStruct, ..
 % [-]
 % -------------------------------------------------------------------------------------------------------------
 %% Function code
- 
-% ui8flattenedWindow  = inputDataStruct.ui8flattenedWindow;
-% dSunDir_PixCoords   = inputDataStruct.dSunDir_PixCoords;
-% dAttMRP_fromTFtoCAM = inputDataStruct.dAttMRP_fromTFtoCAM;
-% ui8coarseLimbPixels = inputDataStruct.ui8coarseLimbPixels;
-
-% Serialize message to send with input sample for CNN
+% Serialize message to send with input sample for Neural Network loaded in TorchTCP
 
 [~, dataBufferToWrite] = SerializeBatchMsgToTorchTCP(i_strInputSamplesBatchStruct, ...
     i_ui32Nbatches, ...
