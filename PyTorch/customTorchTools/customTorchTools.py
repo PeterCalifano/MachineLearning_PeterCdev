@@ -131,24 +131,27 @@ def ValidateModel(dataloader:DataLoader, model:nn.Module, lossFcn:nn.Module, dev
             #    #print('TODO')
             #elif taskType.lower() == 'custom':
             #    print('TODO')
+            predVal = model(dataX) # Evaluate model at input
+            validationLoss += lossFcn(predVal, dataY).item() # Evaluate loss function and accumulate
 
-        # EXPERIMENTAL: Try to perform one single forward pass for the entire dataset
+    # EXPERIMENTAL: Try to perform one single forward pass for the entire dataset (MEMORY BOUND)
+    with torch.no_grad():
         TENSOR_VALIDATION_EVAL = False
 
         if TENSOR_VALIDATION_EVAL:
             dataX = []
             dataY = []
 
-            for X, Y in dataloader:
-                dataX.append(X.to(device))
-                dataY.append(Y.to(device))
+        for X, Y in dataloader:
+            dataX.append(X)
+            dataY.append(Y)
 
             # Concatenate all data in a single tensor
-            dataX = torch.cat(dataX, dim=0)
-            dataY = torch.cat(dataY, dim=0)
+            dataX = torch.cat(dataX, dim=0).to(device)
+            dataY = torch.cat(dataY, dim=0).to(device)
 
-            predVal = model(dataX) # Evaluate model at input
-            validationLoss += lossFcn(predVal, dataY).item() # Evaluate loss function and accumulate
+        predVal_dataset = model(dataX) # Evaluate model at input
+        validationLoss_dataset = lossFcn(predVal_dataset, dataY).item() # Evaluate loss function and accumulate
 
 
     if taskType.lower() == 'classification': 
@@ -158,6 +161,7 @@ def ValidateModel(dataloader:DataLoader, model:nn.Module, lossFcn:nn.Module, dev
 
     elif taskType.lower() == 'regression':
         #print('TODO')
+        correctOuputs = None
         validationLoss /= numberOfBatches
         print(f"\n VALIDATION (Regression) Avg loss: {validationLoss:>0.5f}, Max batch loss: {maxBatchLoss:>0.5f}\n")
         #print(f"Validation (Regression): \n Avg absolute accuracy: {avgAbsAccuracy:>0.1f}, Avg relative accuracy: {(100*avgRelAccuracy):>0.1f}%, Avg loss: {validationLoss:>8f} \n")
@@ -165,7 +169,7 @@ def ValidateModel(dataloader:DataLoader, model:nn.Module, lossFcn:nn.Module, dev
     elif taskType.lower() == 'custom':
         print('TODO')
 
-    return validationLoss
+    return validationLoss, correctOuputs
     # TODO: add command for Tensorboard here
 
 
@@ -459,7 +463,7 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
     taskType            = options['taskType']
     device              = options['device']
     numOfEpochs         = options['epochs']
-    enableTensorBoard   = options['Tensorboard']
+    #enableTensorBoard   = options['Tensorboard']
     enableSave          = options['saveCheckpoints']
     checkpointDir       = options['checkpointsOutDir']
     modelName           = options['modelName']
@@ -471,15 +475,15 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
     else:
         lr_scheduler = None        
     
-    if 'enableAddImageToTensorboard' in options.keys():
-        ADD_IMAGE_TO_TENSORBOARD = options['enableAddImageToTensorboard']
-    else: 
-        ADD_IMAGE_TO_TENSORBOARD = True
+    #if 'enableAddImageToTensorboard' in options.keys():
+    #    ADD_IMAGE_TO_TENSORBOARD = options['enableAddImageToTensorboard']
+    #else: 
+    #    ADD_IMAGE_TO_TENSORBOARD = True
 
-    if ('tensorBoardPortNum' in options.keys()):
-        tensorBoardPortNum = options['tensorBoardPortNum']
-    else:
-        tensorBoardPortNum = 6006
+    #if ('tensorBoardPortNum' in options.keys()):
+    #    tensorBoardPortNum = options['tensorBoardPortNum']
+    #else:
+    #    tensorBoardPortNum = 6006
 
     # Get Torch dataloaders
     if ('TrainingDataLoader' in dataloaderIndex.keys() and 'ValidationDataLoader' in dataloaderIndex.keys()):
@@ -495,16 +499,16 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
         raise IndexError('Configuration error: either TrainingDataLoader or ValidationDataLoader is not a key of dataloaderIndex')
 
     # Configure Tensorboard
-    if 'logDirectory' in options.keys():
-        logDirectory = options['logDirectory']
-    else:
-        currentTime = datetime.datetime.now()
-        formattedTimestamp = currentTime.strftime('%d-%m-%Y_%H-%M') # Format time stamp as day, month, year, hour and minute
-        logDirectory = './tensorboardLog_' + modelName + formattedTimestamp
+    #if 'logDirectory' in options.keys():
+    #    logDirectory = options['logDirectory']
+    #else:
+    #    currentTime = datetime.datetime.now()
+    #    formattedTimestamp = currentTime.strftime('%d-%m-%Y_%H-%M') # Format time stamp as day, month, year, hour and minute
+    #    logDirectory = './tensorboardLog_' + modelName + formattedTimestamp
         
-    if not(os.path.isdir(logDirectory)):
-        os.mkdir(logDirectory)
-    tensorBoardWriter = ConfigTensorboardSession(logDirectory, portNum=tensorBoardPortNum)
+    #if not(os.path.isdir(logDirectory)):
+    #    os.mkdir(logDirectory)
+    #tensorBoardWriter = ConfigTensorboardSession(logDirectory, portNum=tensorBoardPortNum)
 
     # If training is being restarted, attempt to load model
     if options['loadCheckpoint'] == True:
@@ -539,15 +543,14 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
         validationLossHistory[epochID] = ValidateModel(validationDataset, model, lossFcn, device, taskType) 
 
         # Update Tensorboard if enabled
-        if enableTensorBoard:       
+        #if enableTensorBoard:       
             #tensorBoardWriter.add_scalar(lossLogName + "/train", trainLossHistory[epochID], epochID + epochStart)
             #tensorBoardWriter.add_scalar(lossLogName + "/validation", validationLossHistory[epochID], epochID + epochStart)
-            entriesTagDict = {'Training': trainLossHistory[epochID], 'Validation': validationLossHistory[epochID]}
-            tensorBoardWriter.add_scalars(lossLogName, entriesTagDict, epochID)
+            #entriesTagDict = {'Training': trainLossHistory[epochID], 'Validation': validationLossHistory[epochID]}
+            #tensorBoardWriter.add_scalars(lossLogName, entriesTagDict, epochID)
             
-            mlflow.log_metric('Training loss - '+ lossLogName, trainLossHistory[epochID], step=epochID + epochStart)
-            mlflow.log_metric('Validation loss - '+ lossLogName, validationLossHistory[epochID], step=epochID + epochStart)
-
+        mlflow.log_metric('Training loss - '+ lossLogName, trainLossHistory[epochID], step=epochID + epochStart)
+        mlflow.log_metric('Validation loss - '+ lossLogName, validationLossHistory[epochID], step=epochID + epochStart)
 
         if enableSave:
             if not(os.path.isdir(checkpointDir)):
@@ -568,18 +571,16 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
             #tensorBoardWriter.flush() 
 
         print('\n  Random Sample predictions from validation dataset:\n')
-        torch.set_printoptions(precision=2)
 
         for id in range(examplePrediction.shape[0]):
             print('\tPrediction: ', examplePrediction[id, :].tolist(), ' --> Loss: ',exampleLosses[id].tolist())
             imgTag = 'RandomSampleImg_' + str(id) + '_Epoch' + str(torch.round(exampleLosses[id], decimals=3))
 
             # DEBUG: Add image to tensorboard
-            if ADD_IMAGE_TO_TENSORBOARD:
-                tensorBoardWriter.add_image(imgTag, (inputSampleList[id][0:49]).reshape(7, 7).T, global_step=epochID, dataformats='HW')
+            #if ADD_IMAGE_TO_TENSORBOARD:
+            #    tensorBoardWriter.add_image(imgTag, (inputSampleList[id][0:49]).reshape(7, 7).T, global_step=epochID, dataformats='HW')
 
-        torch.set_printoptions(precision=5)
-        tensorBoardWriter.flush() # Force tensorboard to write data to disk
+        #tensorBoardWriter.flush() # Force tensorboard to write data to disk
 
     return model, trainLossHistory, validationLossHistory, inputSampleList
 
@@ -860,9 +861,12 @@ class ModelAutoBuilder():
     def __init__(self):
         pass
 
-    
 
-
+# %% EXPERIMENTAL: fully autonomous ModelAutoDesigner class
+class ModelAutoDesigner():
+    print('TODO')
+    def __init__(self):
+        pass
 
 # %% MAIN 
 def main():
