@@ -486,3 +486,137 @@ class HorizonExtractionEnhancer_ShortCNNv6maxDeeper(nn.Module):
         predictedPixCorrection = self.DenseOutput(val)
 
         return predictedPixCorrection
+
+
+class HorizonExtractionEnhancer_deepNNv8(nn.Module):
+    '''Experimental model with semi-automatic initialization. Structure of the architecture is fixed, but hyperparameters of this are specified at instantiation using
+    the "parametersConfig" dictionary'''
+    def __init__(self, outChannelsSizes:list, parametersConfig) -> None:
+        super().__init__()
+
+        # Extract all the inputs of the class init method from dictionary parametersConfig, else use default values
+        useBatchNorm = parametersConfig.get('useBatchNorm', False)
+        alphaDropCoeff = parametersConfig.get('alphaDropCoeff', 0.1)
+        self.LinearInputSize = parametersConfig.get('LinearInputSize', 58)
+
+        # Model parameters
+        self.outChannelsSizes = outChannelsSizes
+        self.useBatchNorm = useBatchNorm
+
+
+        # Model architecture
+
+        idLayer = 0
+        self.DenseL1 = nn.Linear(self.LinearInputSize, self.outChannelsSizes[idLayer], bias=False) 
+        self.preluL1 = nn.PReLU(self.outChannelsSizes[idLayer])
+        idLayer += 1
+
+        self.dropoutL1 = nn.Dropout2d(alphaDropCoeff)
+        self.DenseL2 = nn.Linear(self.outChannelsSizes[idLayer-1], self.outChannelsSizes[idLayer], bias=False) 
+        self.batchNormL2 = nn.BatchNorm1d(self.outChannelsSizes[idLayer], eps=1E-5, momentum=0.1, affine=True)
+        self.preluL2 = nn.PReLU(self.outChannelsSizes[idLayer])
+        idLayer += 1
+
+        self.dropoutL3 = nn.Dropout2d(alphaDropCoeff)
+        self.DenseL3 = nn.Linear(self.outChannelsSizes[idLayer-1], self.outChannelsSizes[idLayer], bias=True)
+        self.batchNormL3 = nn.BatchNorm1d(self.outChannelsSizes[idLayer], eps=1E-5, momentum=0.1, affine=True)
+        self.preluL3 = nn.PReLU()
+        idLayer += 1
+
+        self.dropoutL4 = nn.Dropout1d(alphaDropCoeff)
+        self.DenseL4 = nn.Linear(self.outChannelsSizes[idLayer-1], self.outChannelsSizes[idLayer], bias=True)
+        self.batchNormL4 = nn.BatchNorm1d(self.outChannelsSizes[idLayer], eps=1E-5, momentum=0.1, affine=True)
+        self.preluL4 = nn.PReLU()
+        idLayer += 1
+
+        self.dropoutL5 = nn.Dropout1d(alphaDropCoeff)
+        self.DenseL5 = nn.Linear(self.outChannelsSizes[idLayer-1], self.outChannelsSizes[idLayer], bias=True)
+        self.batchNormL5 = nn.BatchNorm1d(self.outChannelsSizes[idLayer], eps=1E-5, momentum=0.1, affine=True)
+        self.preluL5 = nn.PReLU()
+        idLayer += 1
+
+        self.dropoutL6 = nn.Dropout1d(alphaDropCoeff)
+        self.DenseL6 = nn.Linear(self.outChannelsSizes[idLayer-1], self.outChannelsSizes[idLayer], bias=True)
+        self.batchNormL6 = nn.BatchNorm1d(self.outChannelsSizes[idLayer], eps=1E-5, momentum=0.1, affine=True)
+        self.preluL6 = nn.PReLU()
+
+        idLayer += 1
+        # Output layer
+        self.DenseOutput = nn.Linear(self.outChannelsSizes[idLayer-1], 2, bias=True)
+
+        # Initialize weights of layers
+        self.__initialize_weights__()
+
+    def __initialize_weights__(self):
+        '''Weights Initialization function for layers of the model. Xavier --> layers with tanh and sigmoid, Kaiming --> layers with ReLU activation'''
+       
+        # ReLU activation layers
+        init.kaiming_uniform_(self.DenseL1.weight, nonlinearity='leaky_relu') 
+        init.constant_(self.DenseL1.bias, 0)
+
+        init.kaiming_uniform_(self.DenseL2.weight, nonlinearity='leaky_relu') 
+        init.constant_(self.DenseL2.bias, 0)
+
+        init.kaiming_uniform_(self.DenseL3.weight, nonlinearity='leaky_relu') 
+        init.constant_(self.DenseL3.bias, 0)
+
+        init.kaiming_uniform_(self.DenseL4.weight, nonlinearity='leaky_relu') 
+        init.constant_(self.DenseL4.bias, 0)
+
+        init.kaiming_uniform_(self.DenseL5.weight, nonlinearity='leaky_relu') 
+        init.constant_(self.DenseL5.bias, 0)
+
+        init.kaiming_uniform_(self.DenseL6.weight, nonlinearity='leaky_relu') 
+        init.constant_(self.DenseL6.bias, 0)
+
+
+    def forward(self, inputSample):
+            
+        # Fully Connected Layers
+        # L1
+        val = self.DenseL1(val)
+        val = self.dropoutL1(val)
+        if self.useBatchNorm:
+            val = self.batchNormL1(val)
+        val = torchFunc.prelu(val, self.preluL1.weight)
+
+        # L2
+        val = self.DenseL2(val)
+        val = self.dropoutL2(val)
+        if self.useBatchNorm:
+            val = self.batchNormL2(val)
+        val = torchFunc.prelu(val, self.preluL2.weight)
+
+        # L3 
+        #val = self.batchNormL3(val)
+        val = self.DenseL3(val)
+        val = self.dropoutL3(val)
+        if self.useBatchNorm:
+            val = self.batchNormL3(val)
+        val = torchFunc.prelu(val, self.preluL3.weight)
+
+        # L4
+        val = self.DenseL4(val)
+        val = self.dropoutL4(val)
+        if self.useBatchNorm:
+            val = self.batchNormL4(val)
+        val = torchFunc.prelu(val, self.preluL4.weight)
+
+        # L5
+        val = self.DenseL5(val)
+        val = self.dropoutL5(val)
+        if self.useBatchNorm:
+            val = self.batchNormL5(val)
+        val = torchFunc.prelu(val, self.preluL5.weight)
+
+        # L6
+        val = self.DenseL6(val)
+        val = self.dropoutL6(val)
+        if self.useBatchNorm:
+            val = self.batchNormL6(val)
+        val = torchFunc.prelu(val, self.preluL6.weight)
+
+        # Output layer
+        predictedPixCorrection = self.DenseOutput(val)
+
+        return predictedPixCorrection
