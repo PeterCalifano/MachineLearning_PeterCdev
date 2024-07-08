@@ -118,20 +118,12 @@ def BuildDataset(datasetInfo:dict, DatasetClass:callable):
     keyList_data = datasetInfo['inputDataKeyList']
     keyList_labels = datasetInfo['labelsDataKeyList']
 
-    if 'keyExcludeFromNormalization' in datasetInfo.keys():
-        keyExcludeFromNormalization = datasetInfo['keyExcludeFromNormalization']
-    else:
-        keyExcludeFromNormalization = []
+    keyExcludeFromNormalization = datasetInfo.get('keyExcludeFromNormalization', [])
+    ApplyNormalization = datasetInfo.get('ApplyNormalization', True)
 
     keyList = keyList_data + keyList_labels # Concatenate keys for iteration
 
-    if 'ApplyNormalization' in datasetInfo.keys():
-        ApplyNormalization = datasetInfo['ApplyNormalization']
-    else:
-        ApplyNormalization = True
-
     datasetType = datasetInfo['datasetType']
-
 
     # Scan directory to get the dataset folder corresponding to datasetID
     with os.scandir(datasetRootPath) as it:
@@ -239,7 +231,7 @@ def BuildDataset(datasetInfo:dict, DatasetClass:callable):
                     # Convert Attitude matrix to MRP parameters
                     tmpDataMatrix = (Rotation.from_matrix(tmpDataMatrix)).as_mrp()
                     # To test: does assignment of this entry is handled automatically through broadcasting?
-                
+
                 # Get size of data matrix (rows)
                 dataMatrixRowSize = tmpDataMatrix.shape[0]
 
