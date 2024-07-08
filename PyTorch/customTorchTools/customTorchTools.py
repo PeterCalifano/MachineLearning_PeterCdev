@@ -131,8 +131,8 @@ def ValidateModel(dataloader:DataLoader, model:nn.Module, lossFcn:nn.Module, dev
             #    #print('TODO')
             #elif taskType.lower() == 'custom':
             #    print('TODO')
-            predVal = model(dataX) # Evaluate model at input
-            validationLoss += lossFcn(predVal, dataY).item() # Evaluate loss function and accumulate
+            #predVal = model(dataX) # Evaluate model at input
+            #validationLoss += lossFcn(predVal, dataY).item() # Evaluate loss function and accumulate
 
     # EXPERIMENTAL: Try to perform one single forward pass for the entire dataset (MEMORY BOUND)
     with torch.no_grad():
@@ -142,16 +142,18 @@ def ValidateModel(dataloader:DataLoader, model:nn.Module, lossFcn:nn.Module, dev
             dataX = []
             dataY = []
 
-        for X, Y in dataloader:
-            dataX.append(X)
-            dataY.append(Y)
+        # NOTE: the memory issue is in transforming the list into a torch tensor on the GPU. For some reasons
+        # the tensor would require 81 GBits of memory.
+            for X, Y in dataloader:
+                dataX.append(X)
+                dataY.append(Y)
 
             # Concatenate all data in a single tensor
             dataX = torch.cat(dataX, dim=0).to(device)
             dataY = torch.cat(dataY, dim=0).to(device)
 
-        predVal_dataset = model(dataX) # Evaluate model at input
-        validationLoss_dataset = lossFcn(predVal_dataset, dataY).item() # Evaluate loss function and accumulate
+            predVal_dataset = model(dataX) # Evaluate model at input
+            validationLoss_dataset = lossFcn(predVal_dataset, dataY).item() # Evaluate loss function and accumulate
 
 
     if taskType.lower() == 'classification': 
@@ -169,7 +171,7 @@ def ValidateModel(dataloader:DataLoader, model:nn.Module, lossFcn:nn.Module, dev
     elif taskType.lower() == 'custom':
         print('TODO')
 
-    return validationLoss, correctOuputs
+    return validationLoss#, correctOuputs
     # TODO: add command for Tensorboard here
 
 
