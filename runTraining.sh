@@ -1,1 +1,1 @@
-./.venvML/bin/python3 ./PyTorch/LimbBasedNavigationAtMoon/TrainAndValidateCNN.py | tee ./PyTorch/LimbBasedNavigationAtMoon/trainingRunLog.txt 
+./.venvML/bin/python3 ./PyTorch/LimbBasedNavigationAtMoon/TrainAndValidateCNN.py
