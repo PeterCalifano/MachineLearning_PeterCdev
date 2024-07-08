@@ -178,7 +178,7 @@ class HorizonExtractionEnhancer_CNNv3maxDeeper(nn.Module):
     
 #############################################################################################################################################
 # %% Custom training function for Moon limb pixel extraction enhancer FullyConnected NNv4 (with target average radius in pixels) - 30-06-2024
-class HorizonExtractionEnhancer_FullyConnNNv4(nn.Module):
+class HorizonExtractionEnhancer_FullyConnNNv4iter(nn.Module):
     def __init__(self, outChannelsSizes:list, alphaDropCoeff=0.1, alphaLeaky=0.01, patchSize=7) -> None:
         super().__init__()
 
@@ -187,7 +187,7 @@ class HorizonExtractionEnhancer_FullyConnNNv4(nn.Module):
         self.patchSize = patchSize
         self.imagePixSize = self.patchSize**2
 
-        self.LinearInputSize = 8
+        self.LinearInputSize = 8 # Should be 10 after modification
         self.alphaLeaky = alphaLeaky
 
         # Model architecture
@@ -196,12 +196,18 @@ class HorizonExtractionEnhancer_FullyConnNNv4(nn.Module):
 
         self.dropoutL2 = nn.Dropout1d(alphaDropCoeff)
         self.DenseL2 = nn.Linear(self.outChannelsSizes[0], self.outChannelsSizes[1], bias=True)
-        
+        self.BatchNormL2 = nn.BatchNorm1d(self.outChannelsSizes[1], eps=1E-5, momentum=0.1, affine=True) # affine=True set gamma and beta parameters as learnable
+
         self.dropoutL3 = nn.Dropout1d(alphaDropCoeff)
         self.DenseL3 = nn.Linear(self.outChannelsSizes[1], self.outChannelsSizes[2], bias=True)
+        self.BatchNormL3 = nn.BatchNorm1d(self.outChannelsSizes[2], eps=1E-5, momentum=0.1, affine=True) # affine=True set gamma and beta parameters as learnable
 
         self.DenseL4 = nn.Linear(self.outChannelsSizes[2], self.outChannelsSizes[3], bias=True)
-        
+        self.BatchNormL4 = nn.BatchNorm1d(self.outChannelsSizes[3], eps=1E-5, momentum=0.1, affine=True) # affine=True set gamma and beta parameters as learnable
+
+        # Auto building for loop: EXPERIMENTAL
+        #for idL in range():
+
         # Output layer
         self.DenseOutput = nn.Linear(self.outChannelsSizes[3], 2, bias=False)
 
@@ -211,15 +217,15 @@ class HorizonExtractionEnhancer_FullyConnNNv4(nn.Module):
 
         # Fully Connected Layers
         # L1 (Input layer)
-        val = torchFunc.tanh(self.DenseL1(contextualInfoInput)) 
+        val = torchFunc.prelu(self.DenseL1(contextualInfoInput)) 
         # L2
         val = self.dropoutL2(val)
-        val = torchFunc.tanh(self.DenseL2(val))
+        val = torchFunc.prelu(self.DenseL2(val))
         # L3
         val = self.dropoutL3(val)
-        val = torchFunc.tanh(self.DenseL3(val))
+        val = torchFunc.prelu(self.DenseL3(val))
         # L4
-        val = torchFunc.leaky_relu(self.DenseL4(val), self.alphaLeaky)
+        val = torchFunc.prelu(self.DenseL4(val), self.alphaLeaky)
         # Output layer
         predictedPixCorrection = self.DenseOutput(val)
 
