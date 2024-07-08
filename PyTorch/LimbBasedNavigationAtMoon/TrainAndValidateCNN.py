@@ -43,8 +43,6 @@ USE_BATCH_NORM = True
 
 def main(idRun:int, idModelClass:int, idLossType:int):
 
-    mlflow.start_run()
-
     # SETTINGS and PARAMETERS 
     batch_size = 16*2 # Defines batch size in dataset
     #outChannelsSizes = [16, 32, 75, 15] 
@@ -63,8 +61,7 @@ def main(idRun:int, idModelClass:int, idLossType:int):
     else:
         raise ValueError('Model class ID not found.')
 
-    mlflow.log_param('Output_channels_sizes', list(outChannelsSizes))
-    
+
     kernelSizes = [3, 3]
     initialLearnRate = 1E-1
     momentumValue = 0.6
@@ -147,12 +144,6 @@ def main(idRun:int, idModelClass:int, idLossType:int):
 
     EPOCH_START = 0
 
-    if USE_MULTIPROCESS == True:
-        # Start tensorboard session
-
-        sys.stdout = open("./multiprocessShellLog/stdout_log_" + modelArchName + '.txt', 'w') # Redirect print outputs
-
-
     options = {'taskType': 'regression', 
                'device': device, 
                'epochs': numOfEpochs, 
@@ -177,8 +168,6 @@ def main(idRun:int, idModelClass:int, idLossType:int):
         modelName = sorted(modelNamesWithTime, key=lambda x: x[1])[-1][0]
 
 
-    mlflow.log_params(options)
-
     # %% GENERATE OR LOAD TORCH DATASET
 
     dataPath = os.path.join('/home/peterc/devDir/MATLABcodes/syntheticRenderings/Datapairs')
@@ -194,7 +183,7 @@ def main(idRun:int, idModelClass:int, idLossType:int):
     assert(len(dirNamesRoot) >= 2)
 
     # Select one of the available datapairs folders (each corresponding to a labels generation pipeline output)
-    datasetID = [3, 4] # TRAINING and VALIDATION datasets ID in folder (in this order)
+    datasetID = [10, 9] # TRAINING and VALIDATION datasets ID in folder (in this order)
 
 
     assert(len(datasetID) == 2)
@@ -263,8 +252,10 @@ def main(idRun:int, idModelClass:int, idLossType:int):
                 ui8flattenedWindows  = np.array(tmpdataDict['ui8flattenedWindows'], dtype=np.float32)
                 centreBaseCost2 = np.array(tmpdataDict['dPatchesCentreBaseCost2'], dtype=np.float32)
 
-                dTruePixOnConic = np.array(tmpdataDict['dTruePixOnConic'], dtype=np.float32)
-
+                try:
+                    dTruePixOnConic = np.array(tmpdataDict['dTruePixOnConic'], dtype=np.float32)
+                except:
+                    dTruePixOnConic = np.array(tmpdataDict['truePixOnConic'], dtype=np.float32)
                 invalidPatchesToCheck = {'ID': [], 'flattenedPatch': []}
 
                 if idModelClass in [1,2,3,4]:
@@ -363,8 +354,8 @@ def main(idRun:int, idModelClass:int, idLossType:int):
             print('DATASET PREPARATION COMPLETED.')
 
         # INITIALIZE DATASET OBJECT # TEMPORARY from one single dataset
-        datasetTraining = limbPixelExtraction_CNN_NN.MoonLimbPixCorrector_Dataset(dataDictTraining)
-        datasetValidation = limbPixelExtraction_CNN_NN.MoonLimbPixCorrector_Dataset(dataDictValidation)
+        datasetTraining = datasetPreparation.MoonLimbPixCorrector_Dataset(dataDictTraining)
+        datasetValidation = datasetPreparation.MoonLimbPixCorrector_Dataset(dataDictValidation)
 
         # Save dataset as torch dataset object for future use
         if not os.path.exists(datasetSavePath):
@@ -419,6 +410,12 @@ def main(idRun:int, idModelClass:int, idLossType:int):
         lossFcn = customTorchTools.CustomLossFcn(limbPixelExtraction_CNN_NN.MoonLimbPixConvEnhancer_NormalizedConicLossWithMSEandOutOfPatch_asTensor, params)
     else:
         raise ValueError('Loss function ID not found.')
+
+    # START MLFLOW RUN LOGGING
+    mlflow.start_run()
+
+    mlflow.log_param('Output_channels_sizes', list(outChannelsSizes))
+    mlflow.log_params(options)
 
     # MODEL CLASS TYPE
     if UseMaxPooling == False:
@@ -547,7 +544,8 @@ def main(idRun:int, idModelClass:int, idLossType:int):
 if __name__ == '__main__':
     
     # Set mlflow experiment
-    mlflow.set_experiment("HorizonEnhancerCNN_OptimizationRuns")
+    #mlflow.set_experiment("HorizonEnhancerCNN_OptimizationRuns")
+    mlflow.set_experiment("HorizonEnhancerCNN_OptimizationRuns_TrainValidOnRandomCloud")
 
     # Stop any running tensorboard session before starting a new one
     customTorchTools.KillTensorboard()
