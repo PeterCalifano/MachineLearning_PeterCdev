@@ -508,10 +508,11 @@ class HorizonExtractionEnhancer_deepNNv8(nn.Module):
 
         idLayer = 0
         self.DenseL1 = nn.Linear(self.LinearInputSize, self.outChannelsSizes[idLayer], bias=False) 
+        self.batchNormL1 = nn.BatchNorm1d(self.outChannelsSizes[idLayer], eps=1E-5, momentum=0.1, affine=True)
         self.preluL1 = nn.PReLU(self.outChannelsSizes[idLayer])
         idLayer += 1
 
-        self.dropoutL1 = nn.Dropout2d(alphaDropCoeff)
+        self.dropoutL2 = nn.Dropout2d(alphaDropCoeff)
         self.DenseL2 = nn.Linear(self.outChannelsSizes[idLayer-1], self.outChannelsSizes[idLayer], bias=True) 
         self.batchNormL2 = nn.BatchNorm1d(self.outChannelsSizes[idLayer], eps=1E-5, momentum=0.1, affine=True)
         self.preluL2 = nn.PReLU(self.outChannelsSizes[idLayer])
@@ -574,7 +575,6 @@ class HorizonExtractionEnhancer_deepNNv8(nn.Module):
         # Fully Connected Layers
         # L1
         val = self.DenseL1(inputSample)
-        val = self.dropoutL1(val)
         if self.useBatchNorm:
             val = self.batchNormL1(val)
         val = torchFunc.prelu(val, self.preluL1.weight)

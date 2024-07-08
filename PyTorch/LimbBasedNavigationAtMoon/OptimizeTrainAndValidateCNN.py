@@ -43,13 +43,13 @@ USE_BATCH_NORM = True
 
 
 # SETTINGS and PARAMETERS 
-batch_size = 16*3 # Defines batch size in dataset
+batch_size = 16*4 # Defines batch size in dataset
 #outChannelsSizes = [16, 32, 75, 15] 
     
 outChannelsSizes = [2056, 1024, 512, 512, 128, 64]
 
 kernelSizes = [3, 3]
-initialLearnRate = 1E-1
+#initialLearnRate = 1E-1
 momentumValue = 0.6
 
 #TODO: add log and printing of settings of optimizer for each epoch. Reduce the training loss value printings
@@ -73,7 +73,7 @@ parametersConfig = {'useBatchNorm': True, 'alphaDropCoeff': 0.1, 'LinearInputSiz
                     'outChannelsSizes': outChannelsSizes}
 modelArchName = 'HorizonExtractionEnhancer_deepNNv8' 
 inputSize = 58 # TODO: update this according to new model
-numOfEpochs = 30
+numOfEpochs = 8
 
 EPOCH_START = 0
 
@@ -112,8 +112,8 @@ datasetID = [6, 7] # TRAINING and VALIDATION datasets ID in folder (in this orde
 
 assert(len(datasetID) == 2)
 
-TrainingDatasetTag = 'ID_010_Datapairs_20240708_17_51'
-ValidationDatasetTag = 'ID_009_Datapairs_20240708_15_45'
+TrainingDatasetTag = 'ID_006_Datapairs_TrainingSet_20240705'
+ValidationDatasetTag = 'ID_007_Datapairs_ValidationSet_20240705'
 
 datasetNotFound = not(os.path.isfile(os.path.join(datasetSavePath, 'TrainingDataset_'+TrainingDatasetTag+'.pt'))) or not((os.path.isfile(os.path.join(datasetSavePath, 'ValidationDataset_'+ValidationDatasetTag+'.pt'))))
 
@@ -323,7 +323,7 @@ def objective(trial):
         for i in range(6):
             outChannelsSizes.append(trial.suggest_int(f'DenseL{i}', 32, 8192))
             mlflow.log_param(f'DenseL{i}', outChannelsSizes[-1])
-            
+
         modelCNN_NN = ModelClasses.HorizonExtractionEnhancer_deepNNv8(parametersConfig).to(device=device)
     
         mlflow.log_params(parametersConfig)
@@ -379,12 +379,12 @@ if __name__ == '__main__':
         #process2 = multiprocessing.Process(target=main, args=(10,1, 4))
 
         # Start the processes
-        process1.start()
-        process2.start()
+        #process1.start()
+        #process2.start()
 
         # Wait for both processes to finish
-        process1.join()
-        process2.join()
+        #process1.join()
+        #process2.join()
 
         print("Training complete for both network classes. Check the logs for more information.")
     elif USE_MULTIPROCESS == False and MANUAL_RUN == False:
@@ -425,4 +425,4 @@ if __name__ == '__main__':
                 
         else:
             idRun = RUN_ID
-            main(idRun, MODEL_CLASS_ID, idLossType)
+            #main(idRun, MODEL_CLASS_ID, idLossType)
