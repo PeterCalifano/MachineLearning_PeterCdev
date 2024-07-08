@@ -387,6 +387,7 @@ class HorizonExtractionEnhancer_ShortCNNv6maxDeeper(nn.Module):
         # Convolutional Features extractor
         self.conv2dL1 = nn.Conv2d(1, self.outChannelsSizes[idLayer], kernelSizes[0]) 
         self.maxPoolL1 = nn.MaxPool2d(poolingKernelSize, 1)
+        self.preluL1 = nn.PReLU(self.outChannelsSizes[idLayer])
         idLayer += 1
 
         #self.conv2dL2 = nn.Conv2d(self.outChannelsSizes[0], self.outChannelsSizes[1], kernelSizes[1]) 
@@ -398,16 +399,22 @@ class HorizonExtractionEnhancer_ShortCNNv6maxDeeper(nn.Module):
         self.dropoutL3 = nn.Dropout2d(alphaDropCoeff)
         self.DenseL3 = nn.Linear(int(self.LinearInputSize), self.outChannelsSizes[idLayer], bias=False)
         self.batchNormL3 = nn.BatchNorm1d(self.outChannelsSizes[idLayer], eps=1E-5, momentum=0.1, affine=True)
+        self.preluL3 = nn.PReLU()
+
         idLayer += 1
 
         self.dropoutL4 = nn.Dropout1d(alphaDropCoeff)
         self.DenseL4 = nn.Linear(self.outChannelsSizes[idLayer-1], self.outChannelsSizes[idLayer], bias=True)
         self.batchNormL4 = nn.BatchNorm1d(self.outChannelsSizes[idLayer], eps=1E-5, momentum=0.1, affine=True)
+        self.preluL4 = nn.PReLU()
+
         idLayer += 1
 
         self.dropoutL5 = nn.Dropout1d(alphaDropCoeff)
         self.DenseL5 = nn.Linear(self.outChannelsSizes[idLayer-1], self.outChannelsSizes[idLayer], bias=True)
         self.batchNormL5 = nn.BatchNorm1d(self.outChannelsSizes[idLayer], eps=1E-5, momentum=0.1, affine=True)
+        self.preluL5 = nn.PReLU()
+
         idLayer += 1
 
         # Output layer
@@ -419,14 +426,14 @@ class HorizonExtractionEnhancer_ShortCNNv6maxDeeper(nn.Module):
     def __initialize_weights__(self):
         '''Weights Initialization function for layers of the model. Xavier --> layers with tanh and sigmoid, Kaiming --> layers with ReLU activation'''
         # ReLU activation layers
-        init.kaiming_uniform_(self.conv2dL1.weight, nonlinearity='prelu') 
+        init.kaiming_uniform_(self.conv2dL1.weight, nonlinearity='leaky_relu') 
         init.constant_(self.conv2dL1.bias, 0)
 
-        init.kaiming_uniform_(self.DenseL5.weight, nonlinearity='prelu') 
+        init.kaiming_uniform_(self.DenseL5.weight, nonlinearity='leaky_relu') 
         init.constant_(self.DenseL5.bias, 0)
 
-        init.kaiming_uniform_(self.DenseL3.weight, nonlinearity='prelu') 
-        init.kaiming_uniform_(self.DenseL4.weight, nonlinearity='prelu')  
+        init.kaiming_uniform_(self.DenseL3.weight, nonlinearity='leaky_relu') 
+        init.kaiming_uniform_(self.DenseL4.weight, nonlinearity='leaky_relu')  
         init.constant_(self.DenseL4.bias, 0)
 
     def forward(self, inputSample):
@@ -444,7 +451,7 @@ class HorizonExtractionEnhancer_ShortCNNv6maxDeeper(nn.Module):
 
         # Convolutional layers
         # L1 (Input)
-        val = self.maxPoolL1(torchFunc.prelu(self.conv2dL1(img2Dinput)))
+        val = self.maxPoolL1( torchFunc.prelu(self.conv2dL1(img2Dinput), self.preluL1.weight) )
 
         # Fully Connected Layers
         # L2
@@ -459,22 +466,21 @@ class HorizonExtractionEnhancer_ShortCNNv6maxDeeper(nn.Module):
         val = self.dropoutL3(val)
         if self.useBatchNorm:
             val = self.batchNormL3(val)
-        val = torchFunc.prelu(val)
+        val = torchFunc.prelu(val, self.preluL3.weight)
 
         # L4
         val = self.DenseL4(val)
         val = self.dropoutL4(val)
         if self.useBatchNorm:
             val = self.batchNormL4(val)
-
-        val = torchFunc.prelu(val)
+        val = torchFunc.prelu(val, self.preluL4.weight)
 
         # L5
         val = self.DenseL5(val)
         val = self.dropoutL5(val)
         if self.useBatchNorm:
             val = self.batchNormL5(val)
-        val = torchFunc.prelu(val, self.alphaLeaky)
+        val = torchFunc.prelu(val, self.preluL5.weight)
 
         # Output layer
         predictedPixCorrection = self.DenseOutput(val)
