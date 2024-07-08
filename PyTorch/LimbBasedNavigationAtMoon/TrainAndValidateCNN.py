@@ -58,6 +58,10 @@ def main(idRun:int, idModelClass:int, idLossType:int):
 
     elif idModelClass == 4:
         outChannelsSizes = [2056, 1024, 512, 64]
+
+    elif idModelClass == 5:
+        outChannelsSizes = [2056, 1024, 512, 512, 128, 64]
+        
     else:
         raise ValueError('Model class ID not found.')
 
@@ -82,64 +86,86 @@ def main(idRun:int, idModelClass:int, idLossType:int):
 
     # Options to restart training from checkpoint
     if idModelClass == 0:
-        ID = 0
-        runID = "{num:04d}".format(num=ID)
+        #ID = 0
+        #runID = "{num:04d}".format(num=ID)
         #modelSavePath = './checkpoints/HorizonPixCorrector_CNNv1_run3'
-        modelSavePath = './checkpoints/HorizonPixCorrector_CNNv1max_largerCNN_run' + runID
+        modelSavePath = './checkpoints/HorizonPixCorrector_CNNv1max_largerCNN_run' 
         datasetSavePath = './datasets/HorizonPixCorrectorV1'
-        tensorboardLogDir = './tensorboardLogs/tensorboardLog_v1max_largerCNN_run' + runID
-        tensorBoardPortNum = 6008
+        #tensorboardLogDir = './tensorboardLogs/tensorboardLog_v1max_largerCNN_run' 
+        #tensorBoardPortNum = 6008
         
-        modelArchName = 'HorizonPixCorrector_CNNv1max_largerCNN_run' + runID
+        modelArchName = 'HorizonPixCorrector_CNNv1max_largerCNN_run' 
         inputSize = 56 # TODO: update this according to new model
         numOfEpochs = 15
 
 
     elif idModelClass == 1:
-        ID = 0
-        runID = "{num:04d}".format(num=ID)
-        modelSavePath = './checkpoints/HorizonPixCorrector_CNNv2max_largerCNN_run' + runID
+        #ID = 0
+        #runID = "{num:04d}".format(num=ID)
+        modelSavePath = './checkpoints/HorizonPixCorrector_CNNv2max_largerCNN_run'
         datasetSavePath = './datasets/HorizonPixCorrectorV2'
-        tensorboardLogDir = './tensorboardLogs/tensorboardLog_v2max_largerCNN_run'   + runID
-        tensorBoardPortNum = 6009
+        #tensorboardLogDir = './tensorboardLogs/tensorboardLog_v2max_largerCNN_run' 
+        #tensorBoardPortNum = 6009
 
-        modelArchName = 'HorizonPixCorrector_CNNv2max_largerCNN_run' + runID
+        modelArchName = 'HorizonPixCorrector_CNNv2max_largerCNN_run' 
         inputSize = 57 # TODO: update this according to new model
         numOfEpochs = 15
 
     elif idModelClass == 2:
-        ID = 6
-        runID = "{num:04d}".format(num=ID) 
-        modelSavePath = './checkpoints/HorizonPixCorrector_CNNv3max_largerCNNdeeperNN_run' + runID
+        #ID = 6
+        #runID = "{num:04d}".format(num=ID) 
+        modelSavePath = './checkpoints/HorizonPixCorrector_CNNv3max_largerCNNdeeperNN_run' 
         datasetSavePath = './datasets/HorizonPixCorrectorV3'
-        tensorboardLogDir = './tensorboardLogs/tensorboardLog_v3max_largerCNNdeeperNN_run'   + runID
-        tensorBoardPortNum = 6010
+        #tensorboardLogDir = './tensorboardLogs/tensorboardLog_v3max_largerCNNdeeperNN_run'   
+        #tensorBoardPortNum = 6010
 
-        modelArchName = 'HorizonPixCorrector_CNNv3max_largerCNNdeeperNN_run' + runID
+        modelArchName = 'HorizonPixCorrector_CNNv3max_largerCNNdeeperNN_run'
         inputSize = 57 # TODO: update this according to new model
         numOfEpochs = 10
 
     elif idModelClass == 3:
-        ID = 0
-        runID = "{num:04d}".format(num=ID)
-        modelSavePath = './checkpoints/HorizonPixCorrector_deepNNv4_run' + runID
+        #ID = 0
+        #runID = "{num:04d}".format(num=ID)
+        modelSavePath = './checkpoints/HorizonPixCorrector_deepNNv4_run' 
         datasetSavePath = './datasets/HorizonPixCorrectorV4'
-        tensorboardLogDir = './tensorboardLogs/tensorboardLog_deepNNv4_run'   + runID
-        tensorBoardPortNum = 6011
+        #tensorboardLogDir = './tensorboardLogs/tensorboardLog_deepNNv4_run'   + runID
+        #tensorBoardPortNum = 6011
 
-        modelArchName = 'HorizonPixCorrector_deepNNv4_run' + runID
-        inputSize = 57 # TODO: update this according to new model
+        modelArchName = 'HorizonPixCorrector_deepNNv4_run' 
+        inputSize = 58 # TODO: update this according to new model
         numOfEpochs = 5
 
     elif idModelClass == 4:
-        runID = "{num:04d}".format(num=idRun)
-        modelSavePath = './checkpoints/HorizonExtractionEnhancer_ShortCNNv6maxDeeper' + runID
-        datasetSavePath = './datasets/HorizonPixCorrectorV6'
-        tensorboardLogDir = './tensorboardLogs/tensorboardLog_ShortCNNv6maxDeeper_run'   + runID
-        tensorBoardPortNum = 6012
 
-        modelArchName = 'HorizonPixCorrector_ShortCNNv6maxDeeper_run' + runID
-        inputSize = 57 # TODO: update this according to new model
+        #runID = "{num:04d}".format(num=idRun)
+        modelSavePath = './checkpoints/HorizonExtractionEnhancer_ShortCNNv6maxDeeper'
+        datasetSavePath = './datasets/HorizonExtractionEnhancer_ShortCNNv6maxDeeper'
+        #tensorboardLogDir = './tensorboardLogs/tensorboardLog_ShortCNNv6maxDeeper_run'   + runID
+        #tensorBoardPortNum = 6012
+
+        modelArchName = 'HorizonExtractionEnhancer_ShortCNNv6maxDeeper' 
+        inputSize = 58 # TODO: update this according to new model
+        numOfEpochs = 30
+
+        parametersConfig = {'kernelSizes': [5],
+                    'useBatchNorm': USE_BATCH_NORM, 
+                    'poolingKernelSize': 2,
+                    'alphaDropCoeff': 0.1,
+                    'alphaLeaky': 0.01,
+                    'patchSize': 7,
+                    'LinearInputSkipSize': 9}
+
+    elif idModelClass == 5:
+        #runID = "{num:04d}".format(num=idRun)
+        modelSavePath = './checkpoints/HorizonExtractionEnhancer_deepNNv8' 
+        datasetSavePath = './datasets/HorizonExtractionEnhancer_deepNNv8'
+        #tensorboardLogDir = './tensorboardLogs/tensorboardLog_ShortCNNv6maxDeeper_run'   + runID
+        #tensorBoardPortNum = 6012
+
+        parametersConfig = {'useBatchNorm': True, 'alphaDropCoeff': 0.1, 'LinearInputSize': 58}
+
+        modelArchName = 'HorizonExtractionEnhancer_deepNNv8' 
+        inputSize = 58 # TODO: update this according to new model
         numOfEpochs = 30
 
     EPOCH_START = 0
@@ -147,16 +173,16 @@ def main(idRun:int, idModelClass:int, idLossType:int):
     options = {'taskType': 'regression', 
                'device': device, 
                'epochs': numOfEpochs, 
-               'Tensorboard':True,
                'saveCheckpoints':True,
                'checkpointsOutDir': modelSavePath,
                'modelName': modelArchName,
                'loadCheckpoint': False,
                'checkpointsInDir': modelSavePath,
                'lossLogName': 'MSE_OutOfPatch',
-               'logDirectory': tensorboardLogDir,
+               #'logDirectory': tensorboardLogDir,
                'epochStart': EPOCH_START,
-               'tensorBoardPortNum': tensorBoardPortNum}
+               #'tensorBoardPortNum': tensorBoardPortNum
+               }
 
     if options['epochStart'] == 0:
         restartTraining = False
@@ -183,7 +209,7 @@ def main(idRun:int, idModelClass:int, idLossType:int):
     assert(len(dirNamesRoot) >= 2)
 
     # Select one of the available datapairs folders (each corresponding to a labels generation pipeline output)
-    datasetID = [10, 9] # TRAINING and VALIDATION datasets ID in folder (in this order)
+    datasetID = [6, 7] # TRAINING and VALIDATION datasets ID in folder (in this order)
 
 
     assert(len(datasetID) == 2)
@@ -243,10 +269,12 @@ def main(idRun:int, idModelClass:int, idLossType:int):
                 metadataDict = tmpdataDict['metadata']
 
                 #dPosCam_TF           = np.array(metadataDict['dPosCam_TF'], dtype=np.float32)
-                dAttDCM_fromTFtoCAM  = np.array(metadataDict['dAttDCM_fromTFtoCAM'], dtype=np.float32)
-                dSunDir_PixCoords    = np.array(metadataDict['dSunDir_PixCoords'], dtype=np.float32)
+                dAttDCM_fromTFtoCAM   = np.array(metadataDict['dAttDCM_fromTFtoCAM'], dtype=np.float32)
+                #dSunDir_PixCoords    = np.array(metadataDict['dSunDir_PixCoords'], dtype=np.float32)
+                dSunDirAngle          = np.array(metadataDict['dSunAngle'], dtype=np.float32)
                 dLimbConicCoeffs_PixCoords = np.array(metadataDict['dLimbConic_PixCoords'], dtype=np.float32)
                 #dRmoonDEM            = np.array(metadataDict['dRmoonDEM'], dtype=np.float32)
+                dConicPixCente        = np.array(metadataDict['dConicPixCentre'], dtype=np.float32)
 
                 ui16coarseLimbPixels = np.array(tmpdataDict['ui16coarseLimbPixels'], dtype=np.float32)
                 ui8flattenedWindows  = np.array(tmpdataDict['ui8flattenedWindows'], dtype=np.float32)
@@ -256,10 +284,9 @@ def main(idRun:int, idModelClass:int, idLossType:int):
                     dTruePixOnConic = np.array(tmpdataDict['dTruePixOnConic'], dtype=np.float32)
                 except:
                     dTruePixOnConic = np.array(tmpdataDict['truePixOnConic'], dtype=np.float32)
-                invalidPatchesToCheck = {'ID': [], 'flattenedPatch': []}
+                #invalidPatchesToCheck = {'ID': [], 'flattenedPatch': []}
 
-                if idModelClass in [1,2,3,4]:
-                    targetAvgRadiusInPix = np.array(metadataDict['dTargetPixAvgRadius'], dtype=np.float32)
+                dConicAvgRadiusInPix = np.array(metadataDict['dTargetPixAvgRadius'], dtype=np.float32)
 
                 if USE_NORMALIZED_IMG:
                     normalizationCoeff = 255.0
@@ -291,9 +318,8 @@ def main(idRun:int, idModelClass:int, idLossType:int):
                         #inputDataArray[49, saveID]    = dRmoonDEM
 
                         # Assign Sun direction to input data array
-                        inputDataArray[ptrToInput:ptrToInput+len(dSunDir_PixCoords), saveID] = dSunDir_PixCoords
-
-                        ptrToInput += len(dSunDir_PixCoords) # Update index
+                        inputDataArray[ptrToInput, saveID] = dSunDirAngle
+                        ptrToInput += 1 # Update index
 
                         # Assign Attitude matrix as Modified Rodrigues Parameters to input data array
                         tmpVal = (Rotation.from_matrix(np.array(dAttDCM_fromTFtoCAM))).as_mrp() # Convert Attitude matrix to MRP parameters
@@ -303,24 +329,27 @@ def main(idRun:int, idModelClass:int, idLossType:int):
                         ptrToInput += len(tmpVal) # Update index
 
                         #inputDataArray[55:58, saveID] = dPosCam_TF
-                        if idModelClass in [1,2,3,4]:
-                            inputDataArray[ptrToInput, saveID] = targetAvgRadiusInPix
-                            ptrToInput += targetAvgRadiusInPix.size # Update index
+                        if idModelClass in [1,2,3,4,5]:
+                            inputDataArray[ptrToInput, saveID] = dConicAvgRadiusInPix
+                            ptrToInput += dConicAvgRadiusInPix.size # Update index
+
+                            inputDataArray[ptrToInput:ptrToInput+2, saveID] = dConicPixCente
+                            ptrToInput += dConicPixCente.size # Update index
 
                         # Assign coarse Limb pixels to input data array
-                        inputDataArray[ptrToInput::, saveID] = ui16coarseLimbPixels[:, sampleID]
+                        inputDataArray[ptrToInput:ptrToInput+len(ui16coarseLimbPixels[:, sampleID]), saveID] = ui16coarseLimbPixels[:, sampleID]
 
                         # Assign labels to labels data array (DO NOT CHANGE ORDER OF VALUES)
                         labelsDataArray[0:9, saveID] = np.ravel(dLimbConicCoeffs_PixCoords)
                         labelsDataArray[9:11, saveID] = ui16coarseLimbPixels[:, sampleID]
                         labelsDataArray[11, saveID] = centreBaseCost2[sampleID]
                         labelsDataArray[12:14, saveID] = dTruePixOnConic[:, sampleID]
-
+                        
                         saveID += 1
-                    else:
+                    #else:
                         # Save invalid patches to check
-                        invalidPatchesToCheck['ID'].append(sampleID)
-                        invalidPatchesToCheck['flattenedPatch'].append(flattenedWindow.tolist())
+                        #invalidPatchesToCheck['ID'].append(sampleID)
+                        #invalidPatchesToCheck['flattenedPatch'].append(flattenedWindow.tolist())
                 imgID += 1
 
             # Save json with invalid patches to check
@@ -412,134 +441,131 @@ def main(idRun:int, idModelClass:int, idLossType:int):
         raise ValueError('Loss function ID not found.')
 
     # START MLFLOW RUN LOGGING
-    mlflow.start_run()
+    with mlflow.start_run() as mlflow_run:
+        run_id = mlflow_run.info.run_id
 
-    mlflow.log_param('Output_channels_sizes', list(outChannelsSizes))
-    mlflow.log_params(options)
+        # Add run_id to save names
+        modelSavePath += run_id
+        modelArchName += run_id
 
-    # MODEL CLASS TYPE
-    if UseMaxPooling == False:
-        if idModelClass == 0:
-            modelClass = limbPixelExtraction_CNN_NN.HorizonExtractionEnhancerCNNv1avg
-        elif idModelClass == 1:
-            modelClass = limbPixelExtraction_CNN_NN.HorizonExtractionEnhancerCNNv2avg
+        mlflow.log_param('Output_channels_sizes', list(outChannelsSizes))
+        mlflow.log_params(options)
+
+        # MODEL CLASS TYPE
+        if UseMaxPooling == False:
+            if idModelClass == 0:
+                modelClass = limbPixelExtraction_CNN_NN.HorizonExtractionEnhancerCNNv1avg
+            elif idModelClass == 1:
+                modelClass = limbPixelExtraction_CNN_NN.HorizonExtractionEnhancerCNNv2avg
+            else:
+                raise ValueError('Model class ID using average pooling not found.')
         else:
-            raise ValueError('Model class ID using average pooling not found.')
-    else:
-        if idModelClass == 0:
-            modelClass = limbPixelExtraction_CNN_NN.HorizonExtractionEnhancerCNNv1max
-        elif idModelClass == 1:
-            modelClass = limbPixelExtraction_CNN_NN.HorizonExtractionEnhancerCNNv2max
-        elif idModelClass == 2:
-            modelClass = ModelClasses.HorizonExtractionEnhancer_CNNv3maxDeeper
-        elif idModelClass == 3:
-            modelClass = ModelClasses.HorizonExtractionEnhancer_FullyConnNNv4     
-        elif idModelClass == 4:
-            modelClass = ModelClasses.HorizonExtractionEnhancer_ShortCNNv6maxDeeper
-        else:
-            raise ValueError('Model class ID using max pooling not found.')
-        
-
-    # MODEL DEFINITION
-    if restartTraining:
-        checkPointPath = os.path.join(modelSavePath, modelName)
-        if os.path.isfile(checkPointPath):
-
-            print('RESTART training from checkpoint: ', checkPointPath)
-            #modelEmpty = modelClass(outChannelsSizes, kernelSizes)
-            modelCNN_NN = customTorchTools.LoadTorchModel(None, modelName, modelSavePath, loadAsTraced=True).to(device=device)
-            #modelCNN_NN = customTorchTools.LoadTorchModel(modelCNN_NN, modelName)
-
-        else:
-            raise ValueError('Specified model state file not found. Check input path.')    
-    else:
-        if idModelClass == 0 or idModelClass == 1:
-            modelCNN_NN = modelClass(outChannelsSizes, kernelSizes).to(device=device)
-        elif idModelClass == 2:
-            modelCNN_NN = modelClass(outChannelsSizes, kernelSizes, USE_BATCH_NORM).to(device=device)
-        elif idModelClass == 3:
-            modelCNN_NN = modelClass(outChannelsSizes).to(device=device)
-        elif idModelClass == 4:
-
-            parametersConfig = {'kernelSizes': [5],
-                                'useBatchNorm': USE_BATCH_NORM, 
-                                'poolingKernelSize': 2,
-                                'alphaDropCoeff': 0.1,
-                                'alphaLeaky': 0.01,
-                                'patchSize': 7,
-                                'LinearInputSkipSize': 8}
+            if idModelClass == 0:
+                modelClass = limbPixelExtraction_CNN_NN.HorizonExtractionEnhancerCNNv1max
+            elif idModelClass == 1:
+                modelClass = limbPixelExtraction_CNN_NN.HorizonExtractionEnhancerCNNv2max
+            elif idModelClass == 2:
+                modelClass = ModelClasses.HorizonExtractionEnhancer_CNNv3maxDeeper
+            elif idModelClass == 3:
+                modelClass = ModelClasses.HorizonExtractionEnhancer_FullyConnNNv4     
+            elif idModelClass == 4:
+                modelClass = ModelClasses.HorizonExtractionEnhancer_ShortCNNv6maxDeeper
+            else:
+                raise ValueError('Model class ID using max pooling not found.')
             
-            mlflow.log_params(parametersConfig)
-
-            modelCNN_NN = modelClass(outChannelsSizes, parametersConfig).to(device=device)
-
-
-    # ######### TEST DEBUG ############
-    #testPrediction = modelCNN_NN(torch.tensor(inputDataArray[0:, 0]))
-
-    ############    END TEST DEBUG    ############
-    #exit()
-
-    #try:
-    #    modelCNN_NN = torch.compile(modelCNN_NN) # ACHTUNG: compile is not compatible with jit.trace required to save traced model.
-    #    print('Model compiled successfully.')
-    #except:
-    #    print('Model compilation failed. Using eager mode.')
-
-    # Define optimizer object specifying model instance parameters and optimizer parameters
-    if optimizerID == 0:
-        optimizer = torch.optim.SGD(modelCNN_NN.parameters(), lr=initialLearnRate, momentum=momentumValue) 
     
-    elif optimizerID == 1:
-        optimizer = torch.optim.Adam(modelCNN_NN.parameters(), lr=initialLearnRate, betas=(0.9, 0.999), 
-                                     eps=1e-08, weight_decay=1E-6, amsgrad=False, foreach=None, fused=True)
-
-    for param_group in optimizer.param_groups:
-        param_group['initial_lr'] = param_group['lr']
-
-    exponentialDecayGamma = 0.9
-
-    for name, param in modelCNN_NN.named_parameters():
-        mlflow.log_param(name, list(param.size()))
+        # MODEL DEFINITION
+        if restartTraining:
+            checkPointPath = os.path.join(modelSavePath, modelName)
+            if os.path.isfile(checkPointPath):
+            
+                print('RESTART training from checkpoint: ', checkPointPath)
+                #modelEmpty = modelClass(outChannelsSizes, kernelSizes)
+                modelCNN_NN = customTorchTools.LoadTorchModel(None, modelName, modelSavePath, loadAsTraced=True).to(device=device)
+                #modelCNN_NN = customTorchTools.LoadTorchModel(modelCNN_NN, modelName)
     
-    if USE_LR_SCHEDULING:
-        #optimizer = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=2, threshold=0.01, threshold_mode='rel', cooldown=1, min_lr=1E-12, eps=1e-08)
-        lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=exponentialDecayGamma, last_epoch=options['epochStart']-1)
-        options['lr_scheduler'] = lr_scheduler
-
-    # Log model parameters
-    mlflow.log_param('optimizer ID', optimizerID)
-    mlflow.log_param('learning_rate', initialLearnRate)
-    mlflow.log_param('ExponentialDecayGamma', exponentialDecayGamma)
-
-    # 
-    # %% TRAIN and VALIDATE MODEL
-    '''
-    TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Module, optimizer, options:dict={'taskType': 'classification', 
-                                                                                                              'device': GetDevice(), 
-                                                                                                              'epochs': 10, 
-                                                                                                              'Tensorboard':True,
-                                                                                                              'saveCheckpoints':True,
-                                                                                                              'checkpointsDir': './checkpoints',
-                                                                                                              'modelName': 'trainedModel',
-                                                                                                              'loadCheckpoint': False,
-                                                                                                              'epochStart': 150}):
-    '''
-    (trainedModel, trainingLosses, validationLosses, inputSample) = customTorchTools.TrainAndValidateModel(dataloaderIndex, modelCNN_NN, lossFcn, optimizer, options)
-    mlflow.end_run()
-
-    # %% Export trained model to ONNx and traced Pytorch format 
-    if exportTracedModel:
-       #customTorchTools.ExportTorchModelToONNx(trainedModel, inputSample, onnxExportPath='./checkpoints',
-       #                                    onnxSaveName='trainedModelONNx', modelID=options['epochStart']+options['epochs'], onnx_version=14)
-
-        customTorchTools.SaveTorchModel(trainedModel, modelName=os.path.join(tracedModelSavePath, modelArchName+'_'+str(customTorchTools.AddZerosPadding(options['epochStart']+options['epochs'], 3) )), 
-                                   saveAsTraced=True, exampleInput=inputSample)
-
-    # Close stdout log stream
-    if USE_MULTIPROCESS == True:
-        sys.stdout.close()
-
+            else:
+                raise ValueError('Specified model state file not found. Check input path.')    
+        else:
+            if idModelClass == 0 or idModelClass == 1:
+                modelCNN_NN = modelClass(outChannelsSizes, kernelSizes).to(device=device)
+            elif idModelClass == 2:
+                modelCNN_NN = modelClass(outChannelsSizes, kernelSizes, USE_BATCH_NORM).to(device=device)
+            elif idModelClass == 3:
+                modelCNN_NN = modelClass(outChannelsSizes).to(device=device)
+            elif idModelClass == 4:
+         
+                mlflow.log_params(parametersConfig)
+    
+                modelCNN_NN = modelClass(outChannelsSizes, parametersConfig).to(device=device)
+    
+    
+        # ######### TEST DEBUG ############
+        #testPrediction = modelCNN_NN(torch.tensor(inputDataArray[0:, 0]))
+    
+        ############    END TEST DEBUG    ############
+        #exit()
+    
+        #try:
+        #    modelCNN_NN = torch.compile(modelCNN_NN) # ACHTUNG: compile is not compatible with jit.trace required to save traced model.
+        #    print('Model compiled successfully.')
+        #except:
+        #    print('Model compilation failed. Using eager mode.')
+    
+        # Define optimizer object specifying model instance parameters and optimizer parameters
+        if optimizerID == 0:
+            optimizer = torch.optim.SGD(modelCNN_NN.parameters(), lr=initialLearnRate, momentum=momentumValue) 
+        
+        elif optimizerID == 1:
+            optimizer = torch.optim.Adam(modelCNN_NN.parameters(), lr=initialLearnRate, betas=(0.9, 0.999), 
+                                         eps=1e-08, weight_decay=1E-6, amsgrad=False, foreach=None, fused=True)
+    
+        for param_group in optimizer.param_groups:
+            param_group['initial_lr'] = param_group['lr']
+    
+        exponentialDecayGamma = 0.9
+    
+        for name, param in modelCNN_NN.named_parameters():
+            mlflow.log_param(name, list(param.size()))
+        
+        if USE_LR_SCHEDULING:
+            #optimizer = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=2, threshold=0.01, threshold_mode='rel', cooldown=1, min_lr=1E-12, eps=1e-08)
+            lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=exponentialDecayGamma, last_epoch=options['epochStart']-1)
+            options['lr_scheduler'] = lr_scheduler
+    
+        # Log model parameters
+        mlflow.log_param('optimizer ID', optimizerID)
+        mlflow.log_param('learning_rate', initialLearnRate)
+        mlflow.log_param('ExponentialDecayGamma', exponentialDecayGamma)
+    
+        # 
+        # %% TRAIN and VALIDATE MODEL
+        '''
+        TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Module, optimizer, options:dict={'taskType': 'classification', 
+                                                                                                                  'device': GetDevice(), 
+                                                                                                                  'epochs': 10, 
+                                                                                                                  'Tensorboard':True,
+                                                                                                                  'saveCheckpoints':True,
+                                                                                                                  'checkpointsDir': './checkpoints',
+                                                                                                                  'modelName': 'trainedModel',
+                                                                                                                  'loadCheckpoint': False,
+                                                                                                                  'epochStart': 150}):
+        '''
+        (trainedModel, trainingLosses, validationLosses, inputSample) = customTorchTools.TrainAndValidateModel(dataloaderIndex, modelCNN_NN, lossFcn, optimizer, options)
+        mlflow.end_run()
+    
+        # %% Export trained model to ONNx and traced Pytorch format 
+        if exportTracedModel:
+           #customTorchTools.ExportTorchModelToONNx(trainedModel, inputSample, onnxExportPath='./checkpoints',
+           #                                    onnxSaveName='trainedModelONNx', modelID=options['epochStart']+options['epochs'], onnx_version=14)
+    
+            customTorchTools.SaveTorchModel(trainedModel, modelName=os.path.join(tracedModelSavePath, modelArchName+'_'+str(customTorchTools.AddZerosPadding(options['epochStart']+options['epochs'], 3) )), 
+                                       saveAsTraced=True, exampleInput=inputSample)
+    
+        # Close stdout log stream
+        if USE_MULTIPROCESS == True:
+            sys.stdout.close()
+    
 # %% MAIN SCRIPT
 if __name__ == '__main__':
     
