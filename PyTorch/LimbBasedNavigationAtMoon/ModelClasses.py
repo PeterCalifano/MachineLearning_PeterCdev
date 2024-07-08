@@ -353,35 +353,13 @@ class HorizonExtractionEnhancer_ShortCNNv6maxDeeper(nn.Module):
         super().__init__()
 
         # Extract all the inputs of the class init method from dictionary parametersConfig, else use default values
-        if 'kernelSizes' not in parametersConfig:
-            kernelSizes = [7]
-        else:
-            kernelSizes = parametersConfig['kernelSizes']
 
-        if 'useBatchNorm' not in parametersConfig:
-            useBatchNorm = False
-        else:
-            useBatchNorm = parametersConfig['useBatchNorm']
-
-        if 'poolingKernelSize' not in parametersConfig:
-            poolingKernelSize = 2
-        else:
-            poolingKernelSize = parametersConfig['poolingKernelSize']
-
-        if 'alphaDropCoeff' not in parametersConfig:
-            alphaDropCoeff = 0.1
-        else:
-            alphaDropCoeff = parametersConfig['alphaDropCoeff']
-
-        if 'alphaLeaky' not in parametersConfig:
-            alphaLeaky = 0.01
-        else:
-            alphaLeaky = parametersConfig['alphaLeaky']
-            
-        if 'patchSize' not in parametersConfig:
-            patchSize = 7
-        else:
-            patchSize = parametersConfig['patchSize']
+        kernelSizes = parametersConfig.get('kernelSizes', [5])
+        useBatchNorm = parametersConfig.get('useBatchNorm', False)
+        poolingKernelSize = parametersConfig.get('poolingKernelSize', 2)
+        alphaDropCoeff = parametersConfig.get('alphaDropCoeff', 0.1)
+        alphaLeaky = parametersConfig.get('alphaLeaky', 0.01)
+        patchSize = parametersConfig.get('patchSize', 7)
             
         assert(len(outChannelsSizes) == 4) # 7 layers in the model
         assert(len(kernelSizes) == 1)
@@ -402,7 +380,7 @@ class HorizonExtractionEnhancer_ShortCNNv6maxDeeper(nn.Module):
         self.LinearInputSkipSize = parametersConfig['LinearInputSkipSize'] #11 # CHANGE TO 7 removing R_DEM and PosTF
         self.LinearInputSize = self.LinearInputSkipSize + self.LinearInputFeaturesSize
 
-        self.alphaLeaky = alphaLeaky
+        #self.alphaLeaky = alphaLeaky
 
         # Model architecture
         idLayer = 0
@@ -440,16 +418,15 @@ class HorizonExtractionEnhancer_ShortCNNv6maxDeeper(nn.Module):
 
     def __initialize_weights__(self):
         '''Weights Initialization function for layers of the model. Xavier --> layers with tanh and sigmoid, Kaiming --> layers with ReLU activation'''
-        # Leaky_ReLU activation layers
-        init.kaiming_uniform_(self.conv2dL1.weight, nonlinearity='leaky_relu') 
+        # ReLU activation layers
+        init.kaiming_uniform_(self.conv2dL1.weight, nonlinearity='prelu') 
         init.constant_(self.conv2dL1.bias, 0)
 
-        init.kaiming_uniform_(self.DenseL5.weight, nonlinearity='leaky_relu') 
+        init.kaiming_uniform_(self.DenseL5.weight, nonlinearity='prelu') 
         init.constant_(self.DenseL5.bias, 0)
 
-        # Tanh activation layers
-        init.xavier_uniform_(self.DenseL3.weight) 
-        init.xavier_uniform_(self.DenseL4.weight) 
+        init.kaiming_uniform_(self.DenseL3.weight, nonlinearity='prelu') 
+        init.kaiming_uniform_(self.DenseL4.weight, nonlinearity='prelu')  
         init.constant_(self.DenseL4.bias, 0)
 
     def forward(self, inputSample):
@@ -467,7 +444,7 @@ class HorizonExtractionEnhancer_ShortCNNv6maxDeeper(nn.Module):
 
         # Convolutional layers
         # L1 (Input)
-        val = self.maxPoolL1(torchFunc.leaky_relu(self.conv2dL1(img2Dinput), self.alphaLeaky))
+        val = self.maxPoolL1(torchFunc.prelu(self.conv2dL1(img2Dinput)))
 
         # Fully Connected Layers
         # L2
@@ -482,7 +459,7 @@ class HorizonExtractionEnhancer_ShortCNNv6maxDeeper(nn.Module):
         val = self.dropoutL3(val)
         if self.useBatchNorm:
             val = self.batchNormL3(val)
-        val = torchFunc.tanh(val)
+        val = torchFunc.prelu(val)
 
         # L4
         val = self.DenseL4(val)
@@ -490,14 +467,14 @@ class HorizonExtractionEnhancer_ShortCNNv6maxDeeper(nn.Module):
         if self.useBatchNorm:
             val = self.batchNormL4(val)
 
-        val = torchFunc.tanh(val)
+        val = torchFunc.prelu(val)
 
         # L5
         val = self.DenseL5(val)
         val = self.dropoutL5(val)
         if self.useBatchNorm:
             val = self.batchNormL5(val)
-        val = torchFunc.leaky_relu(val, self.alphaLeaky)
+        val = torchFunc.prelu(val, self.alphaLeaky)
 
         # Output layer
         predictedPixCorrection = self.DenseOutput(val)
