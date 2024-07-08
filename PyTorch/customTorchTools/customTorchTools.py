@@ -567,10 +567,8 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
 
         #mlflow.log_artifacts('Prediction samples: ', validationLossHistory[epochID])
 
-        # Add model graph using samples from EvaluateModel
-        #if enableTensorBoard:       
-            #tensorBoardWriter.add_graph(model, inputSampleList, verbose=False)
-            #tensorBoardWriter.flush() 
+        mlflow.log_param('ExamplePredictionList', list(examplePrediction))
+        mlflow.log_param('ExampleLosses', list(exampleLosses))
 
         print('\n  Random Sample predictions from validation dataset:\n')
 
@@ -623,7 +621,7 @@ def EvaluateModel(dataloader:DataLoader, model:nn.Module, lossFcn: nn.Module, de
 
                 # Evaluate loss function
                 exampleLosses[id] = lossFcn(examplePredictionList[id].to(device), labelSample.to(device)).item()
-   
+
         else:
             # Perform FORWARD PASS # NOTE: NOT TESTED
             X = inputSample
