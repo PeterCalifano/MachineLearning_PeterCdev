@@ -40,13 +40,13 @@ LOSS_TYPE = 4 # 0: Conic + L2, # 1: Conic + L2 + Quadratic OutOfPatch, # 2: Norm
             # 3: Polar-n-direction distance + OutOfPatch, #4: MSE + OutOfPatch + ConicLoss
 RUN_ID = 1
 USE_BATCH_NORM = True
-
+FULLY_PARAMETRIC = True
 
 # SETTINGS and PARAMETERS 
 batch_size = 16*4 # Defines batch size in dataset
 #outChannelsSizes = [16, 32, 75, 15] 
     
-outChannelsSizes = [2056, 1024, 512, 512, 128, 64]
+#outChannelsSizes = [2056, 1024, 512, 512, 128, 64]
 
 kernelSizes = [3, 3]
 #initialLearnRate = 1E-1
@@ -69,8 +69,7 @@ modelSavePath = './checkpoints/HorizonExtractionEnhancer_deepNNv8'
 datasetSavePath = './datasets/HorizonExtractionEnhancer_deepNNv8'
 #tensorboardLogDir = './tensorboardLogs/tensorboardLog_ShortCNNv6maxDeeper_run'   + runID
 #tensorBoardPortNum = 6012
-parametersConfig = {'useBatchNorm': True, 'alphaDropCoeff': 0.1, 'LinearInputSize': 58, 
-                    'outChannelsSizes': outChannelsSizes}
+
 modelArchName = 'HorizonExtractionEnhancer_deepNNv8' 
 inputSize = 58 # TODO: update this according to new model
 numOfEpochs = 8
@@ -307,11 +306,11 @@ def objective(trial):
 
     with mlflow.start_run() as mlflow_run:
         run_id = mlflow_run.info.run_id
-
+        run_name = mlflow_run.info.run_name
         # Add run_id to save names
 
-        modelSavePath += run_id
-        modelArchName += run_id
+        modelSavePath += ('_' + run_name)
+        modelArchName += ('_' + run_name)
 
         options['modelName'] = modelArchName
         options['checkpointsOutDir'] = modelSavePath
@@ -320,20 +319,36 @@ def objective(trial):
 
         # Model layers width
         outChannelsSizes = []
-        for i in range(6):
-            outChannelsSizes.append(trial.suggest_int(f'DenseL{i}', 32, 8192))
+
+        if FULLY_PARAMETRIC:
+            num_layers = trial.suggest_int('num_layers', 2, 25)
+            maxNodes = 4096
+            modelClass = ModelClasses.HorizonExtractionEnhancer_deepNNv8_fullyParametric
+        else:
+            num_layers = 6
+            maxNodes = 8192
+            modelClass = ModelClasses.HorizonExtractionEnhancer_deepNNv8
+
+
+
+        for i in range(num_layers):
+            outChannelsSizes.append(trial.suggest_int(f'DenseL{i}', 32, maxNodes))
             mlflow.log_param(f'DenseL{i}', outChannelsSizes[-1])
 
-        modelCNN_NN = ModelClasses.HorizonExtractionEnhancer_deepNNv8(parametersConfig).to(device=device)
+        parametersConfig = {'useBatchNorm': True, 'alphaDropCoeff': 0.1, 'LinearInputSize': 58, 
+                    'outChannelsSizes': outChannelsSizes}
+        
+
+        model = modelClass(parametersConfig).to(device=device)
     
         mlflow.log_params(parametersConfig)
-
+        mlflow.log_param('NumOfHiddenLayers', num_layers-1)
         mlflow.log_params(options)
 
         # Define optimizer object specifying model instance parameters and optimizer parameters
         initialLearnRate = trial.suggest_float('lr', 1e-8, 1e-3, log=True) # NOTE: What are the inputs to suggest_float?
 
-        optimizer = torch.optim.Adam(modelCNN_NN.parameters(), lr=initialLearnRate, betas=(0.9, 0.999), 
+        optimizer = torch.optim.Adam(model.parameters(), lr=initialLearnRate, betas=(0.9, 0.999), 
                                     eps=1e-08, weight_decay=1E-6, amsgrad=False, foreach=None, fused=True)
     
         for param_group in optimizer.param_groups:
@@ -341,7 +356,7 @@ def objective(trial):
     
         exponentialDecayGamma = 0.9
     
-        for name, param in modelCNN_NN.named_parameters():
+        for name, param in model.named_parameters():
             mlflow.log_param(name, list(param.size()))
         
         if USE_LR_SCHEDULING:
@@ -355,7 +370,7 @@ def objective(trial):
         mlflow.log_param('ExponentialDecayGamma', exponentialDecayGamma)
     
         # %% TRAIN and VALIDATE MODEL
-        (trainedModel, trainingLosses, validationLosses, inputSample) = customTorchTools.TrainAndValidateModel(dataloaderIndex, modelCNN_NN, lossFcn, optimizer, options)
+        (trainedModel, trainingLosses, validationLosses, inputSample) = customTorchTools.TrainAndValidateModel(dataloaderIndex, model, lossFcn, optimizer, options)
 
         return validationLosses[-1] # Return last validation loss value
 
