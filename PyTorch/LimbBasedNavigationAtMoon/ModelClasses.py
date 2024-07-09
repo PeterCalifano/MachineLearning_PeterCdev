@@ -501,7 +501,7 @@ class HorizonExtractionEnhancer_deepNNv8(nn.Module):
         self.LinearInputSize = parametersConfig.get('LinearInputSize', 58)
 
         # Model parameters
-        self.outChannelsSizes = outChannelsSizes
+        self.outChannelsSizes = parametersConfig['outChannelsSizes']
         self.useBatchNorm = useBatchNorm
 
 
@@ -509,11 +509,12 @@ class HorizonExtractionEnhancer_deepNNv8(nn.Module):
 
         idLayer = 0
         self.DenseL1 = nn.Linear(self.LinearInputSize, self.outChannelsSizes[idLayer], bias=False) 
+        self.batchNormL1 = nn.BatchNorm1d(self.outChannelsSizes[idLayer], eps=1E-5, momentum=0.1, affine=True)
         self.preluL1 = nn.PReLU(self.outChannelsSizes[idLayer])
         idLayer += 1
 
-        self.dropoutL1 = nn.Dropout2d(alphaDropCoeff)
-        self.DenseL2 = nn.Linear(self.outChannelsSizes[idLayer-1], self.outChannelsSizes[idLayer], bias=False) 
+        self.dropoutL2 = nn.Dropout2d(alphaDropCoeff)
+        self.DenseL2 = nn.Linear(self.outChannelsSizes[idLayer-1], self.outChannelsSizes[idLayer], bias=True) 
         self.batchNormL2 = nn.BatchNorm1d(self.outChannelsSizes[idLayer], eps=1E-5, momentum=0.1, affine=True)
         self.preluL2 = nn.PReLU(self.outChannelsSizes[idLayer])
         idLayer += 1
@@ -553,7 +554,6 @@ class HorizonExtractionEnhancer_deepNNv8(nn.Module):
        
         # ReLU activation layers
         init.kaiming_uniform_(self.DenseL1.weight, nonlinearity='leaky_relu') 
-        init.constant_(self.DenseL1.bias, 0)
 
         init.kaiming_uniform_(self.DenseL2.weight, nonlinearity='leaky_relu') 
         init.constant_(self.DenseL2.bias, 0)
@@ -575,8 +575,7 @@ class HorizonExtractionEnhancer_deepNNv8(nn.Module):
             
         # Fully Connected Layers
         # L1
-        val = self.DenseL1(val)
-        val = self.dropoutL1(val)
+        val = self.DenseL1(inputSample)
         if self.useBatchNorm:
             val = self.batchNormL1(val)
         val = torchFunc.prelu(val, self.preluL1.weight)

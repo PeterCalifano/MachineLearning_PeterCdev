@@ -13,7 +13,7 @@ import datasetPreparation
 from sklearn import preprocessing # Import scikit-learn for dataset preparation
 
 
-import torch, mlflow
+import torch, mlflow, optuna
 from torch import nn
 from scipy.spatial.transform import Rotation
 
@@ -61,7 +61,7 @@ def main(idRun:int, idModelClass:int, idLossType:int):
 
     elif idModelClass == 5:
         outChannelsSizes = [2056, 1024, 512, 512, 128, 64]
-        
+
     else:
         raise ValueError('Model class ID not found.')
 
@@ -552,27 +552,26 @@ def main(idRun:int, idModelClass:int, idLossType:int):
                                                                                                                   'epochStart': 150}):
         '''
         (trainedModel, trainingLosses, validationLosses, inputSample) = customTorchTools.TrainAndValidateModel(dataloaderIndex, modelCNN_NN, lossFcn, optimizer, options)
-        mlflow.end_run()
-    
-        # %% Export trained model to ONNx and traced Pytorch format 
+
+    try:
+    # %% Export trained model to ONNx and traced Pytorch format 
         if exportTracedModel:
            #customTorchTools.ExportTorchModelToONNx(trainedModel, inputSample, onnxExportPath='./checkpoints',
            #                                    onnxSaveName='trainedModelONNx', modelID=options['epochStart']+options['epochs'], onnx_version=14)
     
             customTorchTools.SaveTorchModel(trainedModel, modelName=os.path.join(tracedModelSavePath, modelArchName+'_'+str(customTorchTools.AddZerosPadding(options['epochStart']+options['epochs'], 3) )), 
-                                       saveAsTraced=True, exampleInput=inputSample)
+                                    saveAsTraced=True, exampleInput=inputSample)
+    except:
+        print('Export of trained model failed.')
     
-        # Close stdout log stream
-        if USE_MULTIPROCESS == True:
-            sys.stdout.close()
-    
+
 # %% MAIN SCRIPT
 if __name__ == '__main__':
     
     # Set mlflow experiment
     #mlflow.set_experiment("HorizonEnhancerCNN_OptimizationRuns")
-    mlflow.set_experiment("HorizonEnhancerCNN_OptimizationRuns_TrainValidOnRandomCloud")
-
+    #mlflow.set_experiment("HorizonEnhancerCNN_OptimizationRuns_TrainValidOnRandomCloud")
+    mlflow.set_experiment("HorizonEnhancerCNN_OptunaRuns_deepNNv8")
     # Stop any running tensorboard session before starting a new one
     customTorchTools.KillTensorboard()
 
@@ -606,5 +605,27 @@ if __name__ == '__main__':
     
     else:
         idLossType = LOSS_TYPE
-        idRun = RUN_ID
-        main(idRun, MODEL_CLASS_ID, idLossType)
+        RUN_OPTUNA_STUDY = False
+
+        if RUN_OPTUNA_STUDY:
+            # %% Optuna study configuration
+            optunaStudyObj = optuna.create_study(study_name='CIFAR10_CNN_OptimizationExample', direction='maximize')
+
+            # %% Optuna optimization
+            #optunaStudyObj.optimize(objective, n_trials=50, timeout=3600)
+
+            # Print the best trial
+            print('Number of finished trials:', len(optunaStudyObj.trials)) # Get number of finished trials
+            print('Best trial:')
+
+            trial = optunaStudyObj.best_trial # Get the best trial from study object
+            print('  Value: {:.4f}'.format(trial.value)) # Loss function value for the best trial
+
+            # Print parameters of the best trial
+            print('  Params: ')
+            for key, value in trial.params.items():
+                print('    {}: {}'.format(key, value))
+
+        else:
+            idRun = RUN_ID
+            main(idRun, MODEL_CLASS_ID, idLossType)
