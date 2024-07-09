@@ -566,9 +566,9 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
         examplePrediction, exampleLosses, inputSampleList = EvaluateModel(validationDataset, model, lossFcn, device, 20)
 
         #mlflow.log_artifacts('Prediction samples: ', validationLossHistory[epochID])
-
-        mlflow.log_param('ExamplePredictionList', list(examplePrediction))
-        mlflow.log_param('ExampleLosses', list(exampleLosses))
+        
+        #mlflow.log_param(f'ExamplePredictionList', list(examplePrediction))
+        #mlflow.log_param(f'ExampleLosses', list(exampleLosses))
 
         print('\n  Random Sample predictions from validation dataset:\n')
 
