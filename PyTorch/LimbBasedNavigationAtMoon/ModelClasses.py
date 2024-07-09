@@ -635,7 +635,7 @@ class HorizonExtractionEnhancer_deepNNv8_fullyParametric(nn.Module):
         self.LinearInputSize = parametersConfig.get('LinearInputSize', 58)
 
         # Model parameters
-        self.outChannelsSizes = parametersConfig.get('num_layers')
+        self.outChannelsSizes = parametersConfig.get('outChannelsSizes')
         self.num_layers = len(self.outChannelsSizes)
 
         self.useBatchNorm = useBatchNorm
