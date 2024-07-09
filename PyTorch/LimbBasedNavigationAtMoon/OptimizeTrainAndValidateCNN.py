@@ -409,7 +409,7 @@ if __name__ == '__main__':
                                                                                                min_early_stopping_rate=0))
 
             # %% Optuna optimization
-            optunaStudyObj.optimize(objective, n_trials=500, timeout=17*3600)
+            optunaStudyObj.optimize(objective, n_trials=500, timeout=25*3600)
 
             # Print the best trial
             print('Number of finished trials:', len(optunaStudyObj.trials)) # Get number of finished trials
