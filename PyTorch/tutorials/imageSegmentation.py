@@ -1,4 +1,4 @@
-# Script implementing the  example as exercise by PeterC - DD-05-2024
+# Script implementing a segmentation example as exercise by PeterC - DD-05-2024
 # Reference: 
 
 # Import modules
