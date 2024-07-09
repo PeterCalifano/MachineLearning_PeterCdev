@@ -65,14 +65,14 @@ device = customTorchTools.GetDevice()
 exportTracedModel = True    
 tracedModelSavePath = 'tracedModelsArchive' 
 
-modelSavePath = './checkpoints/HorizonExtractionEnhancer_deepNNv8' 
-datasetSavePath = './datasets/HorizonExtractionEnhancer_deepNNv8'
+modelSavePath = './checkpoints/HorizonExtractionEnhancer_deepNNv8_fullyParam' 
+datasetSavePath = './datasets/HorizonExtractionEnhancer_deepNNv8_fullyParam'
 #tensorboardLogDir = './tensorboardLogs/tensorboardLog_ShortCNNv6maxDeeper_run'   + runID
 #tensorBoardPortNum = 6012
 
-modelArchName = 'HorizonExtractionEnhancer_deepNNv8' 
+modelArchName = 'HorizonExtractionEnhancer_deepNNv8_fullyParam' 
 inputSize = 58 # TODO: update this according to new model
-numOfEpochs = 8
+numOfEpochs = 4
 
 EPOCH_START = 0
 
@@ -330,7 +330,6 @@ def objective(trial):
             modelClass = ModelClasses.HorizonExtractionEnhancer_deepNNv8
 
 
-
         for i in range(num_layers):
             outChannelsSizes.append(trial.suggest_int(f'DenseL{i}', 32, maxNodes))
             mlflow.log_param(f'DenseL{i}', outChannelsSizes[-1])
@@ -381,7 +380,7 @@ if __name__ == '__main__':
     # Set mlflow experiment
     #mlflow.set_experiment("HorizonEnhancerCNN_OptimizationRuns")
     #mlflow.set_experiment("HorizonEnhancerCNN_OptimizationRuns_TrainValidOnRandomCloud")
-    mlflow.set_experiment("HorizonEnhancerCNN_OptunaRuns_deepNNv8")
+    mlflow.set_experiment("HorizonEnhancerCNN_OptunaRuns_deepNNv8_fullyParametric")
     # Stop any running tensorboard session before starting a new one
     customTorchTools.KillTensorboard()
 
@@ -419,12 +418,12 @@ if __name__ == '__main__':
 
         if RUN_OPTUNA_STUDY:
             # %% Optuna study configuration
-            optunaStudyObj = optuna.create_study(study_name='HorizonEnhancerCNN_HyperOptimization_deepNNv8', direction='minimize',
+            optunaStudyObj = optuna.create_study(study_name='HorizonEnhancerCNN_HyperOptimization_deepNNv8_fullyParametric', direction='minimize',
                                                  pruner=optuna.pruners.SuccessiveHalvingPruner(min_resource=1, reduction_factor=4, 
                                                                                                min_early_stopping_rate=0))
 
             # %% Optuna optimization
-            optunaStudyObj.optimize(objective, n_trials=500, timeout=25*3600)
+            optunaStudyObj.optimize(objective, n_trials=500, timeout=7*3600)
 
             # Print the best trial
             print('Number of finished trials:', len(optunaStudyObj.trials)) # Get number of finished trials
