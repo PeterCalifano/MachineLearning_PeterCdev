@@ -492,7 +492,7 @@ class HorizonExtractionEnhancer_ShortCNNv6maxDeeper(nn.Module):
 class HorizonExtractionEnhancer_deepNNv8(nn.Module):
     '''Horizon Extraction Enhanced Fully Connected only, with Conic parameters from initial guess. Parametric ReLU activations for all layers.
     Dropout and batch normalization for all layers. Fixed layers number with parametric sizes.'''
-    def __init__(self, outChannelsSizes:list, parametersConfig) -> None:
+    def __init__(self, parametersConfig) -> None:
         super().__init__()
 
         # Extract all the inputs of the class init method from dictionary parametersConfig, else use default values
