@@ -32,9 +32,9 @@ USE_MULTIPROCESS = False
 USE_NORMALIZED_IMG = True
 USE_LR_SCHEDULING = True
 TRAIN_ALL = True
-REGEN_DATASET = False
+REGEN_DATASET = True
 USE_TENSOR_LOSS_EVAL = True
-MODEL_CLASS_ID = 4
+MODEL_CLASS_ID = 6
 MANUAL_RUN = True # Uses MODEL_CLASS_ID to run a specific model
 LOSS_TYPE = 4 # 0: Conic + L2, # 1: Conic + L2 + Quadratic OutOfPatch, # 2: Normalized Conic + L2 + OutOfPatch,            
             # 3: Polar-n-direction distance + OutOfPatch, #4: MSE + OutOfPatch + ConicLoss
@@ -44,7 +44,7 @@ USE_BATCH_NORM = True
 def main(idRun:int, idModelClass:int, idLossType:int):
 
     # SETTINGS and PARAMETERS 
-    batch_size = 16*2 # Defines batch size in dataset
+    batch_size = 256 # Defines batch size in dataset
     #outChannelsSizes = [16, 32, 75, 15] 
     
     if idModelClass < 2:
@@ -62,19 +62,24 @@ def main(idRun:int, idModelClass:int, idLossType:int):
     elif idModelClass == 5:
         outChannelsSizes = [2056, 1024, 512, 512, 128, 64]
 
+    elif idModelClass == 6:
+        kernelSizes = [1, 3, 3]
+        outChannelsSizes = [256, 256, 1024, 512, 256, 128, 32]
     else:
         raise ValueError('Model class ID not found.')
 
 
-    kernelSizes = [3, 3]
-    initialLearnRate = 1E-1
+    #kernelSizes = [3, 3]
+    initialLearnRate = 5E-5
     momentumValue = 0.6
 
     #TODO: add log and printing of settings of optimizer for each epoch. Reduce the training loss value printings
 
-
     # Loss function parameters
-    params = {'ConicLossWeightCoeff': 0, 'RectExpWeightCoeff': 1}
+    lossParams = {'ConicLossWeightCoeff': 0, 'RectExpWeightCoeff': 1}
+
+    lossParams['paramsTrain'] = {'ConicLossWeightCoeff': 0, 'RectExpWeightCoeff': 1}
+    lossParams['paramsEval'] = {'ConicLossWeightCoeff': 0, 'RectExpWeightCoeff': 0} # Not currently used
 
     optimizerID = 1 # 0: SGD, 1: Adam
     UseMaxPooling = True
@@ -162,11 +167,28 @@ def main(idRun:int, idModelClass:int, idLossType:int):
         #tensorboardLogDir = './tensorboardLogs/tensorboardLog_ShortCNNv6maxDeeper_run'   + runID
         #tensorBoardPortNum = 6012
 
-        parametersConfig = {'useBatchNorm': True, 'alphaDropCoeff': 0.1, 'LinearInputSize': 58}
+        parametersConfig = {'useBatchNorm': True, 'alphaDropCoeff': 0.1, 
+                            'LinearInputSize': 58, 'outChannelsSizes': outChannelsSizes}
 
         modelArchName = 'HorizonExtractionEnhancer_deepNNv8' 
         inputSize = 58 # TODO: update this according to new model
-        numOfEpochs = 30
+        numOfEpochs = 15
+
+    elif idModelClass == 6:
+        #runID = "{num:04d}".format(num=idRun)
+        modelSavePath = './checkpoints/HorizonExtractionEnhancer_CNNv7_randomCloud' 
+        datasetSavePath = './datasets/HorizonExtractionEnhancer_CNNv7_randomCloud'
+        #tensorboardLogDir = './tensorboardLogs/tensorboardLog_ShortCNNv6maxDeeper_run'   + runID
+        #tensorBoardPortNum = 6012
+
+        parametersConfig = {'useBatchNorm': True, 'alphaDropCoeff': 0.05, 
+                            'LinearInputSkipSize': 9,'outChannelsSizes': outChannelsSizes,
+                            'kernelSizes': kernelSizes, 'poolkernelSizes': [1, 1, 2]}
+
+        modelArchName = 'HorizonExtractionEnhancer_CNNv7_randomCloud' 
+        inputSize = 58 
+        numOfEpochs = 20
+
 
     EPOCH_START = 0
 
@@ -209,7 +231,7 @@ def main(idRun:int, idModelClass:int, idLossType:int):
     assert(len(dirNamesRoot) >= 2)
 
     # Select one of the available datapairs folders (each corresponding to a labels generation pipeline output)
-    datasetID = [6, 7] # TRAINING and VALIDATION datasets ID in folder (in this order)
+    datasetID = [9, 10] # TRAINING and VALIDATION datasets ID in folder (in this order)
 
 
     assert(len(datasetID) == 2)
@@ -329,7 +351,7 @@ def main(idRun:int, idModelClass:int, idLossType:int):
                         ptrToInput += len(tmpVal) # Update index
 
                         #inputDataArray[55:58, saveID] = dPosCam_TF
-                        if idModelClass in [1,2,3,4,5]:
+                        if idModelClass in [1,2,3,4,5,6]:
                             inputDataArray[ptrToInput, saveID] = dConicAvgRadiusInPix
                             ptrToInput += dConicAvgRadiusInPix.size # Update index
 
@@ -338,7 +360,11 @@ def main(idRun:int, idModelClass:int, idLossType:int):
 
                         # Assign coarse Limb pixels to input data array
                         inputDataArray[ptrToInput:ptrToInput+len(ui16coarseLimbPixels[:, sampleID]), saveID] = ui16coarseLimbPixels[:, sampleID]
+                        ptrToInput += len(ui16coarseLimbPixels[:, sampleID]) # Update index
 
+                        if ptrToInput != inputSize:
+                            raise IndexError('ERROR: Specified input data array size does not match with pointer to input allocator.')
+                        
                         # Assign labels to labels data array (DO NOT CHANGE ORDER OF VALUES)
                         labelsDataArray[0:9, saveID] = np.ravel(dLimbConicCoeffs_PixCoords)
                         labelsDataArray[9:11, saveID] = ui16coarseLimbPixels[:, sampleID]
@@ -425,53 +451,54 @@ def main(idRun:int, idModelClass:int, idLossType:int):
     # LOSS FUNCTION DEFINITION
 
     if LOSS_TYPE == 0:
-        lossFcn = customTorchTools.CustomLossFcn(limbPixelExtraction_CNN_NN.MoonLimbPixConvEnhancer_LossFcn, params)
+        lossFcn = customTorchTools.CustomLossFcn(limbPixelExtraction_CNN_NN.MoonLimbPixConvEnhancer_LossFcn, lossParams)
     elif LOSS_TYPE == 1:
-        lossFcn = customTorchTools.CustomLossFcn(limbPixelExtraction_CNN_NN.MoonLimbPixConvEnhancer_LossFcnWithOutOfPatchTerm, params)
+        lossFcn = customTorchTools.CustomLossFcn(limbPixelExtraction_CNN_NN.MoonLimbPixConvEnhancer_LossFcnWithOutOfPatchTerm, lossParams)
     elif LOSS_TYPE == 2:
         if USE_TENSOR_LOSS_EVAL:
-            lossFcn = customTorchTools.CustomLossFcn(limbPixelExtraction_CNN_NN.MoonLimbPixConvEnhancer_NormalizedLossFcnWithOutOfPatchTerm_asTensor, params)
+            lossFcn = customTorchTools.CustomLossFcn(limbPixelExtraction_CNN_NN.MoonLimbPixConvEnhancer_NormalizedLossFcnWithOutOfPatchTerm_asTensor, lossParams)
         else:
-            lossFcn = customTorchTools.CustomLossFcn(limbPixelExtraction_CNN_NN.MoonLimbPixConvEnhancer_NormalizedLossFcnWithOutOfPatchTerm, params)
+            lossFcn = customTorchTools.CustomLossFcn(limbPixelExtraction_CNN_NN.MoonLimbPixConvEnhancer_NormalizedLossFcnWithOutOfPatchTerm, lossParams)
     elif LOSS_TYPE == 3:
-        lossFcn = customTorchTools.CustomLossFcn(limbPixelExtraction_CNN_NN.MoonLimbPixConvEnhancer_PolarNdirectionDistanceWithOutOfPatch_asTensor, params)
+        lossFcn = customTorchTools.CustomLossFcn(limbPixelExtraction_CNN_NN.MoonLimbPixConvEnhancer_PolarNdirectionDistanceWithOutOfPatch_asTensor, lossParams)
     elif LOSS_TYPE == 4:
-        lossFcn = customTorchTools.CustomLossFcn(limbPixelExtraction_CNN_NN.MoonLimbPixConvEnhancer_NormalizedConicLossWithMSEandOutOfPatch_asTensor, params)
+        lossFcn = customTorchTools.CustomLossFcn(limbPixelExtraction_CNN_NN.MoonLimbPixConvEnhancer_NormalizedConicLossWithMSEandOutOfPatch_asTensor, lossParams)
     else:
         raise ValueError('Loss function ID not found.')
 
     # START MLFLOW RUN LOGGING
+
     with mlflow.start_run() as mlflow_run:
         run_id = mlflow_run.info.run_id
+        run_name = mlflow_run.info.run_name
 
         # Add run_id to save names
-        modelSavePath += run_id
-        modelArchName += run_id
+        modelSavePath += ('_' + run_name)
+        modelArchName += ('_' + run_name)
+
+        options['checkpointsOutDir'] = modelSavePath
+        options['modelName'] = modelArchName
 
         mlflow.log_param('Output_channels_sizes', list(outChannelsSizes))
         mlflow.log_params(options)
 
         # MODEL CLASS TYPE
-        if UseMaxPooling == False:
-            if idModelClass == 0:
-                modelClass = limbPixelExtraction_CNN_NN.HorizonExtractionEnhancerCNNv1avg
-            elif idModelClass == 1:
-                modelClass = limbPixelExtraction_CNN_NN.HorizonExtractionEnhancerCNNv2avg
-            else:
-                raise ValueError('Model class ID using average pooling not found.')
+        if idModelClass == 0:
+            modelClass = limbPixelExtraction_CNN_NN.HorizonExtractionEnhancerCNNv1max
+        elif idModelClass == 1:
+            modelClass = limbPixelExtraction_CNN_NN.HorizonExtractionEnhancerCNNv2max
+        elif idModelClass == 2:
+            modelClass = ModelClasses.HorizonExtractionEnhancer_CNNv3maxDeeper
+        elif idModelClass == 3:
+            modelClass = ModelClasses.HorizonExtractionEnhancer_FullyConnNNv4iter    
+        elif idModelClass == 4:
+            modelClass = ModelClasses.HorizonExtractionEnhancer_ShortCNNv6maxDeeper
+        elif idModelClass == 5:
+            modelClass = ModelClasses.HorizonExtractionEnhancer_deepNNv8
+        elif idModelClass == 6:
+            modelClass = ModelClasses.HorizonExtractionEnhancer_CNNv7
         else:
-            if idModelClass == 0:
-                modelClass = limbPixelExtraction_CNN_NN.HorizonExtractionEnhancerCNNv1max
-            elif idModelClass == 1:
-                modelClass = limbPixelExtraction_CNN_NN.HorizonExtractionEnhancerCNNv2max
-            elif idModelClass == 2:
-                modelClass = ModelClasses.HorizonExtractionEnhancer_CNNv3maxDeeper
-            elif idModelClass == 3:
-                modelClass = ModelClasses.HorizonExtractionEnhancer_FullyConnNNv4     
-            elif idModelClass == 4:
-                modelClass = ModelClasses.HorizonExtractionEnhancer_ShortCNNv6maxDeeper
-            else:
-                raise ValueError('Model class ID using max pooling not found.')
+            raise ValueError('Model class ID using max pooling not found.')
             
     
         # MODEL DEFINITION
@@ -496,8 +523,14 @@ def main(idRun:int, idModelClass:int, idLossType:int):
             elif idModelClass == 4:
          
                 mlflow.log_params(parametersConfig)
-    
+                # Kernel sizes: [5]
                 modelCNN_NN = modelClass(outChannelsSizes, parametersConfig).to(device=device)
+                
+            elif idModelClass == 6:
+
+                mlflow.log_params(parametersConfig)
+                # Kernel sizes: [1, 5, 3]
+                modelCNN_NN = modelClass(parametersConfig).to(device=device)
     
     
         # ######### TEST DEBUG ############
@@ -530,15 +563,21 @@ def main(idRun:int, idModelClass:int, idLossType:int):
         
         if USE_LR_SCHEDULING:
             #optimizer = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=2, threshold=0.01, threshold_mode='rel', cooldown=1, min_lr=1E-12, eps=1e-08)
-            lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=exponentialDecayGamma, last_epoch=options['epochStart']-1)
+            #lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=exponentialDecayGamma, last_epoch=options['epochStart']-1)
+            
+            #lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=exponentialDecayGamma, last_epoch=options['epochStart']-1)
+            lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=2, T_mult=2, eta_min=1e-9, last_epoch=options['epochStart']-1)
+
             options['lr_scheduler'] = lr_scheduler
     
         # Log model parameters
         mlflow.log_param('optimizer ID', optimizerID)
         mlflow.log_param('learning_rate', initialLearnRate)
-        mlflow.log_param('ExponentialDecayGamma', exponentialDecayGamma)
-    
-        # 
+        #mlflow.log_param('ExponentialDecayGamma', exponentialDecayGamma)
+
+        numOfParameters = customTorchTools.getNumOfTrainParams(modelCNN_NN)
+        mlflow.log_param('NumOfTrainParams', numOfParameters)
+
         # %% TRAIN and VALIDATE MODEL
         '''
         TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Module, optimizer, options:dict={'taskType': 'classification', 
@@ -551,16 +590,16 @@ def main(idRun:int, idModelClass:int, idLossType:int):
                                                                                                                   'loadCheckpoint': False,
                                                                                                                   'epochStart': 150}):
         '''
-        (trainedModel, trainingLosses, validationLosses, inputSample) = customTorchTools.TrainAndValidateModel(dataloaderIndex, modelCNN_NN, lossFcn, optimizer, options)
+        (bestTrainedModelData, trainingLosses, validationLosses, inputSample) = customTorchTools.TrainAndValidateModel(dataloaderIndex, modelCNN_NN, lossFcn, optimizer, options)
 
     try:
     # %% Export trained model to ONNx and traced Pytorch format 
         if exportTracedModel:
            #customTorchTools.ExportTorchModelToONNx(trainedModel, inputSample, onnxExportPath='./checkpoints',
            #                                    onnxSaveName='trainedModelONNx', modelID=options['epochStart']+options['epochs'], onnx_version=14)
-    
-            customTorchTools.SaveTorchModel(trainedModel, modelName=os.path.join(tracedModelSavePath, modelArchName+'_'+str(customTorchTools.AddZerosPadding(options['epochStart']+options['epochs'], 3) )), 
-                                    saveAsTraced=True, exampleInput=inputSample)
+            tracedModelSaveName = os.path.join(tracedModelSavePath, modelArchName+'_'+str(customTorchTools.AddZerosPadding(bestTrainedModelData['epoch'], 3)))                     
+            customTorchTools.SaveTorchModel(bestTrainedModelData['model'].to(device), modelName= tracedModelSaveName, saveAsTraced=True, 
+                                            exampleInput=inputSample, targetDevice=device)
     except:
         print('Export of trained model failed.')
     
@@ -570,8 +609,8 @@ if __name__ == '__main__':
     
     # Set mlflow experiment
     #mlflow.set_experiment("HorizonEnhancerCNN_OptimizationRuns")
-    #mlflow.set_experiment("HorizonEnhancerCNN_OptimizationRuns_TrainValidOnRandomCloud")
-    mlflow.set_experiment("HorizonEnhancerCNN_OptunaRuns_deepNNv8")
+    mlflow.set_experiment("HorizonEnhancerCNN_OptimizationRuns_TrainValidOnRandomCloud")
+    #mlflow.set_experiment("HorizonEnhancerCNN_Optimization_CNNv7_randomCloud")
     # Stop any running tensorboard session before starting a new one
     customTorchTools.KillTensorboard()
 
@@ -579,18 +618,19 @@ if __name__ == '__main__':
     if USE_MULTIPROCESS == True:
 
         # Use the "spawn" start method (REQUIRED by CUDA)
-        multiprocessing.set_start_method('spawn')
-        process1 = multiprocessing.Process(target=main, args=(10,1, 4))
-        process2 = multiprocessing.Process(target=main, args=(10,1, 4))
-
-        # Start the processes
-        process1.start()
-        process2.start()
-
-        # Wait for both processes to finish
-        process1.join()
-        process2.join()
-
+        #multiprocessing.set_start_method('spawn')
+        #process1 = multiprocessing.Process(target=main, args=(10,1, 4))
+        #process2 = multiprocessing.Process(target=main, args=(10,1, 4))
+#
+        ## Start the processes
+        #process1.start()
+        #process2.start()
+#
+        ## Wait for both processes to finish
+        #process1.join()
+        #process2.join()
+        raise ValueError('Multiprocessing not supported for this script. Use manual run instead.')
+    
         print("Training complete for both network classes. Check the logs for more information.")
     elif USE_MULTIPROCESS == False and MANUAL_RUN == False:
         
