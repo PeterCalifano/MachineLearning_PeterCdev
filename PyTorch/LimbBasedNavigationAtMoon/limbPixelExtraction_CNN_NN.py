@@ -277,18 +277,25 @@ def IsPatchValid(patchFlatten, lowerIntensityThr=3):
 
 
 # %% Custom normalized loss function for Moon Limb pixel extraction CNN enhancer tensorized evaluation - 27-06-2024
-def MoonLimbPixConvEnhancer_NormalizedLossFcnWithOutOfPatchTerm_asTensor(predictCorrection, labelVector, paramsTrain:dict=None, paramsEval:dict=None):
+def MoonLimbPixConvEnhancer_NormalizedLossFcnWithOutOfPatchTerm_asTensor(predictCorrection, labelVector, params:dict=None):
 
     # Get parameters and labels for computation of the loss
-    if paramsTrain is None:
-        coeff = 1
-    else:
-        coeff = paramsTrain['ConicLossWeightCoeff']
+    TrainingMode = params.get('TrainingMode', True)
+    paramsTrain = params.get('paramsTrain', {'ConicLossWeightCoeff': 1, 'RectExpWeightCoeff': 1})
+    paramsEval = params.get('paramsEval', {'ConicLossWeightCoeff': 1, 'RectExpWeightCoeff': 0})
 
-    if paramsTrain is None:
-        RectExpWeightCoeff = 1
-    elif 'RectExpWeightCoeff' in paramsTrain.keys(): 
-        RectExpWeightCoeff = paramsTrain['RectExpWeightCoeff']
+    if TrainingMode:
+        RectExpWeightCoeff = paramsTrain.get('RectExpWeightCoeff', 1)
+        ConicLoss2WeightCoeff = paramsTrain.get('ConicLossWeightCoeff', 1)
+    else:
+        RectExpWeightCoeff = paramsEval.get('RectExpWeightCoeff', 1)
+        ConicLoss2WeightCoeff = paramsEval.get('ConicLossWeightCoeff', 1)
+
+    
+    # Temporary --> should come from params dictionary
+    patchSize = params.get('patchSize', 7)
+    slopeMultiplier = params.get('slopeMultiplier', 2)
+    halfPatchSize = patchSize/2
 
 
     # Temporary --> should come from params dictionary
@@ -306,8 +313,8 @@ def MoonLimbPixConvEnhancer_NormalizedLossFcnWithOutOfPatchTerm_asTensor(predict
     baseCost2 = labelVector[:, 11]
 
     # Evaluate loss terms
-    normalizedConicLoss = torch.zeros(batchSize, 1, 1, dtype=torch.float32, device=device) # Weighting violation of Horizon conic equation
-    outOfPatchoutLoss = torch.zeros(batchSize, 1, 1, dtype=torch.float32, device=device)
+    #normalizedConicLoss = torch.zeros(batchSize, 1, 1, dtype=torch.float32, device=device) # Weighting violation of Horizon conic equation
+    #outOfPatchoutLoss = torch.zeros(batchSize, 1, 1, dtype=torch.float32, device=device)
 
     # Compute corrected pixel
     correctedPix = torch.zeros(batchSize, 3, 1, dtype=torch.float32, device=device)
@@ -315,21 +322,21 @@ def MoonLimbPixConvEnhancer_NormalizedLossFcnWithOutOfPatchTerm_asTensor(predict
     correctedPix[:, 2, 0] = 1
     correctedPix[:, 0:2, 0] = patchCentre + predictCorrection
 
-    normalizedConicLoss += torch.div((torch.bmm(correctedPix.transpose(1,2), torch.bmm(LimbConicMatrixImg, correctedPix)))**2, baseCost2.reshape(batchSize, 1,1))
+    normalizedConicLoss = torch.div((torch.bmm(correctedPix.transpose(1,2), torch.bmm(LimbConicMatrixImg, correctedPix)))**2, baseCost2.reshape(batchSize, 1,1))
 
     # Add average of the two coordinates to the total cost term
-    outOfPatchoutLoss += outOfPatchoutLoss_Quadratic_asTensor(predictCorrection, halfPatchSize=halfPatchSize, slopeMultiplier=slopeMultiplier).reshape(batchSize, 1, 1)
+    outOfPatchoutLoss = outOfPatchoutLoss_Quadratic_asTensor(predictCorrection, halfPatchSize=halfPatchSize, slopeMultiplier=slopeMultiplier).reshape(batchSize, 1, 1)
 
-    if coeff == 1:
+    if ConicLoss2WeightCoeff == 1:
         L2regLoss = 0
     else:
         L2regLoss = torch.norm(predictCorrection, dim=1).sum()
 
     # Total loss function
-    lossValue = coeff * (normalizedConicLoss) + (1-coeff) * L2regLoss + RectExpWeightCoeff * outOfPatchoutLoss
+    lossValue = ConicLoss2WeightCoeff * (normalizedConicLoss.sum()) + (1-ConicLoss2WeightCoeff) * L2regLoss + RectExpWeightCoeff * outOfPatchoutLoss.sum()
 
     # Return sum of loss for the whole batch
-    return torch.sum(lossValue/batchSize)
+    return lossValue/batchSize
 
 
 # %% Polar-n-direction loss function for Moon Limb pixel extraction CNN enhancer tensorized evaluation - 27-06-2024
@@ -425,37 +432,41 @@ def ComputePolarNdirectionDistance_asTensor(CconicMatrix:Union[np.array , torch.
 
 
 # %% MSE + Conic Loss function for Moon Limb pixel extraction CNN enhancer tensorized evaluation - 27-06-2024
-def MoonLimbPixConvEnhancer_NormalizedConicLossWithMSEandOutOfPatch_asTensor(predictCorrection, labelVector, paramsTrain:dict=None, paramsEval:dict=None):
+def MoonLimbPixConvEnhancer_NormalizedConicLossWithMSEandOutOfPatch_asTensor(predictCorrection, labelVector, 
+                                                                            params:dict=None):
+    
     # Get parameters and labels for computation of the loss
-    if paramsTrain is None:
-        RectExpWeightCoeff = 1
-    elif 'RectExpWeightCoeff' in paramsTrain.keys(): 
-        RectExpWeightCoeff = paramsTrain['RectExpWeightCoeff']
+    TrainingMode = params.get('TrainingMode', True)
+    paramsTrain = params.get('paramsTrain', {'ConicLossWeightCoeff': 1, 'RectExpWeightCoeff': 1})
+    paramsEval = params.get('paramsEval', {'ConicLossWeightCoeff': 1, 'RectExpWeightCoeff': 0})
 
-    if paramsTrain is None:
-        coeff = 1
+    if TrainingMode:
+        RectExpWeightCoeff = paramsTrain.get('RectExpWeightCoeff', 1)
+        ConicLoss2WeightCoeff = paramsTrain.get('ConicLossWeightCoeff', 1)
     else:
-        coeff = paramsTrain['ConicLossWeightCoeff']
+        RectExpWeightCoeff = paramsEval.get('RectExpWeightCoeff', 1)
+        ConicLoss2WeightCoeff = paramsEval.get('ConicLossWeightCoeff', 1)
 
+    
     # Temporary --> should come from params dictionary
-    patchSize = 7
+    patchSize = params.get('patchSize', 7)
+    slopeMultiplier = params.get('slopeMultiplier', 2)
     halfPatchSize = patchSize/2
-    slopeMultiplier = 2
 
     # Extract data from labelVector
     batchSize = labelVector.size()[0]
     device = predictCorrection.device
     
     LimbConicMatrixImg = torch.tensor((labelVector[:, 0:9].T).reshape(3, 3, labelVector.size()[0]).T, dtype=torch.float32, device=device)
-
     assert(LimbConicMatrixImg.shape[0] == batchSize)
 
-    patchCentre = labelVector[:, 9:11] # Patch centre coordinates (pixels)
-    baseCost2 = labelVector[:, 11]    # Base cost for the conic constraint evaluated at patch centre
+    patchCentre      = labelVector[:, 9:11]  # Patch centre coordinates (pixels)
+    baseCost2        = labelVector[:, 11]    # Base cost for the conic constraint evaluated at patch centre
     targetPrediction = labelVector[:, 12:14] # Target prediction for the pixel correction
 
-    normalizedConicLoss = torch.zeros(batchSize, 1, dtype=torch.float32, device=device) # Weighting violation of Horizon conic equation
-    outOfPatchoutLoss = torch.zeros(batchSize, 1, dtype=torch.float32, device=device)
+    # Initialize arrays for the loss terms
+    #normalizedConicLoss = torch.zeros(batchSize, 1, dtype=torch.float32, device=device) # Weighting violation of Horizon conic equation
+    #outOfPatchoutLoss = torch.zeros(batchSize, 1, dtype=torch.float32, device=device)
 
     # Compute corrected pixel
     correctedPix = torch.zeros(batchSize, 3, 1, dtype=torch.float32, device=device)
@@ -463,35 +474,44 @@ def MoonLimbPixConvEnhancer_NormalizedConicLossWithMSEandOutOfPatch_asTensor(pre
     correctedPix[:, 0:2, 0] = patchCentre + predictCorrection
 
     # Compute the normalized conic loss
-
-    if coeff != 0:
-        normalizedConicLoss += torch.div( ((torch.bmm(correctedPix.transpose(1,2), torch.bmm(LimbConicMatrixImg, correctedPix)) )**2).reshape(batchSize, 1), baseCost2.reshape(batchSize, 1))
+    if ConicLoss2WeightCoeff != 0:
+        normalizedConicLoss = torch.div( ((torch.bmm(correctedPix.transpose(1,2), torch.bmm(LimbConicMatrixImg, correctedPix)) )**2).reshape(batchSize, 1), baseCost2.reshape(batchSize, 1))
+    else:
+        normalizedConicLoss = torch.zeros(batchSize, 1, dtype=torch.float32, device=device)
 
     # Compute the MSE loss term
-    mseLoss = torch.nn.functional.mse_loss(correctedPix[:, 0:2, 0], targetPrediction, size_average=None, reduce=None, reduction='sum')
+    mseLoss = torch.nn.functional.mse_loss(correctedPix[:, 0:2, 0], targetPrediction, size_average=None, reduce=None, reduction='mean')
 
-    if 'RectExpWeightCoeff' != 0:
+    if RectExpWeightCoeff != 0:
         # Add average of the two coordinates to the out of patch cost term
-        outOfPatchoutLoss += outOfPatchoutLoss_Quadratic_asTensor(predictCorrection, halfPatchSize=halfPatchSize, slopeMultiplier=slopeMultiplier)
+        outOfPatchLoss = outOfPatchoutLoss_Quadratic_asTensor(predictCorrection, halfPatchSize=halfPatchSize, slopeMultiplier=slopeMultiplier)
     else:
-        outOfPatchoutLoss = 0
+        outOfPatchLoss = torch.zeros(batchSize, 1, dtype=torch.float32, device=device)
 
     # Total loss function
-    lossValue =  coeff * torch.sum(normalizedConicLoss) + mseLoss + torch.sum((RectExpWeightCoeff * outOfPatchoutLoss))
+    normalizedConicLossTerm = ConicLoss2WeightCoeff * torch.sum(normalizedConicLoss)/batchSize
+    outOfPatchLossTerm = torch.sum((RectExpWeightCoeff * outOfPatchLoss))/batchSize
+    lossValue =  normalizedConicLossTerm + mseLoss + outOfPatchLossTerm
 
     # Return sum of loss for the whole batch
-    return lossValue/batchSize
+    return {'lossValue': lossValue, 'normalizedConicLoss': normalizedConicLossTerm, 'mseLoss': mseLoss, 'outOfPatchoutLoss': outOfPatchLossTerm}
 
 
 # %% ARCHITECTURES ############################################################################################################
 
-def AutoComputeConvBlocksOutput(self, kernelSizes, poolingKernelSize):
+def AutoComputeConvBlocksOutput(self, kernelSizes:list, poolingKernelSize:list=None):
         # NOTE: stride and padding are HARDCODED in this version
         # Automatically compute the number of features from the last convolutional layer (flatten of the volume)
         outputMapSize = [self.patchSize, self.patchSize]
+
+        if poolingKernelSize is None:
+            poolingKernelSize = list(np.ones(len(kernelSizes)))
+        
+        assert(self.numOfConvLayers == len(kernelSizes) == len(poolingKernelSize))
+
         for idL in range(self.numOfConvLayers):
 
-            convBlockOutputSize = customTorchTools.ComputeConvBlockOutputSize(outputMapSize, self.outChannelsSizes[idL], kernelSizes[idL], poolingKernelSize, 
+            convBlockOutputSize = customTorchTools.ComputeConvBlockOutputSize(outputMapSize, self.outChannelsSizes[idL], kernelSizes[idL], poolingKernelSize[idL], 
                                                                             convStrideSize=1, poolingStrideSize=1, 
                                                                             convPaddingSize=0, poolingPaddingSize=0)
             
