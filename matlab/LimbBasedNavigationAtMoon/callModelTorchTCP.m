@@ -4,7 +4,7 @@ function [dPredictedOutput] = callModelTorchTCP(i_strInputSamplesBatchStruct, ..
     i_ui32outputSize, ...
     commHandler)
 arguments
-    i_strInputSamplesBatchStruct (1,1) {isstruct}
+    i_strInputSamplesBatchStruct  {isstruct}
     i_ui32Nbatches               (1,1) uint32
     i_ui32InputSize              (1,1) uint32
     i_ui32outputSize             (1,1) uint32
