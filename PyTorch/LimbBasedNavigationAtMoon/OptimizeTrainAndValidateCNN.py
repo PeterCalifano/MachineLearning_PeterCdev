@@ -72,7 +72,7 @@ datasetSavePath = './datasets/HorizonExtractionEnhancer_deepNNv8_fullyParam'
 
 modelArchName = 'HorizonExtractionEnhancer_deepNNv8_fullyParam' 
 inputSize = 58 # TODO: update this according to new model
-numOfEpochs = 4
+numOfEpochs = 20
 
 EPOCH_START = 0
 
@@ -276,9 +276,10 @@ else:
 # Split the dataset
 #trainingData, validationData = torch.utils.data.random_split(dataset, [trainingSize, validationSize])
 # Define dataloaders objects
-trainingDataset   = DataLoader(datasetTraining, batch_size, shuffle=True, num_workers=2, pin_memory=True)
-validationDataset = DataLoader(datasetValidation, batch_size, shuffle=True, num_workers=2, pin_memory=True)
-dataloaderIndex = {'TrainingDataLoader' : trainingDataset, 'ValidationDataLoader': validationDataset}
+
+#trainingDataset   = DataLoader(datasetTraining, batch_size, shuffle=True, num_workers=2, pin_memory=True)
+#validationDataset = DataLoader(datasetValidation, batch_size, shuffle=True, num_workers=2, pin_memory=True)
+
 # LOSS FUNCTION DEFINITION
 if LOSS_TYPE == 0:
     lossFcn = customTorchTools.CustomLossFcn(limbPixelExtraction_CNN_NN.MoonLimbPixConvEnhancer_LossFcn, params)
@@ -296,6 +297,7 @@ elif LOSS_TYPE == 4:
 else:
     raise ValueError('Loss function ID not found.')
 
+# %% OPTUNA OBJECTIVE FUNCTION DEFINITION
 def objective(trial):
 
     device = customTorchTools.GetDevice()
@@ -321,7 +323,7 @@ def objective(trial):
         outChannelsSizes = []
 
         if FULLY_PARAMETRIC:
-            num_layers = trial.suggest_int('num_layers', 2, 25)
+            num_layers = trial.suggest_int('num_layers', 4, 25)
             maxNodes = 4096
             modelClass = ModelClasses.HorizonExtractionEnhancer_deepNNv8_fullyParametric
         else:
@@ -330,8 +332,15 @@ def objective(trial):
             modelClass = ModelClasses.HorizonExtractionEnhancer_deepNNv8
 
 
+        # Batch size definition
+        batch_size = trial.suggest_int('batch_size', 32, 256)
+        trainingDataset   = DataLoader(datasetTraining, batch_size, shuffle=True, num_workers=2, pin_memory=True)
+        validationDataset = DataLoader(datasetValidation, batch_size, shuffle=True, num_workers=2, pin_memory=True)
+
+        dataloaderIndex = {'TrainingDataLoader' : trainingDataset, 'ValidationDataLoader': validationDataset}
+
         for i in range(num_layers):
-            outChannelsSizes.append(trial.suggest_int(f'DenseL{i}', 32, maxNodes))
+            outChannelsSizes.append(trial.suggest_int(f'DenseL{i}', 16, maxNodes))
             mlflow.log_param(f'DenseL{i}', outChannelsSizes[-1])
 
         parametersConfig = {'useBatchNorm': True, 'alphaDropCoeff': 0.1, 'LinearInputSize': 58, 
@@ -345,10 +354,10 @@ def objective(trial):
         mlflow.log_params(options)
 
         # Define optimizer object specifying model instance parameters and optimizer parameters
-        initialLearnRate = trial.suggest_float('lr', 1e-8, 1e-3, log=True) # NOTE: What are the inputs to suggest_float?
+        initialLearnRate = trial.suggest_float('lr', 1e-8, 1e-2, log=True) # NOTE: What are the inputs to suggest_float?
 
         optimizer = torch.optim.Adam(model.parameters(), lr=initialLearnRate, betas=(0.9, 0.999), 
-                                    eps=1e-08, weight_decay=1E-6, amsgrad=False, foreach=None, fused=True)
+                                    eps=1e-08, amsgrad=False, foreach=None, fused=True)
     
         for param_group in optimizer.param_groups:
             param_group['initial_lr'] = param_group['lr']
@@ -360,18 +369,22 @@ def objective(trial):
         
         if USE_LR_SCHEDULING:
             #optimizer = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=2, threshold=0.01, threshold_mode='rel', cooldown=1, min_lr=1E-12, eps=1e-08)
-            lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=exponentialDecayGamma, last_epoch=options['epochStart']-1)
+            #lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=exponentialDecayGamma, last_epoch=options['epochStart']-1)
+            lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=2, T_mult=2, eta_min=1e-9, last_epoch=options['epochStart']-1)
+
             options['lr_scheduler'] = lr_scheduler
     
         # Log model parameters
         mlflow.log_param('optimizer ID', 1)
         mlflow.log_param('learning_rate', initialLearnRate)
         mlflow.log_param('ExponentialDecayGamma', exponentialDecayGamma)
-    
-        # %% TRAIN and VALIDATE MODEL
-        (trainedModel, trainingLosses, validationLosses, inputSample) = customTorchTools.TrainAndValidateModel(dataloaderIndex, model, lossFcn, optimizer, options)
 
-        return validationLosses[-1] # Return last validation loss value
+        numOfParameters = customTorchTools.getNumOfTrainParams(model)
+        mlflow.log_param('NumOfTrainParams', numOfParameters)
+        # %% TRAIN and VALIDATE MODEL
+        (bestTrainedModelData, trainingLosses, validationLosses, inputSample) = customTorchTools.TrainAndValidateModel(dataloaderIndex, model, lossFcn, optimizer, options)
+
+        return bestTrainedModelData['validationLoss'] # Return last validation loss value
 
 
 # %% MAIN SCRIPT
@@ -423,7 +436,7 @@ if __name__ == '__main__':
                                                                                                min_early_stopping_rate=0))
 
             # %% Optuna optimization
-            optunaStudyObj.optimize(objective, n_trials=500, timeout=7*3600)
+            optunaStudyObj.optimize(objective, n_trials=1000, timeout=26*3600)
 
             # Print the best trial
             print('Number of finished trials:', len(optunaStudyObj.trials)) # Get number of finished trials
