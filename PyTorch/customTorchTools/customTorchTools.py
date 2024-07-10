@@ -17,7 +17,7 @@ from torchvision import datasets # Import vision default datasets from torchvisi
 from torchvision.transforms import ToTensor # Utils
 import datetime
 import numpy as np
-import sys, os, signal
+import sys, os, signal, copy
 import subprocess
 import psutil
 import inspect
@@ -54,6 +54,8 @@ def TrainModel(dataloader:DataLoader, model:nn.Module, lossFcn:nn.Module,
     batchValueForPrint = np.floor(len(dataloader)/100)
     numOfUpdates = 0
 
+    print('Starting training loop using learning rate: {:.11f}'.format(optimizer.param_groups[0]['lr']))
+
     for batchCounter, (X, Y) in enumerate(dataloader): # Recall that enumerate gives directly both ID and value in iterable object
 
         # Get input and labels and move to target device memory
@@ -61,7 +63,17 @@ def TrainModel(dataloader:DataLoader, model:nn.Module, lossFcn:nn.Module,
 
         # Perform FORWARD PASS to get predictions
         predVal = model(X) # Evaluate model at input
-        trainLoss = lossFcn(predVal, Y) # Evaluate loss function to get loss value (this returns loss function instance, not a value)
+        trainLossOut = lossFcn(predVal, Y) # Evaluate loss function to get loss value (this returns loss function instance, not a value)
+
+        if isinstance(trainLossOut, dict):
+            trainLoss = trainLossOut.get('lossValue')
+            keys = [key for key in trainLossOut.keys() if key != 'lossValue']
+            # Log metrics to MLFlow after converting dictionary entries to float
+            mlflow.log_metrics(  {key: value.item() if isinstance(value, torch.Tensor) else value for key, value in trainLossOut.items()}, step=numOfUpdates)
+                
+        else:
+            trainLoss = trainLossOut
+            keys = []
 
         # Perform BACKWARD PASS to update parameters
         trainLoss.backward()  # Compute gradients
@@ -73,13 +85,13 @@ def TrainModel(dataloader:DataLoader, model:nn.Module, lossFcn:nn.Module,
         if batchCounter % batchValueForPrint == 0: # Print loss value 
             trainLoss, currentStep = trainLoss.item(), (batchCounter + 1) * len(X)
             print(f"Training loss value: {trainLoss:>7f}  [{currentStep:>5d}/{size:>5d}]")
-    
-    # Update learning rate if scheduler is provided
+            if keys != []:
+                print("\t",", ".join([f"{key}: {trainLossOut[key]:.4f}" for key in keys]))    # Update learning rate if scheduler is provided
+
     if lr_scheduler is not None:
-        prev_lr = lr_scheduler.get_last_lr()
         lr_scheduler.step()
         print('\n')
-        print('Learning rate modified from: ', prev_lr, ' to: ', lr_scheduler.get_last_lr())
+        print('Learning rate modified to: ', lr_scheduler.get_last_lr())
         print('\n')
 
     return trainLoss, numOfUpdates
@@ -88,9 +100,9 @@ def TrainModel(dataloader:DataLoader, model:nn.Module, lossFcn:nn.Module,
 # Updated by PC 04-06-2024
 
 def ValidateModel(dataloader:DataLoader, model:nn.Module, lossFcn:nn.Module, device=GetDevice(), taskType:str='classification'):
-    # Auxiliary variables
+    
+    # Get size of dataset (How many samples are in the dataset)
     size = len(dataloader.dataset) 
-    numberOfBatches = len(dataloader)
 
     model.eval() # Set the model in evaluation mode
     validationLoss = 0 # Accumulation variables
@@ -109,17 +121,46 @@ def ValidateModel(dataloader:DataLoader, model:nn.Module, lossFcn:nn.Module, dev
 
     with torch.no_grad(): # Tell torch that gradients are not required
         # TODO: try to modify function to perform one single forward pass for the entire dataset
+
+        # Backup the original batch size
+        original_dataloader =  dataloader
+        original_batch_size = dataloader.batch_size
+        
+        # Temporarily initialize a new dataloader for validation
+        allocMem = torch.cuda.memory_allocated(0)
+        freeMem = torch.cuda.get_device_properties(0).total_memory - torch.cuda.memory_reserved(0) - torch.cuda.memory_allocated(0)
+        estimated_memory_per_sample = allocMem / original_batch_size
+        newBathSizeTmp = round(0.5 * freeMem / estimated_memory_per_sample)
+
+        dataloader = DataLoader(dataloader.dataset, batch_size=newBathSizeTmp, shuffle=False, drop_last=False)
+        lossTerms = {}
+        numberOfBatches = len(dataloader)
+
         for X,Y in dataloader:
             # Get input and labels and move to target device memory
             X, Y = X.to(device), Y.to(device)  
 
             # Perform FORWARD PASS
             predVal = model(X) # Evaluate model at input
-            tmpLossVal = lossFcn(predVal, Y).item() # Evaluate loss function and accumulate
-            validationLoss += tmpLossVal
+            tmpLossVal = lossFcn(predVal, Y) # Evaluate loss function and accumulate
 
-            if maxBatchLoss < tmpLossVal:
-                maxBatchLoss = tmpLossVal
+            if isinstance(tmpLossVal, dict):
+                tmpVal = tmpLossVal.get('lossValue').item()
+
+                validationLoss += tmpVal
+                if maxBatchLoss < tmpVal:
+                    maxBatchLoss = tmpVal
+
+                keys = [key for key in tmpLossVal.keys() if key != 'lossValue']
+                # Sum all loss terms for each batch if present in dictionary output
+                for key in keys:
+                    lossTerms[key] = lossTerms.get(key, 0) + tmpLossVal[key].item()
+            else:
+
+                validationLoss += tmpLossVal.item()
+                if maxBatchLoss < tmpLossVal.item():
+                    maxBatchLoss = tmpLossVal.item()
+
 
             if taskType.lower() == 'classification': 
                 # Determine if prediction is correct and accumulate
@@ -133,27 +174,31 @@ def ValidateModel(dataloader:DataLoader, model:nn.Module, lossFcn:nn.Module, dev
             #    print('TODO')
             #predVal = model(dataX) # Evaluate model at input
             #validationLoss += lossFcn(predVal, dataY).item() # Evaluate loss function and accumulate
+    
+    # Log additional metrics to MLFlow if any
+    if lossTerms != {}:
+        lossTerms = {key: (value / numberOfBatches) for key, value in lossTerms.items()}
+        mlflow.log_metrics(lossTerms, step=0)
+
+    # Restore the original batch size
+    dataloader = original_dataloader
 
     # EXPERIMENTAL: Try to perform one single forward pass for the entire dataset (MEMORY BOUND)
-    with torch.no_grad():
-        TENSOR_VALIDATION_EVAL = False
-
-        if TENSOR_VALIDATION_EVAL:
-            dataX = []
-            dataY = []
-
-        # NOTE: the memory issue is in transforming the list into a torch tensor on the GPU. For some reasons
-        # the tensor would require 81 GBits of memory.
-            for X, Y in dataloader:
-                dataX.append(X)
-                dataY.append(Y)
-
-            # Concatenate all data in a single tensor
-            dataX = torch.cat(dataX, dim=0).to(device)
-            dataY = torch.cat(dataY, dim=0).to(device)
-
-            predVal_dataset = model(dataX) # Evaluate model at input
-            validationLoss_dataset = lossFcn(predVal_dataset, dataY).item() # Evaluate loss function and accumulate
+    #with torch.no_grad():
+    #    TENSOR_VALIDATION_EVAL = False
+    #    if TENSOR_VALIDATION_EVAL:
+    #        dataX = []
+    #        dataY = []
+    #    # NOTE: the memory issue is in transforming the list into a torch tensor on the GPU. For some reasons
+    #    # the tensor would require 81 GBits of memory.
+    #        for X, Y in dataloader:
+    #            dataX.append(X)
+    #            dataY.append(Y)
+    #        # Concatenate all data in a single tensor
+    #        dataX = torch.cat(dataX, dim=0).to(device)
+    #        dataY = torch.cat(dataY, dim=0).to(device)
+    #        predVal_dataset = model(dataX) # Evaluate model at input
+    #        validationLoss_dataset = lossFcn(predVal_dataset, dataY).item() # Evaluate loss function and accumulate
 
 
     if taskType.lower() == 'classification': 
@@ -164,6 +209,10 @@ def ValidateModel(dataloader:DataLoader, model:nn.Module, lossFcn:nn.Module, dev
     elif taskType.lower() == 'regression':
         #print('TODO')
         correctOuputs = None
+
+        if isinstance(tmpLossVal, dict):
+            keys = [key for key in tmpLossVal.keys() if key != 'lossValue']
+        
         validationLoss /= numberOfBatches
         print(f"\n VALIDATION (Regression) Avg loss: {validationLoss:>0.5f}, Max batch loss: {maxBatchLoss:>0.5f}\n")
         #print(f"Validation (Regression): \n Avg absolute accuracy: {avgAbsAccuracy:>0.1f}, Avg relative accuracy: {(100*avgRelAccuracy):>0.1f}%, Avg loss: {validationLoss:>8f} \n")
@@ -180,27 +229,35 @@ def ValidateModel(dataloader:DataLoader, model:nn.Module, lossFcn:nn.Module, dev
 
 class CustomLossFcn(nn.Module):
     '''Custom loss function based class, instantiated by specifiying a loss function (callable object) and optionally, a dictionary containing parameters required for the evaluation'''
-    def __init__(self, EvalLossFcn:callable, paramsTrain:dict = None, paramsEval:dict = None) -> None:
+    
+    def __init__(self, EvalLossFcn:callable, lossParams:dict = None) -> None:
         '''Constructor for CustomLossFcn class'''
         super(CustomLossFcn, self).__init__() # Call constructor of nn.Module
+        
         if len((inspect.signature(EvalLossFcn)).parameters) >= 2:
             self.LossFcnObj = EvalLossFcn
         else: 
             raise ValueError('Custom EvalLossFcn must take at least two inputs: inputVector, labelVector')    
 
         # Store loss function parameters dictionary
-        self.paramsTrain = paramsTrain 
+        self.lossParams = lossParams 
 
-        if paramsEval == None:
-            # Assign training parameters to evaluation parameters if not specified
-            self.paramsEval = self.paramsTrain 
+    #def setTrainingMode(self):
+    #    self.lossParams = lossParams 
+        
+    #def setEvalMode(self):
 
     def forward(self, predictVector, labelVector):
         ''''Forward pass method to evaluate loss function on input and label vectors using EvalLossFcn'''
-        lossBatch = self.LossFcnObj(predictVector, labelVector, self.paramsTrain, self.paramsEval)
+        lossBatch = self.LossFcnObj(predictVector, labelVector, self.lossParams)
 
-        assert(lossBatch.dim() == 0)
-
+        if isinstance(lossBatch, torch.Tensor):
+            assert(lossBatch.dim() == 0)
+        elif isinstance(lossBatch, dict):
+            assert(lossBatch.get('lossValue').dim() == 0)
+        else:
+            raise ValueError('EvalLossFcn must return a scalar loss value (torch tensor) or a dictionary with a "lossValue" key')
+        
         return lossBatch
    
 
@@ -472,10 +529,9 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
     lossLogName         = options['lossLogName']
     epochStart          = options['epochStart']
 
-    if 'lr_scheduler' in options.keys():
-        lr_scheduler = options['lr_scheduler']
-    else:
-        lr_scheduler = None        
+
+    lr_scheduler = options.get('lr_scheduler', None)
+      
     
     #if 'enableAddImageToTensorboard' in options.keys():
     #    ADD_IMAGE_TO_TENSORBOARD = options['enableAddImageToTensorboard']
@@ -531,6 +587,9 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
     validationLossHistory = np.zeros(numOfEpochs)
 
     numOfUpdates = 0
+    prevBestValidationLoss = 1E10
+    bestModel = copy.deepcopy(model).to('cpu')  # Deep copy the initial state of the model and move it to the CPU
+    bestEpoch = epochStart
 
     for epochID in range(numOfEpochs):
 
@@ -543,6 +602,14 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
 
         # Do validation over all batches
         validationLossHistory[epochID] = ValidateModel(validationDataset, model, lossFcn, device, taskType) 
+
+        # If validation loss is better than previous best, update best model
+        if validationLossHistory[epochID] < prevBestValidationLoss:
+            bestModel = copy.deepcopy(model).to('cpu') # Replace best model with current model 
+            bestEpoch = epochID + epochStart
+            prevBestValidationLoss = validationLossHistory[epochID]
+
+        print(f"\n\nCurrent best model found at epoch: {bestEpoch} with validation loss: {prevBestValidationLoss}")
 
         # Update Tensorboard if enabled
         #if enableTensorBoard:       
@@ -574,15 +641,17 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
 
         for id in range(examplePrediction.shape[0]):
             print('\tPrediction: ', examplePrediction[id, :].tolist(), ' --> Loss: ',exampleLosses[id].tolist())
-            imgTag = 'RandomSampleImg_' + str(id) + '_Epoch' + str(torch.round(exampleLosses[id], decimals=3))
+            #imgTag = 'RandomSampleImg_' + str(id) + '_Epoch' + str(torch.round(exampleLosses[id], decimals=3))
 
             # DEBUG: Add image to tensorboard
             #if ADD_IMAGE_TO_TENSORBOARD:
             #    tensorBoardWriter.add_image(imgTag, (inputSampleList[id][0:49]).reshape(7, 7).T, global_step=epochID, dataformats='HW')
 
-        #tensorBoardWriter.flush() # Force tensorboard to write data to disk
+    bestModelData = {'model': bestModel, 'epoch': bestEpoch, 'validationLoss': prevBestValidationLoss}
 
-    return model, trainLossHistory, validationLossHistory, inputSampleList
+        #tensorBoardWriter.flush() # Force tensorboard to write data to disk
+    # Print best model and epoch
+    return bestModelData, trainLossHistory, validationLossHistory, inputSampleList
 
 # %% Model evaluation function on a random number of samples from dataset - 06-06-2024
 # Possible way to solve the issue of having different cost function terms for training and validation --> add setTrain and setEval methods to switch between the two
@@ -620,8 +689,13 @@ def EvaluateModel(dataloader:DataLoader, model:nn.Module, lossFcn: nn.Module, de
                 labelSample = Y[id,:].reshape(1, -1)
 
                 # Evaluate loss function
-                exampleLosses[id] = lossFcn(examplePredictionList[id].to(device), labelSample.to(device)).item()
+                outLossVar = lossFcn(examplePredictionList[id].to(device), labelSample.to(device))
 
+                if isinstance(outLossVar, dict):
+                    exampleLosses[id] = outLossVar.get('lossValue').item()
+                else:
+                    exampleLosses[id] = outLossVar.item()
+                    
         else:
             # Perform FORWARD PASS # NOTE: NOT TESTED
             X = inputSample
@@ -635,8 +709,13 @@ def EvaluateModel(dataloader:DataLoader, model:nn.Module, lossFcn: nn.Module, de
                 labelSample = Y[id,:].reshape(1, -1)
 
                 # Evaluate loss function
-                exampleLosses[id] = lossFcn(examplePredictionList[id].to(device), labelSample.to(device)).item()
+                outLossVar = lossFcn(examplePredictionList[id].to(device), labelSample.to(device))
 
+                if isinstance(outLossVar, dict):
+                    exampleLosses[id] = outLossVar.get('lossValue').item()
+                else:
+                    exampleLosses[id] = outLossVar.item()
+                
         return examplePredictions, exampleLosses, X.to(device)
 
                 
@@ -797,7 +876,10 @@ class TorchModel_MATLABwrap():
 
         return Y.detach().cpu().numpy() # Move to cpu and convert to numpy
     
-        
+# %% Function to get the number of trainable parameters in a model - 11-06-2024
+def getNumOfTrainParams(model):
+    return sum(p.numel() for p in model.parameters() if p.requires_grad)
+
 
 # %% Training and validation manager class - 22-06-2024 (WIP)
 # TODO: Features to include: 
