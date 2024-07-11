@@ -31,10 +31,10 @@ import torch.optim as optim
 USE_MULTIPROCESS = False
 USE_NORMALIZED_IMG = True
 USE_LR_SCHEDULING = True
-TRAIN_ALL = True
+#TRAIN_ALL = True
 REGEN_DATASET = False
 USE_TENSOR_LOSS_EVAL = True
-MODEL_CLASS_ID = 4
+#MODEL_CLASS_ID = 4
 MANUAL_RUN = True # Uses MODEL_CLASS_ID to run a specific model
 LOSS_TYPE = 4 # 0: Conic + L2, # 1: Conic + L2 + Quadratic OutOfPatch, # 2: Normalized Conic + L2 + OutOfPatch,            
             # 3: Polar-n-direction distance + OutOfPatch, #4: MSE + OutOfPatch + ConicLoss
@@ -43,7 +43,7 @@ USE_BATCH_NORM = True
 FULLY_PARAMETRIC = True
 
 # SETTINGS and PARAMETERS 
-batch_size = 16*4 # Defines batch size in dataset
+batch_size = 256 # Defines batch size in dataset
 #outChannelsSizes = [16, 32, 75, 15] 
     
 #outChannelsSizes = [2056, 1024, 512, 512, 128, 64]
@@ -72,7 +72,7 @@ datasetSavePath = './datasets/HorizonExtractionEnhancer_deepNNv8_fullyParam'
 
 modelArchName = 'HorizonExtractionEnhancer_deepNNv8_fullyParam' 
 inputSize = 58 # TODO: update this according to new model
-numOfEpochs = 20
+numOfEpochs = 6
 
 EPOCH_START = 0
 
@@ -106,13 +106,15 @@ dirNamesRoot = [stringVal for stringVal, _ in dirNamesRootTuples]
 assert(len(dirNamesRoot) >= 2)
 
 # Select one of the available datapairs folders (each corresponding to a labels generation pipeline output)
-datasetID = [6, 7] # TRAINING and VALIDATION datasets ID in folder (in this order)
+datasetID = [9, 10] # TRAINING and VALIDATION datasets ID in folder (in this order)
 
 
 assert(len(datasetID) == 2)
+TrainingDatasetTag = 'ID_010_Datapairs_20240710_07_36'
+ValidationDatasetTag = 'ID_013_Datapairs_20240709_10_18'
 
-TrainingDatasetTag = 'ID_006_Datapairs_TrainingSet_20240705'
-ValidationDatasetTag = 'ID_007_Datapairs_ValidationSet_20240705'
+#TrainingDatasetTag = 'ID_006_Datapairs_TrainingSet_20240705'
+#ValidationDatasetTag = 'ID_007_Datapairs_ValidationSet_20240705'
 
 datasetNotFound = not(os.path.isfile(os.path.join(datasetSavePath, 'TrainingDataset_'+TrainingDatasetTag+'.pt'))) or not((os.path.isfile(os.path.join(datasetSavePath, 'ValidationDataset_'+ValidationDatasetTag+'.pt'))))
 
@@ -303,6 +305,7 @@ else:
     raise ValueError('Loss function ID not found.')
 
 # %% OPTUNA OBJECTIVE FUNCTION DEFINITION
+# TODO: optuna study saves all the optimization parameters it uses in "trial"! --> Make logging automatic using the trial object
 def objective(trial):
 
     device = customTorchTools.GetDevice()
@@ -329,7 +332,7 @@ def objective(trial):
 
         if FULLY_PARAMETRIC:
             num_layers = trial.suggest_int('num_layers', 4, 25)
-            maxNodes = 4096
+            maxNodes = 2048
             modelClass = ModelClasses.HorizonExtractionEnhancer_deepNNv8_fullyParametric
         else:
             num_layers = 6
@@ -338,7 +341,9 @@ def objective(trial):
 
 
         # Batch size definition
-        batch_size = trial.suggest_int('batch_size', 32, 256)
+        batch_size = trial.suggest_int('batch_size', 32, 1024, log=True)
+        mlflow.log_param('batch_size', batch_size)
+
         trainingDataset   = DataLoader(datasetTraining, batch_size, shuffle=True, num_workers=2, pin_memory=True)
         validationDataset = DataLoader(datasetValidation, batch_size, shuffle=True, num_workers=2, pin_memory=True)
 
@@ -348,7 +353,7 @@ def objective(trial):
             outChannelsSizes.append(trial.suggest_int(f'DenseL{i}', 16, maxNodes))
             mlflow.log_param(f'DenseL{i}', outChannelsSizes[-1])
 
-        parametersConfig = {'useBatchNorm': True, 'alphaDropCoeff': 0.1, 'LinearInputSize': 58, 
+        parametersConfig = {'useBatchNorm': True, 'alphaDropCoeff': 0.05, 'LinearInputSize': 58, 
                     'outChannelsSizes': outChannelsSizes}
         
 
@@ -394,67 +399,41 @@ def objective(trial):
 
 # %% MAIN SCRIPT
 if __name__ == '__main__':
+    print('\n\n----------------------------------- RUNNING: OptimizeTrainAndValidateNeuralNetworks.py -----------------------------------\n')
     
     # Set mlflow experiment
-    #mlflow.set_experiment("HorizonEnhancerCNN_OptimizationRuns")
-    #mlflow.set_experiment("HorizonEnhancerCNN_OptimizationRuns_TrainValidOnRandomCloud")
+
     mlflow.set_experiment("HorizonEnhancerCNN_OptunaRuns_deepNNv8_fullyParametric")
-    # Stop any running tensorboard session before starting a new one
-    customTorchTools.KillTensorboard()
 
-    # Setup multiprocessing for training the two models in parallel
-    if USE_MULTIPROCESS == True:
 
-        # Use the "spawn" start method (REQUIRED by CUDA)
-        multiprocessing.set_start_method('spawn')
-        #process1 = multiprocessing.Process(target=main, args=(10,1, 4))
-        #process2 = multiprocessing.Process(target=main, args=(10,1, 4))
+    idLossType = LOSS_TYPE
+    RUN_OPTUNA_STUDY = True
 
-        # Start the processes
-        #process1.start()
-        #process2.start()
+    if RUN_OPTUNA_STUDY:
+        # %% Optuna study configuration
+        if not(os.path.exists('optuna_db')):
+            os.makedir('optuna_db')
 
-        # Wait for both processes to finish
-        #process1.join()
-        #process2.join()
+        studyName = os.path.join('optuna_db','HorizonEnhancerCNN_HyperOptimization_deepNNv8_fullyParametric_RandomCloud')
+        optunaStudyObj = optuna.create_study(study_name=studyName,
+                                             storage='sqlite:///{studyName}.db'.format(studyName=studyName),
+                                             load_if_exists=True,
+                                             direction='minimize',
+                                             pruner=optuna.pruners.SuccessiveHalvingPruner(min_resource=1, reduction_factor=2, 
+                                                                                           min_early_stopping_rate=1))
 
-        print("Training complete for both network classes. Check the logs for more information.")
-    elif USE_MULTIPROCESS == False and MANUAL_RUN == False:
-        
-        modelClassesToTrain = [0, 1, 2, 3]
-        idLossType = 4
-        idRun = 0
+        # %% Optuna optimization
+        optunaStudyObj.optimize(objective, n_trials=10, timeout=6*3600)
 
-        for idModelClass in modelClassesToTrain:
-            print('\n\n----------------------------------- RUNNING: TrainAndValidateCNN.py -----------------------------------\n')
-            print("MAIN script operations: load dataset --> split dataset --> define dataloaders --> define model --> define loss function --> train and validate model --> export trained model\n")
-            #main(idRun, idModelClass, idLossType)
-    
-    else:
-        idLossType = LOSS_TYPE
-        RUN_OPTUNA_STUDY = True
+        # Print the best trial
+        print('Number of finished trials:', len(optunaStudyObj.trials)) # Get number of finished trials
+        print('Best trial:')
 
-        if RUN_OPTUNA_STUDY:
-            # %% Optuna study configuration
-            optunaStudyObj = optuna.create_study(study_name='HorizonEnhancerCNN_HyperOptimization_deepNNv8_fullyParametric', direction='minimize',
-                                                 pruner=optuna.pruners.SuccessiveHalvingPruner(min_resource=1, reduction_factor=4, 
-                                                                                               min_early_stopping_rate=0))
+        trial = optunaStudyObj.best_trial # Get the best trial from study object
+        print('  Value: {:.4f}'.format(trial.value)) # Loss function value for the best trial
 
-            # %% Optuna optimization
-            optunaStudyObj.optimize(objective, n_trials=1000, timeout=26*3600)
-
-            # Print the best trial
-            print('Number of finished trials:', len(optunaStudyObj.trials)) # Get number of finished trials
-            print('Best trial:')
-
-            trial = optunaStudyObj.best_trial # Get the best trial from study object
-            print('  Value: {:.4f}'.format(trial.value)) # Loss function value for the best trial
-
-            # Print parameters of the best trial
-            print('  Params: ')
-            for key, value in trial.params.items():
-                print('    {}: {}'.format(key, value))
+        # Print parameters of the best trial
+        print('  Params: ')
+        for key, value in trial.params.items():
+            print('    {}: {}'.format(key, value))
                 
-        else:
-            idRun = RUN_ID
-            #main(idRun, MODEL_CLASS_ID, idLossType)
