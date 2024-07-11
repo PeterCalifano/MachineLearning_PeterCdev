@@ -32,7 +32,7 @@ USE_MULTIPROCESS = False
 USE_NORMALIZED_IMG = True
 USE_LR_SCHEDULING = True
 TRAIN_ALL = True
-REGEN_DATASET = True
+REGEN_DATASET = False
 USE_TENSOR_LOSS_EVAL = True
 MODEL_CLASS_ID = 6
 MANUAL_RUN = True # Uses MODEL_CLASS_ID to run a specific model
@@ -44,7 +44,7 @@ USE_BATCH_NORM = True
 def main(idRun:int, idModelClass:int, idLossType:int):
 
     # SETTINGS and PARAMETERS 
-    batch_size = 256 # Defines batch size in dataset
+    batch_size = 64 # Defines batch size in dataset
     #outChannelsSizes = [16, 32, 75, 15] 
     
     if idModelClass < 2:
@@ -64,13 +64,13 @@ def main(idRun:int, idModelClass:int, idLossType:int):
 
     elif idModelClass == 6:
         kernelSizes = [1, 3, 3]
-        outChannelsSizes = [256, 256, 1024, 512, 256, 128, 32]
+        outChannelsSizes = [1024, 512, 512, 1024, 1024, 128, 64]
     else:
         raise ValueError('Model class ID not found.')
 
 
     #kernelSizes = [3, 3]
-    initialLearnRate = 5E-5
+    initialLearnRate = 5E-4
     momentumValue = 0.6
 
     #TODO: add log and printing of settings of optimizer for each epoch. Reduce the training loss value printings
@@ -176,8 +176,8 @@ def main(idRun:int, idModelClass:int, idLossType:int):
 
     elif idModelClass == 6:
         #runID = "{num:04d}".format(num=idRun)
-        modelSavePath = './checkpoints/HorizonExtractionEnhancer_CNNv7_randomCloud' 
-        datasetSavePath = './datasets/HorizonExtractionEnhancer_CNNv7_randomCloud'
+        modelSavePath = './checkpoints/HorizonExtractionEnhancer_CNNv7_randomCloudGuessInput' 
+        datasetSavePath = './datasets/HorizonExtractionEnhancer_CNNv7_randomCloudGuessInput'
         #tensorboardLogDir = './tensorboardLogs/tensorboardLog_ShortCNNv6maxDeeper_run'   + runID
         #tensorBoardPortNum = 6012
 
@@ -185,9 +185,9 @@ def main(idRun:int, idModelClass:int, idLossType:int):
                             'LinearInputSkipSize': 9,'outChannelsSizes': outChannelsSizes,
                             'kernelSizes': kernelSizes, 'poolkernelSizes': [1, 1, 2]}
 
-        modelArchName = 'HorizonExtractionEnhancer_CNNv7_randomCloud' 
+        modelArchName = 'HorizonExtractionEnhancer_CNNv7_randomCloudGuessInput' 
         inputSize = 58 
-        numOfEpochs = 20
+        numOfEpochs = 15
 
 
     EPOCH_START = 0
@@ -609,7 +609,7 @@ if __name__ == '__main__':
     
     # Set mlflow experiment
     #mlflow.set_experiment("HorizonEnhancerCNN_OptimizationRuns")
-    mlflow.set_experiment("HorizonEnhancerCNN_OptimizationRuns_TrainValidOnRandomCloud")
+    mlflow.set_experiment("HorizonEnhancerCNN_OptimizationRuns_TrainValidOnRandomCloudGuessInput")
     #mlflow.set_experiment("HorizonEnhancerCNN_Optimization_CNNv7_randomCloud")
     # Stop any running tensorboard session before starting a new one
     customTorchTools.KillTensorboard()

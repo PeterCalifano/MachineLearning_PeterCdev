@@ -8,19 +8,19 @@ Created by PeterC - 04-05-2024. Current version: v0.1 (30-06-2024)
 
 
 # Import modules
-import torch, mlflow
+import torch, mlflow, optuna
 from torch import nn
 from torch.utils.data import Dataset
 from torchvision.transforms import ToTensor
 from torch.utils.data import DataLoader # Utils for dataset management, storing pairs of (sample, label)
 from torchvision import datasets # Import vision default datasets from torchvision
 from torchvision.transforms import ToTensor # Utils
-import datetime
+
+from pytorch_lightning.callbacks import EarlyStopping  
+# import datetime
 import numpy as np
-import sys, os, signal, copy
-import subprocess
+import sys, os, signal, copy, inspect, subprocess
 import psutil
-import inspect
 import onnx
 from onnx import version_converter
 from typing import Union
@@ -51,7 +51,7 @@ def TrainModel(dataloader:DataLoader, model:nn.Module, lossFcn:nn.Module,
     size=len(dataloader.dataset) # Get size of dataloader dataset object
     model.train() # Set model instance in training mode ("informing" backend that the training is going to start)
 
-    batchValueForPrint = np.floor(len(dataloader)/100)
+    counterForPrint = np.round(len(dataloader)/75)
     numOfUpdates = 0
 
     print('Starting training loop using learning rate: {:.11f}'.format(optimizer.param_groups[0]['lr']))
@@ -82,7 +82,7 @@ def TrainModel(dataloader:DataLoader, model:nn.Module, lossFcn:nn.Module,
 
         numOfUpdates += 1
 
-        if batchCounter % batchValueForPrint == 0: # Print loss value 
+        if batchCounter % counterForPrint == 0: # Print loss value 
             trainLoss, currentStep = trainLoss.item(), (batchCounter + 1) * len(X)
             print(f"Training loss value: {trainLoss:>7f}  [{currentStep:>5d}/{size:>5d}]")
             if keys != []:
@@ -487,16 +487,7 @@ def LoadModelAtCheckpoint(model:nn.Module, modelSavePath:str='./checkpoints', mo
     
 
 # %% TRAINING and VALIDATION template function - 04-06-2024
-def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Module, optimizer, options:dict={'taskType': 'classification', 
-                                                                                                              'device': GetDevice(), 
-                                                                                                              'epochs': 10, 
-                                                                                                              'Tensorboard':True,
-                                                                                                              'saveCheckpoints':True,
-                                                                                                              'checkpointsOutDir': './checkpoints',      
-                                                                                                              'modelName': 'trainedModel',
-                                                                                                              'loadCheckpoint': False,
-                                                                                                              'lossLogName': 'Loss-value',
-                                                                                                              'epochStart': 0}):
+def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Module, optimizer, options:dict={}):
     # NOTE: is the default dictionary considered as "single" object or does python perform a merge of the fields?
 
     # TODO: For merging of options: https://stackoverflow.com/questions/38987/how-do-i-merge-two-dictionaries-in-a-single-expression-taking-union-of-dictiona
@@ -519,20 +510,20 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
 
 
     # Setup options from input dictionary
-    taskType            = options['taskType']
-    device              = options['device']
-    numOfEpochs         = options['epochs']
-    #enableTensorBoard   = options['Tensorboard']
-    enableSave          = options['saveCheckpoints']
-    checkpointDir       = options['checkpointsOutDir']
-    modelName           = options['modelName']
-    lossLogName         = options['lossLogName']
-    epochStart          = options['epochStart']
+    taskType            = options.get('taskType', 'regression') # NOTE: Classification is not well developed (July, 2024)
+    device              = options.get('device', GetDevice())
+    numOfEpochs         = options.get('epochs', 10)
+    enableSave          = options.get('saveCheckpoints', True)
+    checkpointDir       = options.get('checkpointsOutDir', './checkpoints')
+    modelName           = options.get('modelName', 'trainedModel')
+    lossLogName         = options.get('lossLogName', 'Loss_value') 
+    epochStart          = options.get('epochStart', 0)
 
+    lr_scheduler       = options.get('lr_scheduler', None)
+    # Default early stopping for regression: "minimize" direction
+    early_stopper = options.get('early_stopper', early_stopping=EarlyStopping(monitor="lossValue", patience=5, verbose=True, mode="min"))
+    early_stopper = options.get('early_stopper', None)
 
-    lr_scheduler = options.get('lr_scheduler', None)
-      
-    
     #if 'enableAddImageToTensorboard' in options.keys():
     #    ADD_IMAGE_TO_TENSORBOARD = options['enableAddImageToTensorboard']
     #else: 
@@ -570,6 +561,7 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
 
     # If training is being restarted, attempt to load model
     if options['loadCheckpoint'] == True:
+        raise NotImplementedError('Training restart from checkpoint REMOVED. Not updated with mlflow yet.')
         model = LoadModelAtCheckpoint(model, options['checkpointsInDir'], modelName, epochStart)
 
     # Move model to device if possible (check memory)
@@ -580,8 +572,6 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
         # Add check on error and error handling if memory insufficient for training on GPU:
         print('Attempt to load model in', device, 'failed due to error: ', repr(exception))
 
-
-    # Training and validation loop
     #input('\n-------- PRESS ENTER TO START TRAINING LOOP --------\n')
     trainLossHistory = np.zeros(numOfEpochs)
     validationLossHistory = np.zeros(numOfEpochs)
@@ -591,6 +581,7 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
     bestModel = copy.deepcopy(model).to('cpu')  # Deep copy the initial state of the model and move it to the CPU
     bestEpoch = epochStart
 
+    # TRAINING and VALIDATION LOOP
     for epochID in range(numOfEpochs):
 
         print(f"\n\t\t\tTRAINING EPOCH: {epochID + epochStart} of {epochStart + numOfEpochs-1}\n-------------------------------")
@@ -609,6 +600,9 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
             bestEpoch = epochID + epochStart
             prevBestValidationLoss = validationLossHistory[epochID]
 
+            bestModelData = {'model': bestModel, 'epoch': bestEpoch,
+                             'validationLoss': prevBestValidationLoss}
+            
         print(f"\n\nCurrent best model found at epoch: {bestEpoch} with validation loss: {prevBestValidationLoss}")
 
         # Update Tensorboard if enabled
@@ -640,18 +634,175 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
         print('\n  Random Sample predictions from validation dataset:\n')
 
         for id in range(examplePrediction.shape[0]):
-            print('\tPrediction: ', examplePrediction[id, :].tolist(), ' --> Loss: ',exampleLosses[id].tolist())
-            #imgTag = 'RandomSampleImg_' + str(id) + '_Epoch' + str(torch.round(exampleLosses[id], decimals=3))
+
+            formatted_predictions = ['{:.5f}'.format(num) for num in examplePrediction[id, :]]
+            formatted_loss = '{:.5f}'.format(exampleLosses[id])
+            print(f'\tPrediction: {formatted_predictions} --> Loss: {formatted_loss}')
+
+            # imgTag = 'RandomSampleImg_' + str(id) + '_Epoch' + str(torch.round(exampleLosses[id], decimals=3))
 
             # DEBUG: Add image to tensorboard
             #if ADD_IMAGE_TO_TENSORBOARD:
             #    tensorBoardWriter.add_image(imgTag, (inputSampleList[id][0:49]).reshape(7, 7).T, global_step=epochID, dataformats='HW')
-
-    bestModelData = {'model': bestModel, 'epoch': bestEpoch, 'validationLoss': prevBestValidationLoss}
-
         #tensorBoardWriter.flush() # Force tensorboard to write data to disk
-    # Print best model and epoch
+
+        # Perform step of Early stopping if enabled
+        if early_stopper is not None:
+            print('Early stopping NOT IMPLEMENTED. Skipping...')
+            #early_stopper.step(validationLossHistory[epochID])
+            #if early_stopper.early_stop:
+            #    mlflow.end_run(status='KILLED')
+            #    print('Early stopping triggered at epoch: {epochID}'.format(epochID=epochID))
+            #    break
+            #earlyStopping(validationLossHistory[epochID], model, bestModelData, options)
+
+    mlflow.end_run(status='FINISHED')
+
     return bestModelData, trainLossHistory, validationLossHistory, inputSampleList
+
+# %% New version of TrainAndValidateModel with MLFlow logging specifically design for Optuna studies - 11-07-2024
+def TrainAndValidateModelForOptunaOptim(trial, dataloaderIndex: dict, model: nn.Module, lossFcn: nn.Module, optimizer, options: dict = {}):
+
+    # NOTE: Classification is not well developed (July, 2024). Default is regression
+    taskType = options.get('taskType', 'regression')
+    device = options.get('device', GetDevice())
+    numOfEpochs = options.get('epochs', 10)
+    enableSave = options.get('saveCheckpoints', True)
+    checkpointDir = options.get('checkpointsOutDir', './checkpoints')
+    modelName = options.get('modelName', 'trainedModel')
+    lossLogName = options.get('lossLogName', 'Loss_value')
+    epochStart = options.get('epochStart', 0)
+
+    lr_scheduler = options.get('lr_scheduler', None)
+
+
+    # if 'enableAddImageToTensorboard' in options.keys():
+    #    ADD_IMAGE_TO_TENSORBOARD = options['enableAddImageToTensorboard']
+    # else:
+    #    ADD_IMAGE_TO_TENSORBOARD = True
+
+    # if ('tensorBoardPortNum' in options.keys()):
+    #    tensorBoardPortNum = options['tensorBoardPortNum']
+    # else:
+    #    tensorBoardPortNum = 6006
+
+    # Get Torch dataloaders
+    if ('TrainingDataLoader' in dataloaderIndex.keys() and 'ValidationDataLoader' in dataloaderIndex.keys()):
+        trainingDataset = dataloaderIndex['TrainingDataLoader']
+        validationDataset = dataloaderIndex['ValidationDataLoader']
+
+        if not (isinstance(trainingDataset, DataLoader)):
+            raise TypeError(
+                'Training dataloader is not of type "DataLoader". Check configuration.')
+        if not (isinstance(validationDataset, DataLoader)):
+            raise TypeError(
+                'Validation dataloader is not of type "DataLoader". Check configuration.')
+
+    else:
+        raise IndexError(
+            'Configuration error: either TrainingDataLoader or ValidationDataLoader is not a key of dataloaderIndex')
+
+    # Configure Tensorboard
+    # if 'logDirectory' in options.keys():
+    #    logDirectory = options['logDirectory']
+    # else:
+    #    currentTime = datetime.datetime.now()
+    #    formattedTimestamp = currentTime.strftime('%d-%m-%Y_%H-%M') # Format time stamp as day, month, year, hour and minute
+    #    logDirectory = './tensorboardLog_' + modelName + formattedTimestamp
+
+    # if not(os.path.isdir(logDirectory)):
+    #    os.mkdir(logDirectory)
+    # tensorBoardWriter = ConfigTensorboardSession(logDirectory, portNum=tensorBoardPortNum)
+
+    # If training is being restarted, attempt to load model
+    if options['loadCheckpoint'] == True:
+        raise NotImplementedError(
+            'Training restart from checkpoint REMOVED. Not updated with mlflow yet.')
+        model = LoadModelAtCheckpoint(model, options['checkpointsInDir'], modelName, epochStart)
+
+    # Move model to device if possible (check memory)
+    try:
+        print('Moving model to selected device:', device)
+        model = model.to(device)  # Create instance of model using device
+    except Exception as exception:
+        # Add check on error and error handling if memory insufficient for training on GPU:
+        print('Attempt to load model in', device,
+              'failed due to error: ', repr(exception))
+
+    # Training and validation loop
+    # input('\n-------- PRESS ENTER TO START TRAINING LOOP --------\n')
+    trainLossHistory = np.zeros(numOfEpochs)
+    validationLossHistory = np.zeros(numOfEpochs)
+
+    numOfUpdates = 0
+    prevBestValidationLoss = 1E10
+    # Deep copy the initial state of the model and move it to the CPU
+    bestModel = copy.deepcopy(model).to('cpu')
+    bestEpoch = epochStart
+
+    for epochID in range(numOfEpochs):
+
+        print(f"\n\t\t\tTRAINING EPOCH: {epochID + epochStart} of {epochStart + numOfEpochs-1}\n-------------------------------")
+        # Do training over all batches
+        trainLossHistory[epochID], numOfUpdatesForEpoch = TrainModel(trainingDataset, model, lossFcn, optimizer, device,
+                                                                     taskType, lr_scheduler)
+        numOfUpdates += numOfUpdatesForEpoch
+        print('Current total number of updates: ', numOfUpdates)
+
+        # Do validation over all batches
+        validationLossHistory[epochID] = ValidateModel(
+            validationDataset, model, lossFcn, device, taskType)
+
+        # If validation loss is better than previous best, update best model
+        if validationLossHistory[epochID] < prevBestValidationLoss:
+            # Replace best model with current model
+            bestModel = copy.deepcopy(model).to('cpu')
+            bestEpoch = epochID + epochStart
+            prevBestValidationLoss = validationLossHistory[epochID]
+
+            bestModelData = {'model': bestModel, 'epoch': bestEpoch,
+                     'validationLoss': prevBestValidationLoss}
+            
+        print(f"\n\nCurrent best model found at epoch: {bestEpoch} with validation loss: {prevBestValidationLoss}")
+
+        # Update Tensorboard if enabled
+        # if enableTensorBoard:
+        # tensorBoardWriter.add_scalar(lossLogName + "/train", trainLossHistory[epochID], epochID + epochStart)
+        # tensorBoardWriter.add_scalar(lossLogName + "/validation", validationLossHistory[epochID], epochID + epochStart)
+        # entriesTagDict = {'Training': trainLossHistory[epochID], 'Validation': validationLossHistory[epochID]}
+        # tensorBoardWriter.add_scalars(lossLogName, entriesTagDict, epochID)
+
+        mlflow.log_metric('Training loss - ' + lossLogName,
+                          trainLossHistory[epochID], step=epochID + epochStart)
+        mlflow.log_metric('Validation loss - ' + lossLogName,
+                          validationLossHistory[epochID], step=epochID + epochStart)
+
+        if enableSave:
+            # NOTE: models are all saved as traced models
+            if not (os.path.isdir(checkpointDir)):
+                os.mkdir(checkpointDir)
+
+            exampleInput = GetSamplesFromDataset(validationDataset, 1)[0][0].reshape(
+                1, -1)  # Get single input sample for model saving
+            modelSaveName = os.path.join(
+                checkpointDir, modelName + '_' + AddZerosPadding(epochID + epochStart, stringLength=4))
+            SaveTorchModel(model, modelSaveName, saveAsTraced=True,
+                           exampleInput=exampleInput, targetDevice=device)
+
+        # Optuna functionalities
+        trial.report(validationLossHistory[epochID], step=epochID) # Report validation loss to Optuna pruner
+        if trial.should_prune():
+            # End mlflow run and raise exception to prune trial
+            mlflow.end_run(status='KILLED')
+            raise optuna.TrialPruned()
+
+    mlflow.end_run(status='FINISHED')
+
+    # tensorBoardWriter.flush() # Force tensorboard to write data to disk
+    # Print best model and epoch
+    return bestModelData
+
+
 
 # %% Model evaluation function on a random number of samples from dataset - 06-06-2024
 # Possible way to solve the issue of having different cost function terms for training and validation --> add setTrain and setEval methods to switch between the two
