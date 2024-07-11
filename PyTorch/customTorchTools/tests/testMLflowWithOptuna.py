@@ -11,13 +11,34 @@ from torchvision import datasets, transforms
 import matplotlib.pyplot as plt
 
 # Import modules
-import sys, os, subprocess, time
+import sys, os, subprocess, time, logging
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+
 # Append paths of custom modules
 sys.path.append(os.path.join('/home/peterc/devDir/MachineLearning_PeterCdev/PyTorch/customTorchTools'))
 sys.path.append(os.path.join('/home/peterc/devDir/MachineLearning_PeterCdev/PyTorch/LimbBasedNavigationAtMoon'))
 
 import customTorchTools # Custom torch tools
 import numpy as np
+
+def StartMLflowUI(port:int=5000):
+
+    # Start MLflow UI
+    os.system('mlflow ui --port ' + str(port))
+    process = subprocess.Popen(['mlflow', 'ui', '--port ' + f'{port}', '&'], 
+                               stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    print(f'MLflow UI started with PID: {process.pid}, on port: {port}')
+    time.sleep(1) # Ensure the server has started
+    if process.poll() is None:
+        print('MLflow UI is running OK.')
+    else:
+        raise RuntimeError('MLflow UI failed to start. Run stopped.')
+
+    return process
 
 # %% Datasets loading (global)
 # Load CIFAR-10 dataset from torchvision
@@ -99,9 +120,28 @@ def objective(trial):
         optimizer = getattr(optim, optimizer_name)(model.parameters(), lr=lr)
         # NOTE: What is "getattr" function? It should be a pytorch function: likely a method of "model", TBC
     
-        # Loss function
+        # Loss function definition
         criterion = nn.CrossEntropyLoss()
 
+        # MLflow: log trial data
+        mlflow.log_param('optimizer', optimizer_name)
+        mlflow.log_param('learning_rate', lr)
+        mlflow.log_param('num_conv_layers',
+                         trial.params.get('num_conv_layers'))
+        # NOTE: integration with optuna --> parameters are got directly from the ith trial object under evaluation
+        mlflow.log_param('num_dense_layers',
+                         trial.params.get('num_dense_layers'))
+
+        for i in range(trial.params.get('num_conv_layers')):
+            mlflow.log_param(f'filters_{i}', trial.params.get(f'filters_{i}'))
+            mlflow.log_param(
+                f'kernel_size_{i}', trial.params.get(f'kernel_size_{i}'))
+
+        for i in range(trial.params.get('num_dense_layers')):
+            mlflow.log_param(f'units_{i}', trial.params.get(f'units_{i}'))
+            mlflow.log_param(
+                f'dropout_rate_{i}', trial.params.get(f'dropout_rate_{i}'))
+            
         # Training the current trial model
         for epoch in range(10):
             model.train()
@@ -118,72 +158,63 @@ def objective(trial):
                 loss.backward()
                 optimizer.step()
 
-        # Model validation
-        model.eval()
-        correct = 0
-        total = 0
-        with torch.no_grad():
-            for batch in test_loader:
-                inputs, targets = batch
-                inputs, targets = inputs.to(device), targets.to(device)
-                outputs = model(inputs)
-                _, predicted = torch.max(outputs.data, 1)
-                total += targets.size(0)
-                correct += (predicted == targets).sum().item()
+            # Model validation
+            model.eval()
+            correct = 0
+            total = 0
+            with torch.no_grad():
+                for batch in test_loader:
+                    inputs, targets = batch
+                    inputs, targets = inputs.to(device), targets.to(device)
+                    outputs = model(inputs)
+                    _, predicted = torch.max(outputs.data, 1)
+                    total += targets.size(0)
+                    correct += (predicted == targets).sum().item()
 
-        accuracy = correct / total
+            accuracy = correct / total
+            
+            # Log the accuracy of the model using mlflow
+            mlflow.log_metric('Accuracy value', accuracy, step=epoch)
 
+            trial.report(accuracy, epoch) # Report the accuracy of the model to optuna pruner
+
+            if trial.should_prune():
+                # Mark the run as killed in mlflow
+                mlflow.end_run(status='KILLED')
+                raise optuna.TrialPruned() # Raise an optuna exception to stop the trial due to pruning
+            
         # MLflow: log trial data (it will have a unique ID)
         # NOTE: this could be matched with the AutoBuilder configuration such that the parameters 
         # of config file are automatically logged by mlflow with their names
-
-        mlflow.log_param('optimizer', optimizer_name)
-        mlflow.log_param('learning_rate', lr)
-        mlflow.log_param('num_conv_layers', trial.params.get('num_conv_layers')) 
-        # NOTE: integration with optuna --> parameters are got directly from the ith trial object under evaluation
-        mlflow.log_param('num_dense_layers', trial.params.get('num_dense_layers'))
-
-        for i in range(trial.params.get('num_conv_layers')):
-            mlflow.log_param(f'filters_{i}', trial.params.get(f'filters_{i}'))
-            mlflow.log_param(f'kernel_size_{i}', trial.params.get(f'kernel_size_{i}'))
-
-        for i in range(trial.params.get('num_dense_layers')):
-            mlflow.log_param(f'units_{i}', trial.params.get(f'units_{i}'))
-            mlflow.log_param(f'dropout_rate_{i}', trial.params.get(f'dropout_rate_{i}'))
-
-        mlflow.log_metric('accuracy', accuracy)
+        mlflow.end_run(status='FINISHED')
 
         return accuracy
 
 
-def StartMLflowUI(port:int=5000):
-
-    # Start MLflow UI
-    os.system('mlflow ui --port ' + str(port))
-    process = subprocess.Popen(['mlflow', 'ui', '--port ' + f'{port}', '&'], 
-                               stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    print(f'MLflow UI started with PID: {process.pid}, on port: {port}')
-    time.sleep(1) # Ensure the server has started
-    if process.poll() is None:
-        print('MLflow UI is running OK.')
-    else:
-        raise RuntimeError('MLflow UI failed to start. Run stopped.')
-
-    return process
-
 def main():
-    print('TEST SCRIPT: MLflow and Optuna functionalities')
-
+    print('---------------------------- TEST SCRIPT: MLflow and Optuna functionalities ----------------------------\n')
     # %% MLflow tracking initialization
     port = 7000
     #StartMLflowUI(port) # Start MLflow UI
-    mlflow.set_experiment('CIFAR10_CNN_OptimizationExample') # Mlflow experiment name
 
     # %% Optuna study configuration
-    optunaStudyObj = optuna.create_study(study_name='CIFAR10_CNN_OptimizationExample', direction='maximize')
+    if not (os.path.exists('optuna_db')):
+        os.makedir('optuna_db')
+
+    studyName = 'CIFAR10_CNN_OptimizationExample'
+    optunaStudyObj = optuna.create_study(study_name=studyName,
+                                         storage='sqlite:///{studyName}.db'.format(studyName=os.path.join('optuna_db', studyName)),
+                                         load_if_exists=True,
+                                         direction='maximize',
+                                         sampler=optuna.samplers.TPESampler(),
+                                         pruner=optuna.pruners.SuccessiveHalvingPruner(min_resource=1, reduction_factor=2,
+                                                                                       min_early_stopping_rate=1))
+    
+    # Mlflow experiment name
+    mlflow.set_experiment(studyName)
 
     # %% Optuna optimization
-    optunaStudyObj.optimize(objective, n_trials=50, timeout=3600)
+    optunaStudyObj.optimize(objective, n_trials=100, timeout=1800)
     
     # Print the best trial
     print('Number of finished trials:', len(optunaStudyObj.trials)) # Get number of finished trials
@@ -198,7 +229,7 @@ def main():
         print('    {}: {}'.format(key, value))
         
 
-# %% Loss visualization Functions
+# %% Loss visualization Functions - PeterC - 06-07-2024
 
 # Example usage
 # Assuming you have a dataloader `data_loader` and loss function `loss_fn`, call the function:
