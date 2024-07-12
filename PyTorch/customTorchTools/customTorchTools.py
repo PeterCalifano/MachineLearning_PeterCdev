@@ -106,7 +106,9 @@ def ValidateModel(dataloader:DataLoader, model:nn.Module, lossFcn:nn.Module, dev
 
     model.eval() # Set the model in evaluation mode
     validationLoss = 0 # Accumulation variables
-    maxBatchLoss = 0
+    batchMaxLoss = 0
+
+    validationData =  {} # Dictionary to store validation data
 
     # Initialize variables based on task type
     if taskType.lower() == 'classification': 
@@ -148,8 +150,8 @@ def ValidateModel(dataloader:DataLoader, model:nn.Module, lossFcn:nn.Module, dev
                 tmpVal = tmpLossVal.get('lossValue').item()
 
                 validationLoss += tmpVal
-                if maxBatchLoss < tmpVal:
-                    maxBatchLoss = tmpVal
+                if batchMaxLoss < tmpVal:
+                    batchMaxLoss = tmpVal
 
                 keys = [key for key in tmpLossVal.keys() if key != 'lossValue']
                 # Sum all loss terms for each batch if present in dictionary output
@@ -158,9 +160,10 @@ def ValidateModel(dataloader:DataLoader, model:nn.Module, lossFcn:nn.Module, dev
             else:
 
                 validationLoss += tmpLossVal.item()
-                if maxBatchLoss < tmpLossVal.item():
-                    maxBatchLoss = tmpLossVal.item()
+                if batchMaxLoss < tmpLossVal.item():
+                    batchMaxLoss = tmpLossVal.item()
 
+            validationData['WorstLossAcrossBatches'] = batchMaxLoss
 
             if taskType.lower() == 'classification': 
                 # Determine if prediction is correct and accumulate
@@ -214,13 +217,13 @@ def ValidateModel(dataloader:DataLoader, model:nn.Module, lossFcn:nn.Module, dev
             keys = [key for key in tmpLossVal.keys() if key != 'lossValue']
         
         validationLoss /= numberOfBatches
-        print(f"\n VALIDATION (Regression) Avg loss: {validationLoss:>0.5f}, Max batch loss: {maxBatchLoss:>0.5f}\n")
+        print(f"\n VALIDATION (Regression) Avg loss: {validationLoss:>0.5f}, Max batch loss: {batchMaxLoss:>0.5f}\n")
         #print(f"Validation (Regression): \n Avg absolute accuracy: {avgAbsAccuracy:>0.1f}, Avg relative accuracy: {(100*avgRelAccuracy):>0.1f}%, Avg loss: {validationLoss:>8f} \n")
 
     elif taskType.lower() == 'custom':
         print('TODO')
 
-    return validationLoss#, correctOuputs
+    return validationLoss, validationData
     # TODO: add command for Tensorboard here
 
 
@@ -521,7 +524,7 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
 
     lr_scheduler       = options.get('lr_scheduler', None)
     # Default early stopping for regression: "minimize" direction
-    early_stopper = options.get('early_stopper', early_stopping=EarlyStopping(monitor="lossValue", patience=5, verbose=True, mode="min"))
+    #early_stopper = options.get('early_stopper', early_stopping=EarlyStopping(monitor="lossValue", patience=5, verbose=True, mode="min"))
     early_stopper = options.get('early_stopper', None)
 
     #if 'enableAddImageToTensorboard' in options.keys():
@@ -592,7 +595,7 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
         print('Current total number of updates: ', numOfUpdates)
 
         # Do validation over all batches
-        validationLossHistory[epochID] = ValidateModel(validationDataset, model, lossFcn, device, taskType) 
+        validationLossHistory[epochID], validationData = ValidateModel(validationDataset, model, lossFcn, device, taskType) 
 
         # If validation loss is better than previous best, update best model
         if validationLossHistory[epochID] < prevBestValidationLoss:
@@ -614,6 +617,10 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
             
         mlflow.log_metric('Training loss - '+ lossLogName, trainLossHistory[epochID], step=epochID + epochStart)
         mlflow.log_metric('Validation loss - '+ lossLogName, validationLossHistory[epochID], step=epochID + epochStart)
+
+        if 'WorstLossAcrossBatches' in validationData.keys():
+            mlflow.log_metric('Validation Worst Loss across batches', validationData['WorstLossAcrossBatches'], step=epochID + epochStart)
+
 
         if enableSave:
             if not(os.path.isdir(checkpointDir)):
@@ -740,6 +747,9 @@ def TrainAndValidateModelForOptunaOptim(trial, dataloaderIndex: dict, model: nn.
     bestModel = copy.deepcopy(model).to('cpu')
     bestEpoch = epochStart
 
+    bestModelData = {'model': bestModel, 'epoch': bestEpoch,
+                     'validationLoss': prevBestValidationLoss}
+    
     for epochID in range(numOfEpochs):
 
         print(f"\n\t\t\tTRAINING EPOCH: {epochID + epochStart} of {epochStart + numOfEpochs-1}\n-------------------------------")
@@ -750,7 +760,7 @@ def TrainAndValidateModelForOptunaOptim(trial, dataloaderIndex: dict, model: nn.
         print('Current total number of updates: ', numOfUpdates)
 
         # Do validation over all batches
-        validationLossHistory[epochID] = ValidateModel(
+        validationLossHistory[epochID], validationData = ValidateModel(
             validationDataset, model, lossFcn, device, taskType)
 
         # If validation loss is better than previous best, update best model
@@ -760,8 +770,10 @@ def TrainAndValidateModelForOptunaOptim(trial, dataloaderIndex: dict, model: nn.
             bestEpoch = epochID + epochStart
             prevBestValidationLoss = validationLossHistory[epochID]
 
-            bestModelData = {'model': bestModel, 'epoch': bestEpoch,
-                     'validationLoss': prevBestValidationLoss}
+            # Overwrite dictionary with best model data
+            bestModelData['model'] = bestModel
+            bestModelData['epoch'] = bestEpoch
+            bestModelData['validationLoss'] = prevBestValidationLoss
             
         print(f"\n\nCurrent best model found at epoch: {bestEpoch} with validation loss: {prevBestValidationLoss}")
 
@@ -776,6 +788,9 @@ def TrainAndValidateModelForOptunaOptim(trial, dataloaderIndex: dict, model: nn.
                           trainLossHistory[epochID], step=epochID + epochStart)
         mlflow.log_metric('Validation loss - ' + lossLogName,
                           validationLossHistory[epochID], step=epochID + epochStart)
+        
+        if 'WorstLossAcrossBatches' in validationData.keys():
+            mlflow.log_metric('Validation Worst Loss across batches', validationData['WorstLossAcrossBatches'], step=epochID + epochStart)
 
         if enableSave:
             # NOTE: models are all saved as traced models
