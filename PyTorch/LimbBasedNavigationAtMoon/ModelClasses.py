@@ -868,3 +868,76 @@ class HorizonExtractionEnhancer_CNNv7(nn.Module):
         predictedPixCorrection = self.DenseOutput(val)
 
         return predictedPixCorrection
+    
+
+# %% Horizon Extraction Enhanced Fully Connected only, with Conic parameters from initial guess. EXPERIMENTAL: fully parametric model - 09-07-2024
+class HorizonExtractionEnhancer_deepNNv8_fullyParametricNoImg(nn.Module):
+    '''Horizon Extraction Enhanced Fully Connected only, with Conic parameters from initial guess WITHOUT image. Parametric ReLU activations for all layers.
+    Dropout and batch normalization for all layers. Fully parametric model with variable number of layers and sizes.'''
+    def __init__(self, parametersConfig) -> None:
+        super().__init__()
+
+        # Extract all the inputs of the class init method from dictionary parametersConfig, else use default values
+        useBatchNorm = parametersConfig.get('useBatchNorm', False)
+        alphaDropCoeff = parametersConfig.get('alphaDropCoeff', 0.1)
+        self.LinearInputSize = parametersConfig.get('LinearInputSize', 58)
+
+        # Model parameters
+        self.outChannelsSizes = parametersConfig.get('outChannelsSizes')
+        self.num_layers = len(self.outChannelsSizes)
+
+        self.useBatchNorm = useBatchNorm
+
+        # Model architecture
+        self.layers = nn.ModuleList()
+        input_size = self.LinearInputSize # Initialize input size for first layer
+
+        for i in range(self.num_layers):
+            # Fully Connected layers block
+            self.layers.append(nn.Linear(input_size, self.outChannelsSizes[i], bias=True))
+            self.layers.append(nn.PReLU(self.outChannelsSizes[i]))
+            self.layers.append(nn.Dropout2d(alphaDropCoeff))
+
+            # Add batch normalization layer if required
+            if self.useBatchNorm:
+                self.layers.append(nn.BatchNorm1d(self.outChannelsSizes[i], eps=1E-5, momentum=0.1, affine=True))
+
+            input_size = self.outChannelsSizes[i] # Update input size for next layer
+
+        # Output layer
+        self.DenseOutput = nn.Linear(self.outChannelsSizes[-1], 2, bias=True)
+
+        # Initialize weights of layers
+        self.__initialize_weights__()
+
+    def __initialize_weights__(self):
+        '''Weights Initialization function for layers of the model. Xavier --> layers with tanh and sigmoid, Kaiming --> layers with ReLU activation'''
+
+        for layer in self.layers:
+            # Check if layer is a Linear layer
+            if isinstance(layer, nn.Linear):
+                init.kaiming_uniform_(layer.weight, nonlinearity='leaky_relu') # Apply Kaiming initialization
+                if layer.bias is not None:
+                    init.constant_(layer.bias, 0) # Initialize bias to zero if present
+
+
+    def forward(self, inputSample):
+        '''Forward pass method'''
+        val = inputSample
+
+        # Perform forward pass iterating through all layers
+        for layer in self.layers:
+            if isinstance(layer, nn.Linear):
+                val = layer(val)
+            elif isinstance(layer, nn.PReLU):
+                val = torchFunc.prelu(val, layer.weight)
+            elif isinstance(layer, nn.Dropout2d):
+                val = layer(val)
+            elif isinstance(layer, nn.BatchNorm1d):
+                val = layer(val)
+
+        # Output layer
+        predictedPixCorrection = self.DenseOutput(val)
+
+        return predictedPixCorrection
+    
