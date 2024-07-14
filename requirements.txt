@@ -114,6 +114,7 @@ psutil==5.9.8
 ptyprocess==0.7.0
 pure-eval==0.2.2
 pyarrow==15.0.2
+pycocotools==2.0.8
 Pygments==2.17.2
 pyparsing==3.1.2
 PyQt5==5.15.10
