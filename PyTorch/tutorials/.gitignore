@@ -1,3 +1,4 @@
 data
 tensorboardTest
 testModels/*
+utilities/*

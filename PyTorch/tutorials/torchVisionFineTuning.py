@@ -4,6 +4,7 @@ Reference: https://pytorch.org/tutorials/intermediate/torchvision_tutorial.html
 Created by PeterC, 14-07-2024, with additional features (mflow, optuna) as tests.'''
 
 # Import pre-trained model
+from torchvision.utils import draw_bounding_boxes, draw_segmentation_masks
 from torchvision.transforms import v2 as T
 from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
 from torchvision.models.detection import FasterRCNN
@@ -283,7 +284,7 @@ def main():
 
 
     # Training loop
-    num_epochs = 2
+    num_epochs = 10
 
     for epoch in range(num_epochs):
         # train for one epoch, printing every 10 iterations
@@ -296,6 +297,39 @@ def main():
         # Evaluate on the test dataset
         evaluate(model, data_loader_test, device=device)
 
+    # Visualize output using torchvision functions
+    image = read_image(
+        '/home/peterc/devDir/MachineLearning_PeterCdev/PyTorch/tutorials/data/PennFudanPed/PNGImages/FudanPed00046.png')
+    eval_transform = get_transform(train=False)
+
+    model.eval()
+    with torch.no_grad():
+        x = eval_transform(image)
+        # Convert RGBA -> RGB and move to device
+        x = x[:3, ...].to(device)
+        # Perform forward pass and get predictions
+        predictions = model([x, ])
+        pred = predictions[0]
+
+    # Plot image with bounding boxes and masks
+    image = (255.0 * (image - image.min()) /
+             (image.max() - image.min())).to(torch.uint8)
+    image = image[:3, ...]
+
+    pred_labels = [f"pedestrian: {score:.3f}" for label,
+                   score in zip(pred["labels"], pred["scores"])]
+    pred_boxes = pred["boxes"].long()
+
+    output_image = draw_bounding_boxes(
+        image, pred_boxes, pred_labels, colors="red")
+    
+    masks = (pred["masks"] > 0.7).squeeze(1)
+    output_image = draw_segmentation_masks(
+        output_image, masks, alpha=0.5, colors="blue")
+    
+    plt.figure(figsize=(12, 12))
+    plt.imshow(output_image.permute(1, 2, 0))
+    plt.show()
 
 if __name__ == '__main__':
     main()
