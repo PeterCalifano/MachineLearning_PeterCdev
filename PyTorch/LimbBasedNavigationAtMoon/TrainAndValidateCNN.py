@@ -40,11 +40,14 @@ LOSS_TYPE = 4 # 0: Conic + L2, # 1: Conic + L2 + Quadratic OutOfPatch, # 2: Norm
             # 3: Polar-n-direction distance + OutOfPatch, #4: MSE + OutOfPatch + ConicLoss
 RUN_ID = 1
 USE_BATCH_NORM = True
+# TRAINING and VALIDATION datasets ID in folder (in this order)
+datasetID = [6, 7]
+datasetID = [12, 10] # Datasets with 25x25 patches
 
 def main(idRun:int, idModelClass:int, idLossType:int):
 
     # SETTINGS and PARAMETERS 
-    batch_size = 64 # Defines batch size in dataset
+    batch_size = 256 # Defines batch size in dataset
     #outChannelsSizes = [16, 32, 75, 15] 
     
     if idModelClass < 2:
@@ -60,11 +63,12 @@ def main(idRun:int, idModelClass:int, idLossType:int):
         outChannelsSizes = [2056, 1024, 512, 64]
 
     elif idModelClass == 5:
-        outChannelsSizes = [2056, 1024, 512, 512, 128, 64]
+        outChannelsSizes = [1024, 1024, 1024, 512, 512, 256, 64, 32]
 
     elif idModelClass == 6:
-        kernelSizes = [1, 3, 3]
-        outChannelsSizes = [1024, 512, 512, 1024, 1024, 128, 64]
+        kernelSizes = [5, 3, 3]
+        poolKernelSizes = [1, 2, 2]
+        outChannelsSizes = [256, 256, 256, 1024, 1024, 128, 64]
     else:
         raise ValueError('Model class ID not found.')
 
@@ -162,32 +166,36 @@ def main(idRun:int, idModelClass:int, idLossType:int):
 
     elif idModelClass == 5:
         #runID = "{num:04d}".format(num=idRun)
-        modelSavePath = './checkpoints/HorizonExtractionEnhancer_deepNNv8' 
-        datasetSavePath = './datasets/HorizonExtractionEnhancer_deepNNv8'
+        modelArchName = 'HorizonExtractionEnhancer_deepNNv8'
+
+        modelSavePath = './checkpoints/' + modelArchName
+        datasetSavePath = './datasets/' + modelArchName
         #tensorboardLogDir = './tensorboardLogs/tensorboardLog_ShortCNNv6maxDeeper_run'   + runID
         #tensorBoardPortNum = 6012
 
-        parametersConfig = {'useBatchNorm': True, 'alphaDropCoeff': 0.1, 
-                            'LinearInputSize': 58, 'outChannelsSizes': outChannelsSizes}
+        parametersConfig = {'useBatchNorm': True, 'alphaDropCoeff': 0.05, 'LinearInputSize': 58,
+                            'outChannelsSizes': outChannelsSizes}
 
-        modelArchName = 'HorizonExtractionEnhancer_deepNNv8' 
         inputSize = 58 # TODO: update this according to new model
         numOfEpochs = 15
 
     elif idModelClass == 6:
         #runID = "{num:04d}".format(num=idRun)
-        modelSavePath = './checkpoints/HorizonExtractionEnhancer_CNNv7_randomCloudGuessInput' 
-        datasetSavePath = './datasets/HorizonExtractionEnhancer_CNNv7_randomCloudGuessInput'
+        modelArchName = 'HorizonExtractionEnhancer_CNNv7_randomCloudGuessInputPatch25'
+
+        modelSavePath = './checkpoints/' + modelArchName
+        datasetSavePath = './datasets/' + modelArchName
         #tensorboardLogDir = './tensorboardLogs/tensorboardLog_ShortCNNv6maxDeeper_run'   + runID
         #tensorBoardPortNum = 6012
 
         parametersConfig = {'useBatchNorm': True, 'alphaDropCoeff': 0.05, 
                             'LinearInputSkipSize': 9,'outChannelsSizes': outChannelsSizes,
-                            'kernelSizes': kernelSizes, 'poolkernelSizes': [1, 1, 2]}
+                            'kernelSizes': kernelSizes, 'poolkernelSizes': poolKernelSizes,
+                            'patchSize': 25}
 
-        modelArchName = 'HorizonExtractionEnhancer_CNNv7_randomCloudGuessInput' 
-        inputSize = 58 
-        numOfEpochs = 15
+        #inputSize = 58
+        inputSize = parametersConfig.get('patchSize')**2 + 9
+        numOfEpochs = 20
 
 
     EPOCH_START = 0
@@ -231,7 +239,6 @@ def main(idRun:int, idModelClass:int, idLossType:int):
     assert(len(dirNamesRoot) >= 2)
 
     # Select one of the available datapairs folders (each corresponding to a labels generation pipeline output)
-    datasetID = [9, 10] # TRAINING and VALIDATION datasets ID in folder (in this order)
 
 
     assert(len(datasetID) == 2)
@@ -296,7 +303,7 @@ def main(idRun:int, idModelClass:int, idLossType:int):
                 dSunDirAngle          = np.array(metadataDict['dSunAngle'], dtype=np.float32)
                 dLimbConicCoeffs_PixCoords = np.array(metadataDict['dLimbConic_PixCoords'], dtype=np.float32)
                 #dRmoonDEM            = np.array(metadataDict['dRmoonDEM'], dtype=np.float32)
-                dConicPixCente        = np.array(metadataDict['dConicPixCentre'], dtype=np.float32)
+                dConicPixCentre        = np.array(metadataDict['dConicPixCentre'], dtype=np.float32)
 
                 ui16coarseLimbPixels = np.array(tmpdataDict['ui16coarseLimbPixels'], dtype=np.float32)
                 ui8flattenedWindows  = np.array(tmpdataDict['ui8flattenedWindows'], dtype=np.float32)
@@ -355,8 +362,8 @@ def main(idRun:int, idModelClass:int, idLossType:int):
                             inputDataArray[ptrToInput, saveID] = dConicAvgRadiusInPix
                             ptrToInput += dConicAvgRadiusInPix.size # Update index
 
-                            inputDataArray[ptrToInput:ptrToInput+2, saveID] = dConicPixCente
-                            ptrToInput += dConicPixCente.size # Update index
+                            inputDataArray[ptrToInput:ptrToInput+2, saveID] = dConicPixCentre
+                            ptrToInput += dConicPixCentre.size # Update index
 
                         # Assign coarse Limb pixels to input data array
                         inputDataArray[ptrToInput:ptrToInput+len(ui16coarseLimbPixels[:, sampleID]), saveID] = ui16coarseLimbPixels[:, sampleID]
@@ -413,11 +420,14 @@ def main(idRun:int, idModelClass:int, idLossType:int):
         datasetValidation = datasetPreparation.MoonLimbPixCorrector_Dataset(dataDictValidation)
 
         # Save dataset as torch dataset object for future use
-        if not os.path.exists(datasetSavePath):
-            os.makedirs(datasetSavePath)
-        
-        customTorchTools.SaveTorchDataset(datasetTraining, datasetSavePath, datasetName='TrainingDataset_'+TrainingDatasetTag)
-        customTorchTools.SaveTorchDataset(datasetValidation, datasetSavePath, datasetName='ValidationDataset_'+ValidationDatasetTag)
+        limitSize = 4 * (2**30) * 8 # 4 Gbits
+        if sys.getsizeof(dataDictTraining) < limitSize:
+            if not os.path.exists(datasetSavePath):
+                os.makedirs(datasetSavePath)
+                customTorchTools.SaveTorchDataset(datasetTraining, datasetSavePath, datasetName='TrainingDataset_'+TrainingDatasetTag)
+                customTorchTools.SaveTorchDataset(datasetValidation, datasetSavePath, datasetName='ValidationDataset_'+ValidationDatasetTag)
+        else:
+            print('Dataset size exceeds 4 Gbits. Saving is skipped due to pickle limitation.')
     else:
 
         if not(os.path.isfile(os.path.join(datasetSavePath, 'TrainingDataset_'+TrainingDatasetTag+'.pt'))) or not((os.path.isfile(os.path.join(datasetSavePath, 'ValidationDataset_'+ValidationDatasetTag+'.pt')))):
@@ -447,7 +457,7 @@ def main(idRun:int, idModelClass:int, idLossType:int):
     validationDataset = DataLoader(datasetValidation, batch_size, shuffle=True, num_workers=2, pin_memory=True)
 
     dataloaderIndex = {'TrainingDataLoader' : trainingDataset, 'ValidationDataLoader': validationDataset}
-
+    
     # LOSS FUNCTION DEFINITION
 
     if LOSS_TYPE == 0:
@@ -469,6 +479,10 @@ def main(idRun:int, idModelClass:int, idLossType:int):
     # START MLFLOW RUN LOGGING
 
     with mlflow.start_run() as mlflow_run:
+
+        mlflow.log_param('TrainingDatasetTag', TrainingDatasetTag)
+        mlflow.log_param('ValidationDatasetTag', ValidationDatasetTag)
+
         run_id = mlflow_run.info.run_id
         run_name = mlflow_run.info.run_name
 
@@ -525,6 +539,12 @@ def main(idRun:int, idModelClass:int, idLossType:int):
                 mlflow.log_params(parametersConfig)
                 # Kernel sizes: [5]
                 modelCNN_NN = modelClass(outChannelsSizes, parametersConfig).to(device=device)
+            elif idModelClass == 5:
+
+                mlflow.log_params(parametersConfig)
+                # Kernel sizes: [5]
+                modelCNN_NN = modelClass(
+                    parametersConfig).to(device=device)
                 
             elif idModelClass == 6:
 
@@ -609,7 +629,15 @@ if __name__ == '__main__':
     
     # Set mlflow experiment
     #mlflow.set_experiment("HorizonEnhancerCNN_OptimizationRuns")
-    mlflow.set_experiment("HorizonEnhancerCNN_OptimizationRuns_TrainValidOnRandomCloudGuessInput")
+    if datasetID[0] == 6 and datasetID[1] == 7:
+        mlflow.set_experiment("HorizonEnhancerCNN_OptimizationRuns_TrainValidOnLUMIOdata")
+    elif datasetID[0] == 9 and datasetID[1] == 1:
+        mlflow.set_experiment("HorizonEnhancerCNN_OptimizationRuns_TrainValidOnRandomCloud")
+    elif datasetID[0] == 12 and datasetID[1] == 10:
+        mlflow.set_experiment("HorizonEnhancerCNN_OptimizationRuns_TrainValidOnRandomCloud25x25")
+    else:
+        raise ValueError('Check datasetID. Experiment not found.')
+    
     #mlflow.set_experiment("HorizonEnhancerCNN_Optimization_CNNv7_randomCloud")
     # Stop any running tensorboard session before starting a new one
     customTorchTools.KillTensorboard()
