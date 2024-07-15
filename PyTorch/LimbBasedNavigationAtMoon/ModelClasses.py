@@ -631,7 +631,7 @@ class HorizonExtractionEnhancer_deepNNv8_fullyParametric(nn.Module):
 
         # Extract all the inputs of the class init method from dictionary parametersConfig, else use default values
         useBatchNorm = parametersConfig.get('useBatchNorm', False)
-        alphaDropCoeff = parametersConfig.get('alphaDropCoeff', 0.1)
+        alphaDropCoeff = parametersConfig.get('alphaDropCoeff', 0)
         self.LinearInputSize = parametersConfig.get('LinearInputSize', 58)
 
         # Model parameters
@@ -737,10 +737,12 @@ class HorizonExtractionEnhancer_CNNv7(nn.Module):
         # Convolutional Features extractor
         self.conv2dL1 = nn.Conv2d(1, self.outChannelsSizes[idLayer], kernelSizes[0]) 
         self.preluL1 = nn.PReLU(self.outChannelsSizes[idLayer])
+        self.maxPool2dL1 = nn.MaxPool2d(poolkernelSizes[idLayer], 1)
         idLayer += 1
 
         self.conv2dL2 = nn.Conv2d(self.outChannelsSizes[idLayer-1], self.outChannelsSizes[idLayer], kernelSizes[1]) 
         self.preluL2 = nn.PReLU(self.outChannelsSizes[idLayer])
+        self.maxPool2dL2 = nn.MaxPool2d(poolkernelSizes[idLayer], 1)
         idLayer += 1
 
         self.conv2dL3 = nn.Conv2d(self.outChannelsSizes[idLayer-1], self.outChannelsSizes[idLayer], kernelSizes[2]) 
@@ -822,14 +824,14 @@ class HorizonExtractionEnhancer_CNNv7(nn.Module):
 
         # Convolutional layers
         # L1 (Input)
-        val = torchFunc.prelu(self.conv2dL1(img2Dinput), self.preluL1.weight)
+        val = self.maxPool2dL1(torchFunc.prelu(self.conv2dL1(img2Dinput), self.preluL1.weight))
 
         # Fully Connected Layers
         # L2
-        val = torchFunc.prelu(self.conv2dL2(val), self.preluL2.weight)
+        val = self.maxPool2dL2(torchFunc.prelu(self.conv2dL2(val), self.preluL2.weight))
 
         # L3
-        val = torchFunc.prelu(self.maxPool2dL3( self.conv2dL3(val)) , self.preluL3.weight) 
+        val = self.maxPool2dL3(torchFunc.prelu( self.conv2dL3(val), self.preluL3.weight))
 
         # Fully Connected Layers
         val = self.FlattenL3(val) # Flatten data to get input to Fully Connected layers
