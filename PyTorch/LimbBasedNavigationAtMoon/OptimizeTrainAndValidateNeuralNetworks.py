@@ -59,7 +59,7 @@ momentumValue = 0.6
 # TODO: add log and printing of settings of optimizer for each epoch. Reduce the training loss value printings
 
 # Loss function parameters
-params = {'ConicLossWeightCoeff': 0, 'RectExpWeightCoeff': 1}
+#params = {'ConicLossWeightCoeff': 0, 'RectExpWeightCoeff': 10}
 
 optimizerID = 1  # 0: SGD, 1: Adam
 UseMaxPooling = True
@@ -76,7 +76,7 @@ datasetSavePath = './datasets/HorizonExtractionEnhancer_deepNNv8_fullyParam'
 
 modelArchName = 'HorizonExtractionEnhancer_deepNNv8_fullyParam'
 inputSize = 58  # TODO: update this according to new model
-numOfEpochs = 6
+numOfEpochs = 14
 
 
 options = {'taskType': 'regression',
@@ -111,7 +111,7 @@ assert (len(dirNamesRoot) >= 2)
 
 # Select one of the available datapairs folders (each corresponding to a labels generation pipeline output)
 # TRAINING and VALIDATION datasets ID in folder (in this order)
-datasetID = [9, 10]
+datasetID = [9, 11] # NOTE: only matters for regeration of dataset
 
 assert (len(datasetID) == 2)
 
@@ -329,10 +329,9 @@ else:
 
 lossParams = {'ConicLossWeightCoeff': 0, 'RectExpWeightCoeff': 1}
 
-lossParams['paramsTrain'] = {
-    'ConicLossWeightCoeff': 0, 'RectExpWeightCoeff': 1}
-lossParams['paramsEval'] = {'ConicLossWeightCoeff': 0,
-                            'RectExpWeightCoeff': 0}  # Not currently used
+lossParams['paramsTrain'] = {'ConicLossWeightCoeff': 0, 'RectExpWeightCoeff': 100}
+
+lossParams['paramsEval'] = {'ConicLossWeightCoeff': 0, 'RectExpWeightCoeff': 0}  # Not currently used
 
 
 if LOSS_TYPE == 0:
@@ -387,7 +386,7 @@ def objective(trial):
 
         if FULLY_PARAMETRIC:
             num_layers = trial.suggest_int('num_layers', 4, 25)
-            maxNodes = 2048
+            maxNodes = 1024
             modelClass = ModelClasses.HorizonExtractionEnhancer_deepNNv8_fullyParametric
         else:
             num_layers = 6
@@ -395,7 +394,7 @@ def objective(trial):
             modelClass = ModelClasses.HorizonExtractionEnhancer_deepNNv8
 
         # Batch size definition
-        batch_size = trial.suggest_int('batch_size', 32, 1024, log=True)
+        batch_size = trial.suggest_int('batch_size', 64, 1024, log=True)
         mlflow.log_param('batch_size', batch_size)
 
         trainingDataset = DataLoader(
@@ -406,12 +405,15 @@ def objective(trial):
         dataloaderIndex = {'TrainingDataLoader': trainingDataset,
                            'ValidationDataLoader': validationDataset}
 
+        mlflow.log_param('TrainingDatasetTag', TrainingDatasetTag)
+        mlflow.log_param('ValidationDatasetTag', ValidationDatasetTag)
+
         for i in range(num_layers):
             outChannelsSizes.append(
                 trial.suggest_int(f'DenseL{i}', 16, maxNodes))
             mlflow.log_param(f'DenseL{i}', outChannelsSizes[-1])
 
-        parametersConfig = {'useBatchNorm': True, 'alphaDropCoeff': 0.05, 'LinearInputSize': 58,
+        parametersConfig = {'useBatchNorm': True, 'alphaDropCoeff': 0, 'LinearInputSize': 58,
                             'outChannelsSizes': outChannelsSizes}
 
         model = modelClass(parametersConfig).to(device=device)
@@ -451,7 +453,7 @@ def objective(trial):
         numOfParameters = customTorchTools.getNumOfTrainParams(model)
         mlflow.log_param('NumOfTrainParams', numOfParameters)
         # %% TRAIN and VALIDATE MODEL
-        (bestTrainedModelData, trainingLosses, validationLosses) = customTorchTools.TrainAndValidateModelForOptunaOptim(
+        bestTrainedModelData = customTorchTools.TrainAndValidateModelForOptunaOptim(
             trial, dataloaderIndex, model, lossFcn, optimizer, options)
 
         # Return last validation loss value
@@ -467,14 +469,16 @@ if __name__ == '__main__':
     if not (os.path.exists('optuna_db')):
         os.makedir('optuna_db')
 
-    studyName = 'HorizonEnhancerCNN_HyperOptimization_deepNNv8_fullyParametric_RandomCloud'
+    #studyName = 'HorizonEnhancerCNN_HyperOptimization_deepNNv8_fullyParametric_RandomCloudWithConicLoss'
+    studyName = 'HorizonEnhancerCNN_HyperOptimization_deepNNv8_fullyParametric_RandomNoDropout'
+
     optunaStudyObj = optuna.create_study(study_name=studyName,
                                          storage='sqlite:///{studyName}.db'.format(studyName=os.path.join(
                                              'optuna_db', studyName)),
                                          load_if_exists=True,
                                          direction='minimize',
                                          sampler=optuna.samplers.TPESampler(),
-                                         pruner=optuna.pruners.SuccessiveHalvingPruner(min_resource=2, reduction_factor=4,
+                                         pruner=optuna.pruners.SuccessiveHalvingPruner(min_resource=1, reduction_factor=4,
                                                                                        min_early_stopping_rate=1))
 
     # Set MLFlow tracking URI
@@ -483,7 +487,8 @@ if __name__ == '__main__':
     mlflow.set_experiment(studyName)
 
     # %% Optuna optimization
-    optunaStudyObj.optimize(objective, n_trials=100, timeout=13*3600)
+    NUM_OF_JOBS = 1
+    optunaStudyObj.optimize(objective, n_trials=100, timeout=8*3600, n_jobs=NUM_OF_JOBS)
 
     # Print the best trial
     # Get number of finished trials
