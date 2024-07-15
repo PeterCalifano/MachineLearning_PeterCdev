@@ -366,9 +366,12 @@ def LoadTorchModel(model:nn.Module=None, modelName:str="trainedModel", filepath:
 # %% Function to save Dataset object - 01-06-2024
 def SaveTorchDataset(datasetObj:Dataset, datasetFilePath:str='', datasetName:str='dataset') -> None:
 
-    if not(os.path.isdir(datasetFilePath)):
-        os.makedirs(datasetFilePath)
-    torch.save(datasetObj, os.path.join(datasetFilePath, datasetName + ".pt"))
+    try:
+        if not(os.path.isdir(datasetFilePath)):
+            os.makedirs(datasetFilePath)
+        torch.save(datasetObj, os.path.join(datasetFilePath, datasetName + ".pt"))
+    except Exception as exception:
+        print('Failed to save dataset object with error: ', exception)
 
 # %% Function to load Dataset object - 01-06-2024
 def LoadTorchDataset(datasetFilePath:str, datasetName:str='dataset') -> Dataset:

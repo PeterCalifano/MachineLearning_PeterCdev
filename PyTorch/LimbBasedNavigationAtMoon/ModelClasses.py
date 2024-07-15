@@ -706,7 +706,7 @@ class HorizonExtractionEnhancer_CNNv7(nn.Module):
         poolkernelSizes = parametersConfig.get('poolkernelSizes', [1, 1, 2])
 
         useBatchNorm = parametersConfig.get('useBatchNorm', True)
-        alphaDropCoeff = parametersConfig.get('alphaDropCoeff', 0.1)
+        alphaDropCoeff = parametersConfig.get('alphaDropCoeff', 0)
         alphaLeaky = parametersConfig.get('alphaLeaky', 0.01)
         patchSize = parametersConfig.get('patchSize', 7)
 
@@ -729,6 +729,8 @@ class HorizonExtractionEnhancer_CNNv7(nn.Module):
     
         self.LinearInputSkipSize = parametersConfig['LinearInputSkipSize'] #11 # CHANGE TO 7 removing R_DEM and PosTF
         self.LinearInputSize = self.LinearInputSkipSize + self.LinearInputFeaturesSize
+        
+
 
         #self.alphaLeaky = alphaLeaky
 

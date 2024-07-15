@@ -2,6 +2,7 @@
 # Reference works:
 
 # Import modules
+from objsize import get_deep_size
 import sys, os, multiprocessing
 # Append paths of custom modules
 sys.path.append(os.path.join('/home/peterc/devDir/MachineLearning_PeterCdev/PyTorch/customTorchTools'))
@@ -11,7 +12,6 @@ import customTorchTools # Custom torch tools
 import limbPixelExtraction_CNN_NN, ModelClasses # Custom model classes
 import datasetPreparation
 from sklearn import preprocessing # Import scikit-learn for dataset preparation
-
 
 import torch, mlflow, optuna
 from torch import nn
@@ -67,7 +67,7 @@ def main(idRun:int, idModelClass:int, idLossType:int):
 
     elif idModelClass == 6:
         kernelSizes = [5, 3, 3]
-        poolKernelSizes = [1, 2, 2]
+        poolKernelSizes = [2, 2, 2]
         outChannelsSizes = [256, 256, 256, 1024, 1024, 128, 64]
     else:
         raise ValueError('Model class ID not found.')
@@ -188,7 +188,7 @@ def main(idRun:int, idModelClass:int, idLossType:int):
         #tensorboardLogDir = './tensorboardLogs/tensorboardLog_ShortCNNv6maxDeeper_run'   + runID
         #tensorBoardPortNum = 6012
 
-        parametersConfig = {'useBatchNorm': True, 'alphaDropCoeff': 0.05, 
+        parametersConfig = {'useBatchNorm': True, 'alphaDropCoeff': 0, 
                             'LinearInputSkipSize': 9,'outChannelsSizes': outChannelsSizes,
                             'kernelSizes': kernelSizes, 'poolkernelSizes': poolKernelSizes,
                             'patchSize': 25}
@@ -421,7 +421,9 @@ def main(idRun:int, idModelClass:int, idLossType:int):
 
         # Save dataset as torch dataset object for future use
         limitSize = 4 * (2**30) * 8 # 4 Gbits
-        if sys.getsizeof(dataDictTraining) < limitSize:
+        sizeInBytes = np.sum([64 * entry.size for entry in dataDictTraining.values()])
+
+        if sizeInBytes < limitSize:
             if not os.path.exists(datasetSavePath):
                 os.makedirs(datasetSavePath)
                 customTorchTools.SaveTorchDataset(datasetTraining, datasetSavePath, datasetName='TrainingDataset_'+TrainingDatasetTag)
