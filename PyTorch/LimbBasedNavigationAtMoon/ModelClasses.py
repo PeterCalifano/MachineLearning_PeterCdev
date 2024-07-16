@@ -945,3 +945,161 @@ class HorizonExtractionEnhancer_deepNNv8_fullyParametricNoImg(nn.Module):
 
         return predictedPixCorrection
     
+
+# %% Horizon Extraction Enhancer CNNvX_fullyParametric - 16-09-2024
+class HorizonExtractionEnhancer_CNNvX_fullyParametric(nn.Module):
+    ''' '''
+
+    def __init__(self, parametersConfig) -> None:
+        super().__init__()
+
+        # Extract all the inputs of the class init method from dictionary parametersConfig, else use default values
+
+        kernelSizes = parametersConfig.get('kernelSizes', [1, 3, 3])
+        poolkernelSizes = parametersConfig.get('poolkernelSizes', [1, 1, 2])
+
+        useBatchNorm = parametersConfig.get('useBatchNorm', True)
+        alphaDropCoeff = parametersConfig.get('alphaDropCoeff', 0)
+        alphaLeaky = parametersConfig.get('alphaLeaky', 0.01)
+        patchSize = parametersConfig.get('patchSize', 7)
+
+        outChannelsSizes = parametersConfig.get('outChannelsSizes', [])
+
+        assert ('LinearInputSkipSize' in parametersConfig.keys())
+        assert (len(kernelSizes) == len(poolkernelSizes),
+                'Kernel and pooling kernel sizes must have the same length')
+
+        # Model parameters
+        self.outChannelsSizes = outChannelsSizes
+        self.patchSize = patchSize
+        self.imagePixSize = self.patchSize**2
+        self.numOfConvLayers = len(kernelSizes)
+        self.useBatchNorm = useBatchNorm
+
+        convBlockOutputSize = AutoComputeConvBlocksOutput(self, kernelSizes, poolkernelSizes)
+
+        # self.LinearInputFeaturesSize = (patchSize - self.numOfConvLayers * np.floor(float(kernelSizes[-1])/2.0)) * self.outChannelsSizes[-1] # Number of features arriving as input to FC layer
+        # convBlockOutputSize is tuple ((imgWidth, imgHeight), flattenedSize*nOutFeatures)
+        self.LinearInputFeaturesSize = convBlockOutputSize[1]
+
+        # 11 # CHANGE TO 7 removing R_DEM and PosTF
+        self.LinearInputSkipSize = parametersConfig['LinearInputSkipSize']
+        self.LinearInputSize = self.LinearInputSkipSize + self.LinearInputFeaturesSize
+
+        self.layers = nn.ModuleList()
+        input_size = self.LinearInputSize  # Initialize input size for first layer
+
+        # Model architecture
+        idLayer = 0
+
+        # Convolutional Features extractor
+        # Conv block 1
+        self.layers.append(nn.Conv2d(1, self.outChannelsSizes[idLayer], kernelSizes[0]))
+        self.layers.append(nn.PReLU(self.outChannelsSizes[idLayer]))
+        idLayer += 1
+
+        # Conv block 2
+        self.layers.append(nn.Conv2d(self.outChannelsSizes[idLayer-1], self.outChannelsSizes[idLayer], kernelSizes[1]))
+        self.layers.append(nn.PReLU(self.outChannelsSizes[idLayer]))
+        idLayer += 1
+
+        # Conv block 3
+        self.layers.append(nn.Conv2d(self.outChannelsSizes[idLayer-1], self.outChannelsSizes[idLayer], kernelSizes[2]))
+        self.layers.append(nn.PReLU(self.outChannelsSizes[idLayer]))
+        idLayer += 1
+
+        # Fully Connected predictor
+        self.FlattenL3 = nn.Flatten()
+
+        input_size = self.LinearInputSize  # Initialize input size for first layer
+
+        for i in range(idLayer, self.num_layers+idLayer):
+            # Fully Connected layers block
+            self.layers.append(nn.Linear(input_size, self.outChannelsSizes[i], bias=True))
+            self.layers.append(nn.PReLU(self.outChannelsSizes[i]))
+            self.layers.append(nn.Dropout2d(alphaDropCoeff))
+
+            # Add batch normalization layer if required
+            if self.useBatchNorm:
+                self.layers.append(nn.BatchNorm1d(self.outChannelsSizes[i], eps=1E-5, momentum=0.1, affine=True))
+
+            # Update input size for next layer
+            input_size = self.outChannelsSizes[i]
+
+        # Output layer
+        self.DenseOutput = nn.Linear(self.outChannelsSizes[-1], 2, bias=True)
+
+        # Output layer
+        self.DenseOutput = nn.Linear(
+            self.outChannelsSizes[idLayer-1], 2, bias=True)
+
+        # Initialize weights of layers
+        # self.__initialize_weights__()
+
+    def __initialize_weights__(self):
+        '''Weights Initialization function for layers of the model. Xavier --> layers with tanh and sigmoid, Kaiming --> layers with ReLU activation'''
+        # ReLU activation layers
+        init.kaiming_uniform_(self.conv2dL1.weight, nonlinearity='leaky_relu')
+        init.constant_(self.conv2dL1.bias, 0)
+
+        init.kaiming_uniform_(self.conv2dL2.weight, nonlinearity='leaky_relu')
+        init.constant_(self.conv2dL2.bias, 0)
+
+        init.kaiming_uniform_(self.conv2dL3.weight, nonlinearity='leaky_relu')
+        init.constant_(self.conv2dL3.bias, 0)
+
+        for layer in self.layers:
+            # Check if layer is a Linear layer
+            if isinstance(layer, nn.Linear):
+                # Apply Kaiming initialization
+                init.kaiming_uniform_(layer.weight, nonlinearity='leaky_relu')
+                if layer.bias is not None:
+                    # Initialize bias to zero if present
+                    init.constant_(layer.bias, 0)
+
+    def forward(self, inputSample):
+
+        # Extract image and contextual information from inputSample
+        # ACHTUNG: transpose, reshape, transpose operation assumes that input vector was reshaped column-wise (FORTRAN style)
+        # img2Dinput = (((inputSample[:, 0:self.imagePixSize]).T).reshape(int(np.sqrt(float(self.imagePixSize))), -1, 1, inputSample.size(0))).T # First portion of the input vector reshaped to 2D
+
+        assert (inputSample.size(1) == (
+            self.imagePixSize + self.LinearInputSkipSize))
+        # img2Dinput =  ( ( (inputSample[:, 0:self.imagePixSize]).T).reshape(int(torch.sqrt( torch.tensor(self.imagePixSize) )), -1, 1, inputSample.size(0) ) ).T # First portion of the input vector reshaped to 2D
+
+        imgWidth = int(sqrt(self.imagePixSize))
+        img2Dinput = (((inputSample[:, 0:self.imagePixSize]).T).reshape(
+            imgWidth, -1, 1, inputSample.size(0))).T  # First portion of the input vector reshaped to 2D
+        contextualInfoInput = inputSample[:, self.imagePixSize:]
+
+        # Convolutional layers
+        # L1 (Input)
+        val = self.maxPool2dL1(torchFunc.prelu(
+            self.conv2dL1(img2Dinput), self.preluL1.weight))
+
+        # Fully Connected Layers
+        # L2
+        val = self.maxPool2dL2(torchFunc.prelu(
+            self.conv2dL2(val), self.preluL2.weight))
+
+        # L3
+        val = self.maxPool2dL3(torchFunc.prelu(
+            self.conv2dL3(val), self.preluL3.weight))
+
+        # Fully Connected Layers
+        # Flatten data to get input to Fully Connected layers
+        val = self.FlattenL3(val)
+
+        # Concatenate and batch normalize data
+        val = torch.cat((val, contextualInfoInput), dim=1)
+
+        # Perform forward pass iterating through all layers
+        for layer in self.layers:
+            if isinstance(layer, nn.Linear):
+                val = layer(val)
+            elif isinstance(layer, nn.PReLU):
+                val = torchFunc.prelu(val, layer.weight)
+            elif isinstance(layer, nn.Dropout2d):
+                val = layer(val)
+            elif isinstance(layer, nn.BatchNorm1d):
+                val = layer(val)
