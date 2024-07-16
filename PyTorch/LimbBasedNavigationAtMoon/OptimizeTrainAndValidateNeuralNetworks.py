@@ -339,7 +339,7 @@ else:
 
 lossParams = {'ConicLossWeightCoeff': 0, 'RectExpWeightCoeff': 1}
 
-lossParams['paramsTrain'] = {'ConicLossWeightCoeff': 0, 'RectExpWeightCoeff': 100}
+lossParams['paramsTrain'] = {'ConicLossWeightCoeff': 1, 'RectExpWeightCoeff': 100}
 
 lossParams['paramsEval'] = {'ConicLossWeightCoeff': 0, 'RectExpWeightCoeff': 0}  # Not currently used
 
@@ -425,7 +425,7 @@ def objective(trial):
             mlflow.log_param(f'DenseL{i}', outChannelsSizes[-1])
 
         kernelSizes     = [5, 3, 3]
-        poolKernelSizes = [2, 2, 2]
+        poolKernelSizes = [1, 2, 2]
 
         parametersConfig = {'useBatchNorm': True, 'alphaDropCoeff': 0, 'LinearInputSkipSize': 9,
                             'outChannelsSizes': outChannelsSizes, 'kernelSizes': kernelSizes, 
@@ -485,7 +485,7 @@ if __name__ == '__main__':
         os.makedir('optuna_db')
 
     #studyName = 'HorizonEnhancerCNN_HyperOptimization_deepNNv8_fullyParametric_RandomCloudWithConicLoss'
-    studyName = 'HorizonEnhancerCNN_HyperOptimization_deepNNv8_fullyParametric_RandomNoDropout_WithConicLoss_NEW'
+    studyName = 'HorizonEnhancerCNN_HyperOptimization_CNNvX_fullyParametric_RandomNoDropout_WithConicLoss_NEW'
 
     optunaStudyObj = optuna.create_study(study_name=studyName,
                                          storage='sqlite:///{studyName}.db'.format(studyName=os.path.join(
