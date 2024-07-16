@@ -976,6 +976,8 @@ class HorizonExtractionEnhancer_CNNvX_fullyParametric(nn.Module):
         self.numOfConvLayers = len(kernelSizes)
         self.useBatchNorm = useBatchNorm
 
+        self.num_layers = len(self.outChannelsSizes) - 3
+
         convBlockOutputSize = AutoComputeConvBlocksOutput(self, kernelSizes, poolkernelSizes)
 
         # self.LinearInputFeaturesSize = (patchSize - self.numOfConvLayers * np.floor(float(kernelSizes[-1])/2.0)) * self.outChannelsSizes[-1] # Number of features arriving as input to FC layer
@@ -994,22 +996,40 @@ class HorizonExtractionEnhancer_CNNvX_fullyParametric(nn.Module):
 
         # Convolutional Features extractor
         # Conv block 1
-        self.layers.append(nn.Conv2d(1, self.outChannelsSizes[idLayer], kernelSizes[0]))
-        self.layers.append(nn.PReLU(self.outChannelsSizes[idLayer]))
-        idLayer += 1
+        #self.layers.append(nn.Conv2d(1, self.outChannelsSizes[idLayer], kernelSizes[0]))
+        #self.layers.append(nn.PReLU(self.outChannelsSizes[idLayer]))
+        #idLayer += 1
 
         # Conv block 2
-        self.layers.append(nn.Conv2d(self.outChannelsSizes[idLayer-1], self.outChannelsSizes[idLayer], kernelSizes[1]))
-        self.layers.append(nn.PReLU(self.outChannelsSizes[idLayer]))
-        idLayer += 1
+        #self.layers.append(nn.Conv2d(self.outChannelsSizes[idLayer-1], self.outChannelsSizes[idLayer], kernelSizes[1]))
+        #self.layers.append(nn.PReLU(self.outChannelsSizes[idLayer]))
+        #idLayer += 1
 
         # Conv block 3
-        self.layers.append(nn.Conv2d(self.outChannelsSizes[idLayer-1], self.outChannelsSizes[idLayer], kernelSizes[2]))
-        self.layers.append(nn.PReLU(self.outChannelsSizes[idLayer]))
+        #self.layers.append(nn.Conv2d(self.outChannelsSizes[idLayer-1], self.outChannelsSizes[idLayer], kernelSizes[2]))
+        #self.layers.append(nn.PReLU(self.outChannelsSizes[idLayer]))
+        #idLayer += 1
+
+        # Convolutional Features extractor
+        self.conv2dL1 = nn.Conv2d(1, self.outChannelsSizes[idLayer], kernelSizes[0]) 
+        self.preluL1 = nn.PReLU(self.outChannelsSizes[idLayer])
+        self.maxPool2dL1 = nn.MaxPool2d(poolkernelSizes[idLayer], 1)
+        idLayer += 1
+
+        self.conv2dL2 = nn.Conv2d(self.outChannelsSizes[idLayer-1], self.outChannelsSizes[idLayer], kernelSizes[1]) 
+        self.preluL2 = nn.PReLU(self.outChannelsSizes[idLayer])
+        self.maxPool2dL2 = nn.MaxPool2d(poolkernelSizes[idLayer], 1)
+        idLayer += 1
+
+        self.conv2dL3 = nn.Conv2d(self.outChannelsSizes[idLayer-1], self.outChannelsSizes[idLayer], kernelSizes[2]) 
+        self.preluL3 = nn.PReLU(self.outChannelsSizes[idLayer])
+        self.maxPool2dL3 = nn.MaxPool2d(poolkernelSizes[idLayer], 1)
         idLayer += 1
 
         # Fully Connected predictor
         self.FlattenL3 = nn.Flatten()
+
+        input_size = self.LinearInputSize  # Initialize input size for first layer
 
         for i in range(idLayer, self.num_layers+idLayer):
             # Fully Connected layers block
@@ -1032,7 +1052,7 @@ class HorizonExtractionEnhancer_CNNvX_fullyParametric(nn.Module):
             self.outChannelsSizes[idLayer-1], 2, bias=True)
 
         # Initialize weights of layers
-        # self.__initialize_weights__()
+        self.__initialize_weights__()
 
     def __initialize_weights__(self):
         '''Weights Initialization function for layers of the model. Xavier --> layers with tanh and sigmoid, Kaiming --> layers with ReLU activation'''
@@ -1101,3 +1121,8 @@ class HorizonExtractionEnhancer_CNNvX_fullyParametric(nn.Module):
                 val = layer(val)
             elif isinstance(layer, nn.BatchNorm1d):
                 val = layer(val)
+
+        # Output layer
+        predictedPixCorrection = self.DenseOutput(val)
+
+        return predictedPixCorrection

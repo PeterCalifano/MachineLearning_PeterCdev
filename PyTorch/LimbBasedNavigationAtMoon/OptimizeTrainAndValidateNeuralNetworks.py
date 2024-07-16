@@ -498,7 +498,7 @@ if __name__ == '__main__':
 
     # %% Optuna optimization
     NUM_OF_JOBS = 1
-    optunaStudyObj.optimize(objective, n_trials=100, timeout=8*3600, n_jobs=NUM_OF_JOBS)
+    optunaStudyObj.optimize(objective, n_trials=1000, timeout=11*3600, n_jobs=NUM_OF_JOBS)
 
     # Print the best trial
     # Get number of finished trials
