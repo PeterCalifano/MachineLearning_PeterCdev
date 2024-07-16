@@ -986,7 +986,7 @@ def ComputePooling2dOutputSize(inputSize:Union[list, np.array, torch.tensor], ke
 # ConvBlock 2D and flatten sizes computation (SINGLE BLOCK)
 def ComputeConvBlockOutputSize(inputSize:Union[list, np.array, torch.tensor], outChannelsSize:int, 
                                convKernelSize:int=3, poolingkernelSize:int=2, 
-                               convStrideSize:int=1, poolingStrideSize:int=1, 
+                               convStrideSize:int=1, poolingStrideSize:int=None, 
                                convPaddingSize:int=0, poolingPaddingSize:int=0):
     
     # TODO: modify interface to use something like a dictionary with the parameters, to make it more fexible and avoid the need to pass all the parameters
@@ -994,6 +994,9 @@ def ComputeConvBlockOutputSize(inputSize:Union[list, np.array, torch.tensor], ou
     '''Compute output size and number of features maps (channels, i.e. volume) of a ConvBlock layer. 
        Input size must be a list, numpy array or a torch tensor with 2 elements: [height, width].'''
 
+    if poolingStrideSize is None:
+        poolingStrideSize = poolingkernelSize
+        
     # Compute output size of Conv2d and Pooling2d layers
     conv2dOutputSize = ComputeConv2dOutputSize(inputSize, convKernelSize, convStrideSize, convPaddingSize)
     
