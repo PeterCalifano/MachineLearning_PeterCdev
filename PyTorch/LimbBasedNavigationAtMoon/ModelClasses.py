@@ -955,12 +955,12 @@ class HorizonExtractionEnhancer_CNNvX_fullyParametric(nn.Module):
 
         # Extract all the inputs of the class init method from dictionary parametersConfig, else use default values
 
-        kernelSizes = parametersConfig.get('kernelSizes', [1, 3, 3])
-        poolkernelSizes = parametersConfig.get('poolkernelSizes', [1, 1, 2])
+        kernelSizes = parametersConfig.get('kernelSizes', [5, 3, 3])
+        poolkernelSizes = parametersConfig.get('poolkernelSizes', [2, 2, 2])
 
         useBatchNorm = parametersConfig.get('useBatchNorm', True)
         alphaDropCoeff = parametersConfig.get('alphaDropCoeff', 0)
-        alphaLeaky = parametersConfig.get('alphaLeaky', 0.01)
+        alphaLeaky = parametersConfig.get('alphaLeaky', 0)
         patchSize = parametersConfig.get('patchSize', 7)
 
         outChannelsSizes = parametersConfig.get('outChannelsSizes', [])
@@ -1010,8 +1010,6 @@ class HorizonExtractionEnhancer_CNNvX_fullyParametric(nn.Module):
 
         # Fully Connected predictor
         self.FlattenL3 = nn.Flatten()
-
-        input_size = self.LinearInputSize  # Initialize input size for first layer
 
         for i in range(idLayer, self.num_layers+idLayer):
             # Fully Connected layers block

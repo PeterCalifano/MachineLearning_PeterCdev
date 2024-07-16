@@ -70,7 +70,7 @@ exportTracedModel = True
 tracedModelSavePath = 'tracedModelsArchive'
 
 modelArchName = 'HorizonExtractionEnhancer_deepNNv8_fullyParam'
-modelArchName = 'HorizonExtractionEnhancer_CNNv7_fullyParam'
+modelArchName = 'HorizonExtractionEnhancer_CNNvX_fullyParam'
 
 modelSavePath = './checkpoints/' + modelArchName
 datasetSavePath = './datasets/' + modelArchName
@@ -370,7 +370,7 @@ def objective(trial):
     device = customTorchTools.GetDevice()
 
     # START MLFLOW RUN LOGGING
-    modelArchName = 'HorizonExtractionEnhancer_CNNv7_fullyParam'
+    modelArchName = 'HorizonExtractionEnhancer_CNNvX_fullyParam'
     modelSavePath = './checkpoints/' + modelArchName
 
     with mlflow.start_run() as mlflow_run:
@@ -419,8 +419,12 @@ def objective(trial):
             outChannelsSizes.append(trial.suggest_int(f'DenseL{i}', 32, maxNodes))
             mlflow.log_param(f'DenseL{i}', outChannelsSizes[-1])
 
-        parametersConfig = {'useBatchNorm': True, 'alphaDropCoeff': 0, 'LinearInputSize': inputSize,
-                            'outChannelsSizes': outChannelsSizes}
+        kernelSizes     = [5, 3, 3]
+        poolKernelSizes = [2, 2, 2]
+
+        parametersConfig = {'useBatchNorm': True, 'alphaDropCoeff': 0, 'LinearInputSkipSize': 9,
+                            'outChannelsSizes': outChannelsSizes, 'kernelSizes': kernelSizes, 
+                            'poolkernelSizes': poolKernelSizes, 'patchSize': 25}
 
         model = modelClass(parametersConfig).to(device=device)
 

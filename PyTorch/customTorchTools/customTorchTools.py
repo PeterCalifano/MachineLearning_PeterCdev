@@ -16,7 +16,6 @@ from torch.utils.data import DataLoader # Utils for dataset management, storing 
 from torchvision import datasets # Import vision default datasets from torchvision
 from torchvision.transforms import ToTensor # Utils
 
-from pytorch_lightning.callbacks import EarlyStopping  
 # import datetime
 import numpy as np
 import sys, os, signal, copy, inspect, subprocess
