@@ -52,7 +52,7 @@ batch_size = 256  # Defines batch size in dataset
 
 # outChannelsSizes = [2056, 1024, 512, 512, 128, 64]
 
-kernelSizes = [3, 3]
+#kernelSizes = [3, 3]
 # initialLearnRate = 1E-1
 momentumValue = 0.6
 
@@ -69,13 +69,15 @@ device = customTorchTools.GetDevice()
 exportTracedModel = True
 tracedModelSavePath = 'tracedModelsArchive'
 
-modelSavePath = './checkpoints/HorizonExtractionEnhancer_deepNNv8_fullyParam'
-datasetSavePath = './datasets/HorizonExtractionEnhancer_deepNNv8_fullyParam'
+modelArchName = 'HorizonExtractionEnhancer_deepNNv8_fullyParam'
+modelArchName = 'HorizonExtractionEnhancer_CNNvX_fullyParam'
+
+modelSavePath = './checkpoints/' + modelArchName
+datasetSavePath = './datasets/' + modelArchName
 # tensorboardLogDir = './tensorboardLogs/tensorboardLog_ShortCNNv6maxDeeper_run'   + runID
 # tensorBoardPortNum = 6012
 
-modelArchName = 'HorizonExtractionEnhancer_deepNNv8_fullyParam'
-inputSize = 58  # TODO: update this according to new model
+inputSize = 625+9  
 numOfEpochs = 14
 
 
@@ -111,13 +113,16 @@ assert (len(dirNamesRoot) >= 2)
 
 # Select one of the available datapairs folders (each corresponding to a labels generation pipeline output)
 # TRAINING and VALIDATION datasets ID in folder (in this order)
-datasetID = [9, 11] # NOTE: only matters for regeration of dataset
+datasetID = [9, 10] # NOTE: only matters for regeration of dataset
 
 assert (len(datasetID) == 2)
 
 # MANUAL TAGS
 TrainingDatasetTag = 'ID_010_Datapairs_20240710_07_36'
 ValidationDatasetTag = 'ID_013_Datapairs_20240709_10_18'
+
+TrainingDatasetTag = dirNamesRoot[datasetID[0]]
+ValidationDatasetTag = dirNamesRoot[datasetID[1]]
 
 # TrainingDatasetTag = 'ID_006_Datapairs_TrainingSet_20240705'
 # ValidationDatasetTag = 'ID_007_Datapairs_ValidationSet_20240705'
@@ -365,8 +370,8 @@ def objective(trial):
     device = customTorchTools.GetDevice()
 
     # START MLFLOW RUN LOGGING
-    modelSavePath = './checkpoints/HorizonExtractionEnhancer_deepNNv8'
-    modelArchName = 'HorizonExtractionEnhancer_deepNNv8'
+    modelArchName = 'HorizonExtractionEnhancer_CNNvX_fullyParam'
+    modelSavePath = './checkpoints/' + modelArchName
 
     with mlflow.start_run() as mlflow_run:
         run_id = mlflow_run.info.run_id
@@ -382,12 +387,13 @@ def objective(trial):
         # MODEL DEFINITION
 
         # Model layers width
-        outChannelsSizes = []
+        outChannelsSizes = [256, 256, 128] # Values for convolutional blocks
 
         if FULLY_PARAMETRIC:
             num_layers = trial.suggest_int('num_layers', 4, 25)
             maxNodes = 1024
-            modelClass = ModelClasses.HorizonExtractionEnhancer_deepNNv8_fullyParametric
+            #modelClass = ModelClasses.HorizonExtractionEnhancer_deepNNv8_fullyParametric
+            modelClass = ModelClasses.HorizonExtractionEnhancer_CNNvX_fullyParametric
         else:
             num_layers = 6
             maxNodes = 8192
@@ -408,13 +414,17 @@ def objective(trial):
         mlflow.log_param('TrainingDatasetTag', TrainingDatasetTag)
         mlflow.log_param('ValidationDatasetTag', ValidationDatasetTag)
 
+
         for i in range(num_layers):
-            outChannelsSizes.append(
-                trial.suggest_int(f'DenseL{i}', 16, maxNodes))
+            outChannelsSizes.append(trial.suggest_int(f'DenseL{i}', 32, maxNodes))
             mlflow.log_param(f'DenseL{i}', outChannelsSizes[-1])
 
-        parametersConfig = {'useBatchNorm': True, 'alphaDropCoeff': 0, 'LinearInputSize': 58,
-                            'outChannelsSizes': outChannelsSizes}
+        kernelSizes     = [5, 3, 3]
+        poolKernelSizes = [2, 2, 2]
+
+        parametersConfig = {'useBatchNorm': True, 'alphaDropCoeff': 0, 'LinearInputSkipSize': 9,
+                            'outChannelsSizes': outChannelsSizes, 'kernelSizes': kernelSizes, 
+                            'poolkernelSizes': poolKernelSizes, 'patchSize': 25}
 
         model = modelClass(parametersConfig).to(device=device)
 
@@ -424,7 +434,7 @@ def objective(trial):
 
         # Define optimizer object specifying model instance parameters and optimizer parameters
         # NOTE: What are the inputs to suggest_float?
-        initialLearnRate = trial.suggest_float('lr', 1e-8, 1e-2, log=True)
+        initialLearnRate = trial.suggest_float('lr', 1e-8, 1e-4, log=True)
 
         optimizer = torch.optim.Adam(model.parameters(), lr=initialLearnRate, betas=(0.9, 0.999),
                                      eps=1e-08, amsgrad=False, foreach=None, fused=True)
@@ -441,7 +451,7 @@ def objective(trial):
             # optimizer = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=2, threshold=0.01, threshold_mode='rel', cooldown=1, min_lr=1E-12, eps=1e-08)
             # lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=exponentialDecayGamma, last_epoch=options['epochStart']-1)
             lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
-                optimizer, T_0=2, T_mult=2, eta_min=1e-9, last_epoch=options['epochStart']-1)
+                optimizer, T_0=3, T_mult=2, eta_min=1e-9, last_epoch=options['epochStart']-1)
 
             options['lr_scheduler'] = lr_scheduler
 
@@ -470,15 +480,15 @@ if __name__ == '__main__':
         os.makedir('optuna_db')
 
     #studyName = 'HorizonEnhancerCNN_HyperOptimization_deepNNv8_fullyParametric_RandomCloudWithConicLoss'
-    studyName = 'HorizonEnhancerCNN_HyperOptimization_deepNNv8_fullyParametric_RandomNoDropout'
+    studyName = 'HorizonEnhancerCNN_HyperOptimization_deepNNv8_fullyParametric_RandomNoDropout_WithConicLoss_NEW'
 
     optunaStudyObj = optuna.create_study(study_name=studyName,
                                          storage='sqlite:///{studyName}.db'.format(studyName=os.path.join(
                                              'optuna_db', studyName)),
                                          load_if_exists=True,
                                          direction='minimize',
-                                         sampler=optuna.samplers.TPESampler(),
-                                         pruner=optuna.pruners.SuccessiveHalvingPruner(min_resource=1, reduction_factor=4,
+                                         sampler=optuna.samplers.GPSampler(n_startup_trials=15),
+                                         pruner=optuna.pruners.SuccessiveHalvingPruner(min_resource=2, reduction_factor=4,
                                                                                        min_early_stopping_rate=1))
 
     # Set MLFlow tracking URI
@@ -488,7 +498,7 @@ if __name__ == '__main__':
 
     # %% Optuna optimization
     NUM_OF_JOBS = 1
-    optunaStudyObj.optimize(objective, n_trials=100, timeout=8*3600, n_jobs=NUM_OF_JOBS)
+    optunaStudyObj.optimize(objective, n_trials=1000, timeout=11*3600, n_jobs=NUM_OF_JOBS)
 
     # Print the best trial
     # Get number of finished trials
