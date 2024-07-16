@@ -113,7 +113,7 @@ assert (len(dirNamesRoot) >= 2)
 
 # Select one of the available datapairs folders (each corresponding to a labels generation pipeline output)
 # TRAINING and VALIDATION datasets ID in folder (in this order)
-datasetID = [9, 10] # NOTE: only matters for regeration of dataset
+datasetID = [14, 10] # NOTE: only matters for regeration of dataset
 
 assert (len(datasetID) == 2)
 
@@ -295,13 +295,18 @@ if REGEN_DATASET == True or datasetNotFound:
     datasetValidation = datasetPreparation.MoonLimbPixCorrector_Dataset(
         dataDictValidation)
     # Save dataset as torch dataset object for future use
-    if not os.path.exists(datasetSavePath):
-        os.makedirs(datasetSavePath)
+    limitSize = 4 * (2**30) * 8  # 4 Gbits
+    sizeInBytes = np.sum(
+        [64 * entry.size for entry in dataDictTraining.values()])
 
-    customTorchTools.SaveTorchDataset(
-        datasetTraining, datasetSavePath, datasetName='TrainingDataset_'+TrainingDatasetTag)
-    customTorchTools.SaveTorchDataset(
-        datasetValidation, datasetSavePath, datasetName='ValidationDataset_'+ValidationDatasetTag)
+    if sizeInBytes < limitSize:
+        if not os.path.exists(datasetSavePath):
+            os.makedirs(datasetSavePath)
+
+        customTorchTools.SaveTorchDataset(
+            datasetTraining, datasetSavePath, datasetName='TrainingDataset_'+TrainingDatasetTag)
+        customTorchTools.SaveTorchDataset(
+            datasetValidation, datasetSavePath, datasetName='ValidationDataset_'+ValidationDatasetTag)
 else:
     if not (os.path.isfile(os.path.join(datasetSavePath, 'TrainingDataset_'+TrainingDatasetTag+'.pt'))) or not ((os.path.isfile(os.path.join(datasetSavePath, 'ValidationDataset_'+ValidationDatasetTag+'.pt')))):
         raise ImportError(
