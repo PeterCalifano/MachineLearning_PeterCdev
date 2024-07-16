@@ -1047,10 +1047,6 @@ class HorizonExtractionEnhancer_CNNvX_fullyParametric(nn.Module):
         # Output layer
         self.DenseOutput = nn.Linear(self.outChannelsSizes[-1], 2, bias=True)
 
-        # Output layer
-        self.DenseOutput = nn.Linear(
-            self.outChannelsSizes[idLayer-1], 2, bias=True)
-
         # Initialize weights of layers
         self.__initialize_weights__()
 
