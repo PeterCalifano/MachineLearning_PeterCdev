@@ -32,7 +32,7 @@ USE_MULTIPROCESS = False
 USE_NORMALIZED_IMG = True
 USE_LR_SCHEDULING = True
 TRAIN_ALL = True
-REGEN_DATASET = False
+REGEN_DATASET = True
 USE_TENSOR_LOSS_EVAL = True
 MODEL_CLASS_ID = 6
 MANUAL_RUN = True # Uses MODEL_CLASS_ID to run a specific model
@@ -74,7 +74,7 @@ def main(idRun:int, idModelClass:int, idLossType:int):
 
 
     #kernelSizes = [3, 3]
-    initialLearnRate = 5E-4
+    initialLearnRate = 1E-4
     momentumValue = 0.6
 
     #TODO: add log and printing of settings of optimizer for each epoch. Reduce the training loss value printings
@@ -383,6 +383,16 @@ def main(idRun:int, idModelClass:int, idLossType:int):
                         # Save invalid patches to check
                         #invalidPatchesToCheck['ID'].append(sampleID)
                         #invalidPatchesToCheck['flattenedPatch'].append(flattenedWindow.tolist())
+                
+                # NOTE: transpose done using .T is not correct, transposition must be done on [0,1] axis only
+
+                #reshapedPatchArray = inputDataArray[0:flattenedWindSize, 0:ui16coarseLimbPixels.shape[1]].reshape(
+                #    (int(np.sqrt(flattenedWindSize)), -1, ui16coarseLimbPixels.shape[1]))
+                #
+                #limbPixelExtraction_CNN_NN.CreateCustomMosaicGray(reshapedPatchArray,
+                #                                             ui16coarseLimbPixels[:, :], [1024, 1024], 
+                #                                             dTruePixOnConic[:, :], global_points=None, save_path=None)
+
                 imgID += 1
 
             # Save json with invalid patches to check
@@ -588,7 +598,7 @@ def main(idRun:int, idModelClass:int, idLossType:int):
             #lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=exponentialDecayGamma, last_epoch=options['epochStart']-1)
             
             #lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=exponentialDecayGamma, last_epoch=options['epochStart']-1)
-            lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=2, T_mult=2, eta_min=1e-9, last_epoch=options['epochStart']-1)
+            lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=4, T_mult=2, eta_min=1e-9, last_epoch=options['epochStart']-1)
 
             options['lr_scheduler'] = lr_scheduler
     
