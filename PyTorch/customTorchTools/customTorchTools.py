@@ -131,7 +131,7 @@ def ValidateModel(dataloader:DataLoader, model:nn.Module, lossFcn:nn.Module, dev
         allocMem = torch.cuda.memory_allocated(0)
         freeMem = torch.cuda.get_device_properties(0).total_memory - torch.cuda.memory_reserved(0) - torch.cuda.memory_allocated(0)
         estimated_memory_per_sample = allocMem / original_batch_size
-        newBathSizeTmp = round(0.5 * freeMem / estimated_memory_per_sample)
+        newBathSizeTmp = min(round(0.5 * freeMem / estimated_memory_per_sample), 2048)
 
         dataloader = DataLoader(dataloader.dataset, batch_size=newBathSizeTmp, shuffle=False, drop_last=False)
         lossTerms = {}
