@@ -78,7 +78,7 @@ datasetSavePath = './datasets/' + modelArchName
 # tensorBoardPortNum = 6012
 
 inputSize = 625+9  
-numOfEpochs = 14
+numOfEpochs = 25
 
 
 options = {'taskType': 'regression',
@@ -89,7 +89,7 @@ options = {'taskType': 'regression',
            'modelName': modelArchName,
            'loadCheckpoint': False,
            'checkpointsInDir': modelSavePath,
-           'lossLogName': 'MSE_OutOfPatch',
+           'lossLogName': 'UnnormConicLoss_MSE_OutOfPatch',
            'epochStart': 0,
            }
 
@@ -114,6 +114,7 @@ assert (len(dirNamesRoot) >= 2)
 # Select one of the available datapairs folders (each corresponding to a labels generation pipeline output)
 # TRAINING and VALIDATION datasets ID in folder (in this order)
 datasetID = [14, 10] # NOTE: only matters for regeration of dataset
+datasetID = [9, 10]  # NOTE: only matters for regeration of dataset
 
 assert (len(datasetID) == 2)
 
@@ -339,9 +340,9 @@ else:
 
 lossParams = {'ConicLossWeightCoeff': 0, 'RectExpWeightCoeff': 1}
 
-lossParams['paramsTrain'] = {'ConicLossWeightCoeff': 1, 'RectExpWeightCoeff': 100}
+lossParams['paramsTrain'] = {'ConicLossWeightCoeff': 100, 'RectExpWeightCoeff': 100}
 
-lossParams['paramsEval'] = {'ConicLossWeightCoeff': 0, 'RectExpWeightCoeff': 0}  # Not currently used
+lossParams['paramsEval'] = {'ConicLossWeightCoeff': 100, 'RectExpWeightCoeff': 0}  # Not currently used
 
 
 if LOSS_TYPE == 0:
@@ -456,7 +457,7 @@ def objective(trial):
             # optimizer = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=2, threshold=0.01, threshold_mode='rel', cooldown=1, min_lr=1E-12, eps=1e-08)
             # lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=exponentialDecayGamma, last_epoch=options['epochStart']-1)
             lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
-                optimizer, T_0=3, T_mult=2, eta_min=1e-9, last_epoch=options['epochStart']-1)
+                optimizer, T_0=4, T_mult=2, eta_min=1e-9, last_epoch=options['epochStart']-1)
 
             options['lr_scheduler'] = lr_scheduler
 
@@ -492,7 +493,7 @@ if __name__ == '__main__':
                                              'optuna_db', studyName)),
                                          load_if_exists=True,
                                          direction='minimize',
-                                         sampler=optuna.samplers.GPSampler(n_startup_trials=15),
+                                         sampler=optuna.samplers.TPESampler(n_startup_trials=15),
                                          pruner=optuna.pruners.SuccessiveHalvingPruner(min_resource=2, reduction_factor=4,
                                                                                        min_early_stopping_rate=1))
 
@@ -503,7 +504,7 @@ if __name__ == '__main__':
 
     # %% Optuna optimization
     NUM_OF_JOBS = 1
-    optunaStudyObj.optimize(objective, n_trials=1000, timeout=11*3600, n_jobs=NUM_OF_JOBS)
+    optunaStudyObj.optimize(objective, n_trials=1000, timeout=24 *3600, n_jobs=NUM_OF_JOBS)
 
     # Print the best trial
     # Get number of finished trials
