@@ -33,7 +33,7 @@ USE_LR_SCHEDULING = True
 TRAIN_ALL = True
 REGEN_DATASET = True
 USE_TENSOR_LOSS_EVAL = True
-MODEL_CLASS_ID = 6
+MODEL_CLASS_ID = 7
 MANUAL_RUN = True # Uses MODEL_CLASS_ID to run a specific model
 LOSS_TYPE = 4 # 0: Conic + L2, # 1: Conic + L2 + Quadratic OutOfPatch, # 2: Normalized Conic + L2 + OutOfPatch,            
             # 3: Polar-n-direction distance + OutOfPatch, #4: MSE + OutOfPatch + ConicLoss
@@ -42,6 +42,7 @@ USE_BATCH_NORM = True
 # TRAINING and VALIDATION datasets ID in folder (in this order)
 datasetID = [6, 7]
 datasetID = [12, 10] # Datasets with 25x25 patches
+datasetID = [9, 10]  # NOTE: only matters for regeneration of dataset
 
 def main(idRun:int, idModelClass:int, idLossType:int):
 
@@ -68,12 +69,19 @@ def main(idRun:int, idModelClass:int, idLossType:int):
         kernelSizes = [5, 3, 3]
         poolKernelSizes = [2, 2, 2]
         outChannelsSizes = [256, 256, 256, 1024, 1024, 128, 64]
+
+    elif idModelClass == 7:
+
+        kernelSizes = [5, 3, 3]
+        poolKernelSizes = [1, 2, 2]
+        outChannelsSizes = [256, 256, 128, 910, 860, 500, 910, 950, 380, 620, 415, 810, 645, 550, 230, 710, 420, 515, 60] # CNNvX , 3 conv + 16 nn
+
     else:
         raise ValueError('Model class ID not found.')
 
 
     #kernelSizes = [3, 3]
-    initialLearnRate = 1E-4
+    initialLearnRate = 5E-5
     momentumValue = 0.6
 
     #TODO: add log and printing of settings of optimizer for each epoch. Reduce the training loss value printings
@@ -81,7 +89,7 @@ def main(idRun:int, idModelClass:int, idLossType:int):
     # Loss function parameters
     lossParams = {'ConicLossWeightCoeff': 0, 'RectExpWeightCoeff': 1}
 
-    lossParams['paramsTrain'] = {'ConicLossWeightCoeff': 0, 'RectExpWeightCoeff': 1}
+    lossParams['paramsTrain'] = {'ConicLossWeightCoeff': 1000, 'RectExpWeightCoeff': 1}
     lossParams['paramsEval'] = {'ConicLossWeightCoeff': 0, 'RectExpWeightCoeff': 0} # Not currently used
 
     optimizerID = 1 # 0: SGD, 1: Adam
@@ -195,6 +203,24 @@ def main(idRun:int, idModelClass:int, idLossType:int):
         #inputSize = 58
         inputSize = parametersConfig.get('patchSize')**2 + 9
         numOfEpochs = 20
+
+    elif idModelClass == 7:
+                #runID = "{num:04d}".format(num=idRun)
+        modelArchName = 'HorizonExtractionEnhancer_CNNvX_randomCloudGuessPatch25'
+
+        modelSavePath = './checkpoints/' + modelArchName
+        datasetSavePath = './datasets/' + modelArchName
+        #tensorboardLogDir = './tensorboardLogs/tensorboardLog_ShortCNNv6maxDeeper_run'   + runID
+        #tensorBoardPortNum = 6012
+
+        parametersConfig = {'useBatchNorm': True, 'alphaDropCoeff': 0, 
+                            'LinearInputSkipSize': 9,'outChannelsSizes': outChannelsSizes,
+                            'kernelSizes': kernelSizes, 'poolkernelSizes': poolKernelSizes,
+                            'patchSize': 25}
+
+        #inputSize = 58
+        inputSize = parametersConfig.get('patchSize')**2 + 9
+        numOfEpochs = 50
 
 
     EPOCH_START = 0
@@ -357,7 +383,7 @@ def main(idRun:int, idModelClass:int, idLossType:int):
                         ptrToInput += len(tmpVal) # Update index
 
                         #inputDataArray[55:58, saveID] = dPosCam_TF
-                        if idModelClass in [1,2,3,4,5,6]:
+                        if idModelClass in [1,2,3,4,5,6,7]:
                             inputDataArray[ptrToInput, saveID] = dConicAvgRadiusInPix
                             ptrToInput += dConicAvgRadiusInPix.size # Update index
 
@@ -522,6 +548,8 @@ def main(idRun:int, idModelClass:int, idLossType:int):
             modelClass = ModelClasses.HorizonExtractionEnhancer_deepNNv8
         elif idModelClass == 6:
             modelClass = ModelClasses.HorizonExtractionEnhancer_CNNv7
+        elif idModelClass == 7:
+            modelClass = ModelClasses.HorizonExtractionEnhancer_CNNvX_fullyParametric
         else:
             raise ValueError('Model class ID using max pooling not found.')
             
@@ -550,18 +578,14 @@ def main(idRun:int, idModelClass:int, idLossType:int):
                 mlflow.log_params(parametersConfig)
                 # Kernel sizes: [5]
                 modelCNN_NN = modelClass(outChannelsSizes, parametersConfig).to(device=device)
-            elif idModelClass == 5:
+            elif idModelClass > 5:
 
                 mlflow.log_params(parametersConfig)
                 # Kernel sizes: [5]
                 modelCNN_NN = modelClass(
                     parametersConfig).to(device=device)
-                
-            elif idModelClass == 6:
 
-                mlflow.log_params(parametersConfig)
-                # Kernel sizes: [1, 5, 3]
-                modelCNN_NN = modelClass(parametersConfig).to(device=device)
+            
     
     
         # ######### TEST DEBUG ############
@@ -587,7 +611,7 @@ def main(idRun:int, idModelClass:int, idLossType:int):
         for param_group in optimizer.param_groups:
             param_group['initial_lr'] = param_group['lr']
     
-        exponentialDecayGamma = 0.9
+        exponentialDecayGamma = 0.8
     
         for name, param in modelCNN_NN.named_parameters():
             mlflow.log_param(name, list(param.size()))
@@ -596,8 +620,8 @@ def main(idRun:int, idModelClass:int, idLossType:int):
             #optimizer = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=2, threshold=0.01, threshold_mode='rel', cooldown=1, min_lr=1E-12, eps=1e-08)
             #lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=exponentialDecayGamma, last_epoch=options['epochStart']-1)
             
-            #lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=exponentialDecayGamma, last_epoch=options['epochStart']-1)
-            lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=4, T_mult=2, eta_min=1e-9, last_epoch=options['epochStart']-1)
+            lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=exponentialDecayGamma, last_epoch=options['epochStart']-1)
+            #lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=4, T_mult=2, eta_min=1e-9, last_epoch=options['epochStart']-1)
 
             options['lr_scheduler'] = lr_scheduler
     
@@ -642,10 +666,10 @@ if __name__ == '__main__':
     #mlflow.set_experiment("HorizonEnhancerCNN_OptimizationRuns")
     if datasetID[0] == 6 and datasetID[1] == 7:
         mlflow.set_experiment("HorizonEnhancerCNN_OptimizationRuns_TrainValidOnLUMIOdata")
-    elif datasetID[0] == 9 and datasetID[1] == 1:
-        mlflow.set_experiment("HorizonEnhancerCNN_OptimizationRuns_TrainValidOnRandomCloud")
-    elif datasetID[0] == 12 and datasetID[1] == 10:
-        mlflow.set_experiment("HorizonEnhancerCNN_OptimizationRuns_TrainValidOnRandomCloud25x25")
+    #elif datasetID[0] == 9 and datasetID[1] == 10:
+    #    mlflow.set_experiment("HorizonEnhancerCNN_OptimizationRuns_TrainValidOnRandomCloud")
+    elif datasetID[0] == 9 and datasetID[1] == 10:
+        mlflow.set_experiment("HorizonEnhancerCNNvX_TrainValidOnRandomCloud25x25")
     else:
         raise ValueError('Check datasetID. Experiment not found.')
     
