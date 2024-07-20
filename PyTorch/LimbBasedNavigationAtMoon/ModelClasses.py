@@ -1011,26 +1011,35 @@ class HorizonExtractionEnhancer_CNNvX_fullyParametric(nn.Module):
         #idLayer += 1
 
         # Convolutional Features extractor
-        self.conv2dL1 = nn.Conv2d(1, self.outChannelsSizes[idLayer], kernelSizes[0]) 
-        self.preluL1 = nn.PReLU(self.outChannelsSizes[idLayer])
-        self.maxPool2dL1 = nn.MaxPool2d(
-            poolkernelSizes[idLayer], poolkernelSizes[idLayer])
-        idLayer += 1
+        #self.conv2dL1 = nn.Conv2d(1, self.outChannelsSizes[idLayer], kernelSizes[0]) 
+        #self.preluL1 = nn.PReLU(self.outChannelsSizes[idLayer])
+        #self.maxPool2dL1 = nn.MaxPool2d(
+        #    poolkernelSizes[idLayer], poolkernelSizes[idLayer])
+        #idLayer += 1
+        #self.conv2dL2 = nn.Conv2d(self.outChannelsSizes[idLayer-1], self.outChannelsSizes[idLayer], kernelSizes[1]) 
+        #self.preluL2 = nn.PReLU(self.outChannelsSizes[idLayer])
+        #self.maxPool2dL2 = nn.MaxPool2d(
+        #    poolkernelSizes[idLayer], poolkernelSizes[idLayer])
+        #idLayer += 1
+        #self.conv2dL3 = nn.Conv2d(self.outChannelsSizes[idLayer-1], self.outChannelsSizes[idLayer], kernelSizes[2]) 
+        #self.preluL3 = nn.PReLU(self.outChannelsSizes[idLayer])
+        #self.maxPool2dL3 = nn.MaxPool2d(
+        #    poolkernelSizes[idLayer], poolkernelSizes[idLayer])
 
-        self.conv2dL2 = nn.Conv2d(self.outChannelsSizes[idLayer-1], self.outChannelsSizes[idLayer], kernelSizes[1]) 
-        self.preluL2 = nn.PReLU(self.outChannelsSizes[idLayer])
-        self.maxPool2dL2 = nn.MaxPool2d(
-            poolkernelSizes[idLayer], poolkernelSizes[idLayer])
-        idLayer += 1
+        # Convolutional blocks autobuilder
+        in_channels = 1
 
-        self.conv2dL3 = nn.Conv2d(self.outChannelsSizes[idLayer-1], self.outChannelsSizes[idLayer], kernelSizes[2]) 
-        self.preluL3 = nn.PReLU(self.outChannelsSizes[idLayer])
-        self.maxPool2dL3 = nn.MaxPool2d(
-            poolkernelSizes[idLayer], poolkernelSizes[idLayer])
-        idLayer += 1
+        for i in range(len(kernelSizes)):
+            # Convolutional layers block
+            self.layers.append( nn.Conv2d(in_channels, self.outChannelsSizes[i], kernelSizes[i]))
+            self.layers.append(nn.PReLU(self.outChannelsSizes[i]))
+            self.layers.append(nn.MaxPool2d( poolkernelSizes[i], poolkernelSizes[i]))
 
-        # Fully Connected predictor
-        self.FlattenL3 = nn.Flatten()
+            in_channels = self.outChannelsSizes[i]
+            idLayer += 1
+
+        # Fully Connected predictor autobuilder
+        self.Flatten = nn.Flatten()
 
         input_size = self.LinearInputSize  # Initialize input size for first layer
 
@@ -1056,18 +1065,23 @@ class HorizonExtractionEnhancer_CNNvX_fullyParametric(nn.Module):
     def __initialize_weights__(self):
         '''Weights Initialization function for layers of the model. Xavier --> layers with tanh and sigmoid, Kaiming --> layers with ReLU activation'''
         # ReLU activation layers
-        init.kaiming_uniform_(self.conv2dL1.weight, nonlinearity='leaky_relu')
-        init.constant_(self.conv2dL1.bias, 0)
-
-        init.kaiming_uniform_(self.conv2dL2.weight, nonlinearity='leaky_relu')
-        init.constant_(self.conv2dL2.bias, 0)
-
-        init.kaiming_uniform_(self.conv2dL3.weight, nonlinearity='leaky_relu')
-        init.constant_(self.conv2dL3.bias, 0)
+        #init.kaiming_uniform_(self.conv2dL1.weight, nonlinearity='leaky_relu')
+        #init.constant_(self.conv2dL1.bias, 0)
+        #init.kaiming_uniform_(self.conv2dL2.weight, nonlinearity='leaky_relu')
+        #init.constant_(self.conv2dL2.bias, 0)
+        #init.kaiming_uniform_(self.conv2dL3.weight, nonlinearity='leaky_relu')
+        #init.constant_(self.conv2dL3.bias, 0)
 
         for layer in self.layers:
             # Check if layer is a Linear layer
             if isinstance(layer, nn.Linear):
+                # Apply Kaiming initialization
+                init.kaiming_uniform_(layer.weight, nonlinearity='leaky_relu')
+                if layer.bias is not None:
+                    # Initialize bias to zero if present
+                    init.constant_(layer.bias, 0)
+
+            elif isinstance(layer, nn.Conv2d):
                 # Apply Kaiming initialization
                 init.kaiming_uniform_(layer.weight, nonlinearity='leaky_relu')
                 if layer.bias is not None:
@@ -1089,20 +1103,31 @@ class HorizonExtractionEnhancer_CNNvX_fullyParametric(nn.Module):
             imgWidth, -1, 1, inputSample.size(0))).T  # First portion of the input vector reshaped to 2D
         contextualInfoInput = inputSample[:, self.imagePixSize:]
 
-        # Convolutional layers
-        # L1 (Input)
-        val = self.maxPool2dL1(torchFunc.prelu(
-            self.conv2dL1(img2Dinput), self.preluL1.weight))
+        ## Convolutional layers
+        ## L1 (Input)
+        #val = self.maxPool2dL1(torchFunc.prelu(
+        #    self.conv2dL1(img2Dinput), self.preluL1.weight))
+        ## L2
+        #val = self.maxPool2dL2(torchFunc.prelu(
+        #    self.conv2dL2(val), self.preluL2.weight))
+        ## L3
+        #val = self.maxPool2dL3(torchFunc.prelu(
+        #    self.conv2dL3(val), self.preluL3.weight))
 
-        # Fully Connected Layers
-        # L2
-        val = self.maxPool2dL2(torchFunc.prelu(
-            self.conv2dL2(val), self.preluL2.weight))
-
-        # L3
-        val = self.maxPool2dL3(torchFunc.prelu(
-            self.conv2dL3(val), self.preluL3.weight))
-
+        # Perform forward pass iterating through all layers of CNN
+        val = img2Dinput
+        
+        for layer in self.layers:
+            if isinstance(layer, nn.Conv2d):
+                val = layer(val)
+            elif isinstance(layer, nn.PReLU):
+                val = torchFunc.prelu(val, layer.weight)
+            elif isinstance(layer, nn.MaxPool2d):
+                val = layer(val)
+            else:
+                # CNN layers finished, break the loop
+                break
+        
         # Fully Connected Layers
         # Flatten data to get input to Fully Connected layers
         val = self.FlattenL3(val)
@@ -1110,8 +1135,9 @@ class HorizonExtractionEnhancer_CNNvX_fullyParametric(nn.Module):
         # Concatenate and batch normalize data
         val = torch.cat((val, contextualInfoInput), dim=1)
 
-        # Perform forward pass iterating through all layers
+        # Perform forward pass iterating through all layers of DNN
         for layer in self.layers:
+
             if isinstance(layer, nn.Linear):
                 val = layer(val)
             elif isinstance(layer, nn.PReLU):
