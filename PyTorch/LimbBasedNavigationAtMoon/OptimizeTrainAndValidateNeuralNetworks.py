@@ -69,26 +69,25 @@ device = customTorchTools.GetDevice()
 exportTracedModel = True
 tracedModelSavePath = 'tracedModelsArchive'
 
-modelArchName = 'HorizonExtractionEnhancer_deepNNv8_fullyParam'
-modelArchName = 'HorizonExtractionEnhancer_CNNvX_fullyParam'
+#modelArchName = 'HorizonExtractionEnhancer_deepNNv8_fullyParam'
+modelArchName_base = 'HorizonExtractionEnhancer_CNNvX_fullyParam_Patch7'
 
-modelSavePath = './checkpoints/' + modelArchName
-datasetSavePath = './datasets/' + modelArchName
+modelSavePath = './checkpoints/' + modelArchName_base
+datasetSavePath = './datasets/' + modelArchName_base
 # tensorboardLogDir = './tensorboardLogs/tensorboardLog_ShortCNNv6maxDeeper_run'   + runID
 # tensorBoardPortNum = 6012
 
-inputSize = 625+9  
+#inputSize = 625+9  
 inputSize = 49+9
 
 numOfEpochs = 25
-
 
 options = {'taskType': 'regression',
            'device': device,
            'epochs': numOfEpochs,
            'saveCheckpoints': True,
            'checkpointsOutDir': modelSavePath,
-           'modelName': modelArchName,
+           'modelName': modelArchName_base,
            'loadCheckpoint': False,
            'checkpointsInDir': modelSavePath,
            'lossLogName': 'UnnormConicLoss_MSE_OutOfPatch',
@@ -379,8 +378,9 @@ def objective(trial):
 
     device = customTorchTools.GetDevice()
 
+
     # START MLFLOW RUN LOGGING
-    modelArchName = 'HorizonExtractionEnhancer_CNNvX_fullyParam'
+    modelArchName = modelArchName_base
     modelSavePath = './checkpoints/' + modelArchName
 
     with mlflow.start_run() as mlflow_run:
