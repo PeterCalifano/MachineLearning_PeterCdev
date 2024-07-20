@@ -115,7 +115,7 @@ assert (len(dirNamesRoot) >= 2)
 # Select one of the available datapairs folders (each corresponding to a labels generation pipeline output)
 # TRAINING and VALIDATION datasets ID in folder (in this order)
 
-datasetID = [14, 10] # NOTE: only matters for regeneration of dataset
+datasetID = [12, 13] # NOTE: only matters for regeneration of dataset
 #datasetID = [9, 10]  # NOTE: only matters for regeneration of dataset
 
 
@@ -343,9 +343,9 @@ else:
 
 lossParams = {'ConicLossWeightCoeff': 0, 'RectExpWeightCoeff': 1}
 
-lossParams['paramsTrain'] = {'ConicLossWeightCoeff': 100, 'RectExpWeightCoeff': 100}
+lossParams['paramsTrain'] = {'ConicLossWeightCoeff': 1000, 'RectExpWeightCoeff': 100}
 
-lossParams['paramsEval'] = {'ConicLossWeightCoeff': 100, 'RectExpWeightCoeff': 0}  # Not currently used
+lossParams['paramsEval'] = {'ConicLossWeightCoeff': 1000, 'RectExpWeightCoeff': 0}  # Not currently used
 
 
 if LOSS_TYPE == 0:
@@ -398,6 +398,13 @@ def objective(trial):
 
         # Model layers width
         outChannelsSizes = [64, 32, 32]  # Values for convolutional blocks
+        outChannelsSizes = [64]  # Values for convolutional blocks
+
+        kernelSizes = [5, 3, 3]
+        poolKernelSizes = [1, 2, 2]
+
+        kernelSizes = [3]
+        poolKernelSizes = [2]
 
         if FULLY_PARAMETRIC:
             if OPTIMIZE_ARCH:
@@ -405,7 +412,7 @@ def objective(trial):
                 maxNodes = 1024
             else:
                 num_layers = None
-                outChannelsSizes.append([256, 256, 125, 60])
+                outChannelsSizes.extend([256, 256, 125, 60])
 
             #modelClass = ModelClasses.HorizonExtractionEnhancer_deepNNv8_fullyParametric
             modelClass = ModelClasses.HorizonExtractionEnhancer_CNNvX_fullyParametric
@@ -431,9 +438,6 @@ def objective(trial):
                 outChannelsSizes.append(trial.suggest_int(f'DenseL{i}', 32, maxNodes))
                 mlflow.log_param(f'DenseL{i}', outChannelsSizes[-1])
 
-        kernelSizes     = [5, 3, 3]
-        poolKernelSizes = [1, 2, 2]
-
         parametersConfig = {'useBatchNorm': True, 'alphaDropCoeff': 0, 'LinearInputSkipSize': 9,
                             'outChannelsSizes': outChannelsSizes, 'kernelSizes': kernelSizes, 
                             'poolkernelSizes': poolKernelSizes, 'patchSize': 7}
@@ -441,7 +445,10 @@ def objective(trial):
         model = modelClass(parametersConfig).to(device=device)
 
         mlflow.log_params(parametersConfig)
-        mlflow.log_param('NumOfHiddenLayers', num_layers-1)
+
+        if OPTIMIZE_ARCH:
+            mlflow.log_param('NumOfHiddenLayers', num_layers-1)
+            
         mlflow.log_params(options)
 
         # Define optimizer object specifying model instance parameters and optimizer parameters

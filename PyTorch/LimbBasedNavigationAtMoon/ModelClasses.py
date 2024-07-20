@@ -1039,7 +1039,8 @@ class HorizonExtractionEnhancer_CNNvX_fullyParametric(nn.Module):
             idLayer += 1
 
         # Fully Connected predictor autobuilder
-        self.Flatten = nn.Flatten()
+        #self.Flatten = nn.Flatten()
+        self.layers.append(nn.Flatten())
 
         input_size = self.LinearInputSize  # Initialize input size for first layer
 
@@ -1103,42 +1104,16 @@ class HorizonExtractionEnhancer_CNNvX_fullyParametric(nn.Module):
             imgWidth, -1, 1, inputSample.size(0))).T  # First portion of the input vector reshaped to 2D
         contextualInfoInput = inputSample[:, self.imagePixSize:]
 
-        ## Convolutional layers
-        ## L1 (Input)
-        #val = self.maxPool2dL1(torchFunc.prelu(
-        #    self.conv2dL1(img2Dinput), self.preluL1.weight))
-        ## L2
-        #val = self.maxPool2dL2(torchFunc.prelu(
-        #    self.conv2dL2(val), self.preluL2.weight))
-        ## L3
-        #val = self.maxPool2dL3(torchFunc.prelu(
-        #    self.conv2dL3(val), self.preluL3.weight))
-
         # Perform forward pass iterating through all layers of CNN
         val = img2Dinput
-        
+
         for layer in self.layers:
+
             if isinstance(layer, nn.Conv2d):
                 val = layer(val)
-            elif isinstance(layer, nn.PReLU):
-                val = torchFunc.prelu(val, layer.weight)
             elif isinstance(layer, nn.MaxPool2d):
                 val = layer(val)
-            else:
-                # CNN layers finished, break the loop
-                break
-        
-        # Fully Connected Layers
-        # Flatten data to get input to Fully Connected layers
-        val = self.FlattenL3(val)
-
-        # Concatenate and batch normalize data
-        val = torch.cat((val, contextualInfoInput), dim=1)
-
-        # Perform forward pass iterating through all layers of DNN
-        for layer in self.layers:
-
-            if isinstance(layer, nn.Linear):
+            elif isinstance(layer, nn.Linear):
                 val = layer(val)
             elif isinstance(layer, nn.PReLU):
                 val = torchFunc.prelu(val, layer.weight)
@@ -1146,6 +1121,12 @@ class HorizonExtractionEnhancer_CNNvX_fullyParametric(nn.Module):
                 val = layer(val)
             elif isinstance(layer, nn.BatchNorm1d):
                 val = layer(val)
+            elif isinstance(layer, nn.Flatten):
+                val = layer(val)
+                # Concatenate if needed
+                if 'contextualInfoInput' in locals():
+                    val = torch.cat((val, contextualInfoInput), dim=1)
+
 
         # Output layer
         predictedPixCorrection = self.DenseOutput(val)
