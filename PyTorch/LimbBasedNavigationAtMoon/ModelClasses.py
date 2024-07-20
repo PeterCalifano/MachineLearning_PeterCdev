@@ -976,7 +976,7 @@ class HorizonExtractionEnhancer_CNNvX_fullyParametric(nn.Module):
         self.numOfConvLayers = len(kernelSizes)
         self.useBatchNorm = useBatchNorm
 
-        self.num_layers = len(self.outChannelsSizes) - 3
+        self.num_layers = len(self.outChannelsSizes) - len(kernelSizes)
 
         convBlockOutputSize = AutoComputeConvBlocksOutput(self, kernelSizes, poolkernelSizes)
 
