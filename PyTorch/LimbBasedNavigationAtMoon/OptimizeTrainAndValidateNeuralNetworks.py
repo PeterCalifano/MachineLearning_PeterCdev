@@ -399,7 +399,7 @@ def objective(trial):
         # Model layers width
         #outChannelsSizes = [64, 32, 32]  # Values for convolutional blocks
         #outChannelsSizes = [64]  # Values for convolutional blocks
-        outChannelsSizes = [trial.suggest_int('outChannelsSizes', 16, 512)]
+        outChannelsSizes = [trial.suggest_int('outChannelsSizes', 16, 512, log=True)]
         #kernelSizes = [5, 3, 3]
         #poolKernelSizes = [1, 2, 2]
 
