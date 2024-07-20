@@ -397,13 +397,13 @@ def objective(trial):
         # MODEL DEFINITION
 
         # Model layers width
-        outChannelsSizes = [64, 32, 32]  # Values for convolutional blocks
-        outChannelsSizes = [64]  # Values for convolutional blocks
+        #outChannelsSizes = [64, 32, 32]  # Values for convolutional blocks
+        #outChannelsSizes = [64]  # Values for convolutional blocks
+        outChannelsSizes = [trial.suggest_int('outChannelsSizes', 16, 512)]
+        #kernelSizes = [5, 3, 3]
+        #poolKernelSizes = [1, 2, 2]
 
-        kernelSizes = [5, 3, 3]
-        poolKernelSizes = [1, 2, 2]
-
-        kernelSizes = [3]
+        kernelSizes = [5]
         poolKernelSizes = [2]
 
         if FULLY_PARAMETRIC:
@@ -448,7 +448,7 @@ def objective(trial):
 
         if OPTIMIZE_ARCH:
             mlflow.log_param('NumOfHiddenLayers', num_layers-1)
-            
+
         mlflow.log_params(options)
 
         # Define optimizer object specifying model instance parameters and optimizer parameters
@@ -519,7 +519,7 @@ if __name__ == '__main__':
 
     # %% Optuna optimization
     NUM_OF_JOBS = 1
-    optunaStudyObj.optimize(objective, n_trials=200, timeout=12*3600, n_jobs=NUM_OF_JOBS)
+    optunaStudyObj.optimize(objective, n_trials=300, timeout=9*3600, n_jobs=NUM_OF_JOBS)
 
     # Print the best trial
     # Get number of finished trials
