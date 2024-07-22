@@ -45,7 +45,8 @@ def GetDevice():
 # Updated by PC 04-06-2024
 
 def TrainModel(dataloader:DataLoader, model:nn.Module, lossFcn:nn.Module, 
-               optimizer, device=GetDevice(), taskType:str='classification', lr_scheduler=None):
+               optimizer, epochID:int, device=GetDevice(), taskType:str='classification', lr_scheduler=None,
+               swa_scheduler=None, swa_model=None, swa_start_epoch:int=10) -> Union[float, int]:
 
     size=len(dataloader.dataset) # Get size of dataloader dataset object
     model.train() # Set model instance in training mode ("informing" backend that the training is going to start)
@@ -87,18 +88,28 @@ def TrainModel(dataloader:DataLoader, model:nn.Module, lossFcn:nn.Module,
             if keys != []:
                 print("\t",", ".join([f"{key}: {trainLossOut[key]:.4f}" for key in keys]))    # Update learning rate if scheduler is provided
 
-    if lr_scheduler is not None:
-        lr_scheduler.step()
-        print('\n')
-        print('Learning rate modified to: ', lr_scheduler.get_last_lr())
-        print('\n')
+    # Perform step of SWA if enabled
+    if swa_model is not None and epochID >= swa_start_epoch:
+
+        # Update SWA model parameters
+        swa_model.update_parameters(model)
+        # Update SWA scheduler
+        swa_scheduler.step()
+        torch.optim.swa_utils.update_bn(dataloader, swa_model, device=device) # Update batch normalization layers for swa model
+
+    else:
+        if lr_scheduler is not None:
+            lr_scheduler.step()
+            print('\n')
+            print('Learning rate modified to: ', lr_scheduler.get_last_lr())
+            print('\n')
 
     return trainLoss, numOfUpdates
     
 # %% Function to validate model using dataset and specified loss function - 04-05-2024
 # Updated by PC 04-06-2024
 
-def ValidateModel(dataloader:DataLoader, model:nn.Module, lossFcn:nn.Module, device=GetDevice(), taskType:str='classification'):
+def ValidateModel(dataloader:DataLoader, model:nn.Module, lossFcn:nn.Module, device=GetDevice(), taskType:str='classification') -> Union[float, dict]:
     
     # Get size of dataset (How many samples are in the dataset)
     size = len(dataloader.dataset) 
@@ -524,6 +535,10 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
     lossLogName         = options.get('lossLogName', 'Loss_value') 
     epochStart          = options.get('epochStart', 0)
 
+    swa_scheduler       = options.get('swa_scheduler', None)    
+    swa_model           = options.get('swa_model', None)
+    swa_start_epoch     = options.get('swa_start_epoch', 10)
+
     lr_scheduler       = options.get('lr_scheduler', None)
     # Default early stopping for regression: "minimize" direction
     #early_stopper = options.get('early_stopper', early_stopping=EarlyStopping(monitor="lossValue", patience=5, verbose=True, mode="min"))
@@ -591,8 +606,8 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
 
         print(f"\n\t\t\tTRAINING EPOCH: {epochID + epochStart} of {epochStart + numOfEpochs-1}\n-------------------------------")
         # Do training over all batches
-        trainLossHistory[epochID], numOfUpdatesForEpoch = TrainModel(trainingDataset, model, lossFcn, optimizer, device, 
-                                                                     taskType, lr_scheduler) 
+        trainLossHistory[epochID], numOfUpdatesForEpoch = TrainModel(trainingDataset, model, lossFcn, optimizer, epochID, device, 
+                                                                     taskType, lr_scheduler, swa_scheduler, swa_model, swa_start_epoch)
         numOfUpdates += numOfUpdatesForEpoch
         print('Current total number of updates: ', numOfUpdates)
 
@@ -633,7 +648,15 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
             SaveTorchModel(model, modelSaveName, saveAsTraced=True, exampleInput=exampleInput, targetDevice=device)
         
         # %% MODEL PREDICTION EXAMPLES
-        examplePrediction, exampleLosses, inputSampleList = EvaluateModel(validationDataset, model, lossFcn, device, 20)
+        examplePrediction, exampleLosses, inputSampleTensor, labelsSampleTensor = EvaluateModel(validationDataset, model, lossFcn, device, 20)
+
+        if swa_model is not None and epochID >= swa_start_epoch:
+
+            # Test prediction of SWA model on the same input samples
+            swa_model.eval()
+            swa_examplePrediction, swa_exampleLosses, _, _ = EvaluateModel(
+                    validationDataset, swa_model, lossFcn, device, 20, inputSampleTensor, labelsSampleTensor)
+            swa_model.train()
 
         #mlflow.log_artifacts('Prediction samples: ', validationLossHistory[epochID])
         
@@ -648,12 +671,15 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
             formatted_loss = '{:.5f}'.format(exampleLosses[id])
             print(f'\tPrediction: {formatted_predictions} --> Loss: {formatted_loss}')
 
-            # imgTag = 'RandomSampleImg_' + str(id) + '_Epoch' + str(torch.round(exampleLosses[id], decimals=3))
+        print('\t\t Average prediction loss: {avgPred}\n'.format(avgPred=torch.mean(exampleLosses)) )
 
-            # DEBUG: Add image to tensorboard
-            #if ADD_IMAGE_TO_TENSORBOARD:
-            #    tensorBoardWriter.add_image(imgTag, (inputSampleList[id][0:49]).reshape(7, 7).T, global_step=epochID, dataformats='HW')
-        #tensorBoardWriter.flush() # Force tensorboard to write data to disk
+        if swa_model is not None and epochID >= swa_start_epoch:
+            for id in range(examplePrediction.shape[0]):
+                    formatted_predictions = ['{:.5f}'.format(num) for num in swa_examplePrediction[id, :]]
+                    formatted_loss = '{:.5f}'.format(swa_exampleLosses[id])
+                    print(f'\tSWA Prediction: {formatted_predictions} --> Loss: {formatted_loss}')
+
+            print('\t\t SWA Average prediction loss: {avgPred}\n'.format(avgPred=torch.mean(exampleLosses)))
 
         # Perform step of Early stopping if enabled
         if early_stopper is not None:
@@ -667,7 +693,10 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
 
     mlflow.end_run(status='FINISHED')
 
-    return bestModelData, trainLossHistory, validationLossHistory, inputSampleList
+    if swa_model is not None:
+        bestModelData['swa_model'] = swa_model
+
+    return bestModelData, trainLossHistory, validationLossHistory, inputSampleTensor
 
 # %% New version of TrainAndValidateModel with MLFlow logging specifically design for Optuna studies - 11-07-2024
 def TrainAndValidateModelForOptunaOptim(trial, dataloaderIndex: dict, model: nn.Module, lossFcn: nn.Module, optimizer, options: dict = {}):
@@ -756,8 +785,8 @@ def TrainAndValidateModelForOptunaOptim(trial, dataloaderIndex: dict, model: nn.
 
         print(f"\n\t\t\tTRAINING EPOCH: {epochID + epochStart} of {epochStart + numOfEpochs-1}\n-------------------------------")
         # Do training over all batches
-        trainLossHistory[epochID], numOfUpdatesForEpoch = TrainModel(trainingDataset, model, lossFcn, optimizer, device,
-                                                                     taskType, lr_scheduler)
+        trainLossHistory[epochID], numOfUpdatesForEpoch = TrainModel(trainingDataset, model, lossFcn, optimizer, epochID, 
+                                                                     device, taskType, lr_scheduler)
         numOfUpdates += numOfUpdatesForEpoch
         print('Current total number of updates: ', numOfUpdates)
 
@@ -776,7 +805,7 @@ def TrainAndValidateModelForOptunaOptim(trial, dataloaderIndex: dict, model: nn.
             bestModelData['model'] = bestModel
             bestModelData['epoch'] = bestEpoch
             bestModelData['validationLoss'] = prevBestValidationLoss
-            
+                
         print(f"\n\nCurrent best model found at epoch: {bestEpoch} with validation loss: {prevBestValidationLoss}")
 
         # Update Tensorboard if enabled
@@ -824,11 +853,12 @@ def TrainAndValidateModelForOptunaOptim(trial, dataloaderIndex: dict, model: nn.
 # %% Model evaluation function on a random number of samples from dataset - 06-06-2024
 # Possible way to solve the issue of having different cost function terms for training and validation --> add setTrain and setEval methods to switch between the two
 
-def EvaluateModel(dataloader:DataLoader, model:nn.Module, lossFcn: nn.Module, device=GetDevice(), numOfSamples:int=10, inputSample:torch.tensor=None) -> np.array:
+def EvaluateModel(dataloader:DataLoader, model:nn.Module, lossFcn: nn.Module, device=GetDevice(), numOfSamples:int=10, 
+                  inputSample:torch.tensor=None, labelsSample:torch.tensor=None) -> np.array:
     '''Torch model evaluation function to perform inference using either specified input samples or input dataloader'''
     model.eval() # Set model in prediction mode
     with torch.no_grad(): 
-        if inputSample is None:
+        if inputSample is None and labelsSample is None:
             # Get some random samples from dataloader as list
             extractedSamples = GetSamplesFromDataset(dataloader, numOfSamples)
 
@@ -864,12 +894,16 @@ def EvaluateModel(dataloader:DataLoader, model:nn.Module, lossFcn: nn.Module, de
                 else:
                     exampleLosses[id] = outLossVar.item()
                     
-        else:
+        elif inputSample is not None and labelsSample is not None:
             # Perform FORWARD PASS # NOTE: NOT TESTED
             X = inputSample
+            Y = labelsSample
+
             examplePredictions = model(X.to(device)) # Evaluate model at input
 
+            exampleLosses = torch.zeros(examplePredictions.size(0))
             examplePredictionList = []
+
             for id in range(examplePredictions.size(0)):
 
                 # Get prediction and label samples 
@@ -883,8 +917,10 @@ def EvaluateModel(dataloader:DataLoader, model:nn.Module, lossFcn: nn.Module, de
                     exampleLosses[id] = outLossVar.get('lossValue').item()
                 else:
                     exampleLosses[id] = outLossVar.item()
-                
-        return examplePredictions, exampleLosses, X.to(device)
+        else:
+            raise ValueError('Either both inputSample and labelsSample must be provided or neither!')
+        
+        return examplePredictions, exampleLosses, X.to(device), Y.to(device)
 
                 
 # %% Function to extract specified number of samples from dataloader - 06-06-2024
