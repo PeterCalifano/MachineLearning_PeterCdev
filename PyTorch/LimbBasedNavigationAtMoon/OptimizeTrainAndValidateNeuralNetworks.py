@@ -412,7 +412,7 @@ def objective(trial):
                 maxNodes = 1024
             else:
                 num_layers = None
-                outChannelsSizes.extend([256, 256, 125, 60])
+                outChannelsSizes.extend([256, 256, 128, 60])
 
             #modelClass = ModelClasses.HorizonExtractionEnhancer_deepNNv8_fullyParametric
             modelClass = ModelClasses.HorizonExtractionEnhancer_CNNvX_fullyParametric
