@@ -536,8 +536,13 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
 
     swa_scheduler       = options.get('swa_scheduler', None)    
     swa_model           = options.get('swa_model', None)
-    swa_start_epoch     = options.get('swa_start_epoch', 10)
+    swa_start_epoch     = options.get('swa_start_epoch', 15)
 
+    child_run = None
+    child_run_name = None 
+    parent_run = mlflow.active_run()
+    parent_run_name = parent_run.info.run_name
+    
     lr_scheduler       = options.get('lr_scheduler', None)
     # Default early stopping for regression: "minimize" direction
     #early_stopper = options.get('early_stopper', early_stopping=EarlyStopping(monitor="lossValue", patience=5, verbose=True, mode="min"))
@@ -586,9 +591,14 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
     validationLossHistory = np.zeros(numOfEpochs)
 
     numOfUpdates = 0
-    prevBestValidationLoss = 1E10
+    bestValidationLoss = 1E10
+    bestSWAvalidationLoss = 1E10
+
     bestModel = copy.deepcopy(model).to('cpu')  # Deep copy the initial state of the model and move it to the CPU
     bestEpoch = epochStart
+
+    if swa_model != None:
+        bestSWAmodel = copy.deepcopy(model).to('cpu')
 
     # TRAINING and VALIDATION LOOP
     for epochID in range(numOfEpochs):
@@ -604,24 +614,48 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
         validationLossHistory[epochID], validationData = ValidateModel(validationDataset, model, lossFcn, device, taskType) 
 
         # If validation loss is better than previous best, update best model
-        if validationLossHistory[epochID] < prevBestValidationLoss:
+        if validationLossHistory[epochID] < bestValidationLoss:
             bestModel = copy.deepcopy(model).to('cpu') # Replace best model with current model 
             bestEpoch = epochID + epochStart
-            prevBestValidationLoss = validationLossHistory[epochID]
+            bestValidationLoss = validationLossHistory[epochID]
 
             bestModelData = {'model': bestModel, 'epoch': bestEpoch,
-                             'validationLoss': prevBestValidationLoss}
+                             'validationLoss': bestValidationLoss}
             
-        print(f"\n\nCurrent best model found at epoch: {bestEpoch} with validation loss: {prevBestValidationLoss}")
+        print(f"Current best model found at epoch: {bestEpoch} with validation loss: {bestValidationLoss}")
 
-        if swa_model is not None and epochID >= swa_start_epoch:
+        # SWA handling: if enabled, evaluate validation loss of SWA model, then decide if to update or reset
+        if swa_model != None and epochID >= swa_start_epoch:
+            
             # Verify swa_model on the validation dataset
             swa_model.eval()
             swa_validationLoss, _ = ValidateModel(validationDataset, swa_model, lossFcn, device, taskType)
             swa_model.train()
-            print(f"\n\nCurrent SWA model found at epoch: {bestEpoch} with validation loss: {swa_validationLoss}")
+            print(f"Current SWA model found at epoch: {epochID} with validation loss: {swa_validationLoss}")
 
+            if swa_validationLoss < bestSWAvalidationLoss:
+                # Update best SWA model
+                bestSWAvalidationLoss = swa_validationLoss
+                bestSWAmodel = copy.deepcopy(swa_model).to('cpu')
+                swa_has_improved = True
+            else: 
+                # Reset to previous best model
+                swa_model = copy.deepcopy(bestSWAmodel).to(device)
+                swa_has_improved = False
 
+            # Log data to mlflow by opening children run 
+
+            if child_run_name is None and child_run is None:
+                child_run_name = parent_run_name + '-SWA'
+                child_run = mlflow.start_run(run_name=child_run_name, nested=True)
+            mlflow.log_metric('SWA Best validation loss', bestSWAvalidationLoss, step=epochID + epochStart, run_id=child_run.info.run_id)
+        else:
+            swa_has_improved = False
+
+        # Re-open parent run scope
+        mlflow.start_run(run_id=parent_run.info.run_id, nested=True)
+
+        # Log parent run data
         mlflow.log_metric('Training loss - '+ lossLogName, trainLossHistory[epochID], step=epochID + epochStart)
         mlflow.log_metric('Validation loss - '+ lossLogName, validationLossHistory[epochID], step=epochID + epochStart)
 
@@ -635,7 +669,12 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
             exampleInput = GetSamplesFromDataset(validationDataset, 1)[0][0].reshape(1, -1) # Get single input sample for model saving
             modelSaveName = os.path.join(checkpointDir, modelName + '_' + AddZerosPadding(epochID + epochStart, stringLength=4))
             SaveTorchModel(model, modelSaveName, saveAsTraced=True, exampleInput=exampleInput, targetDevice=device)
-        
+
+            if swa_model != None and swa_has_improved:
+                swa_model.eval()
+                SaveTorchModel(swa_model, modelSaveName + '_SWA', saveAsTraced=True, exampleInput=exampleInput, targetDevice=device)
+                swa_model.train()
+
         # %% MODEL PREDICTION EXAMPLES
         examplePrediction, exampleLosses, inputSampleTensor, labelsSampleTensor = EvaluateModel(validationDataset, model, lossFcn, device, 20)
 
@@ -661,7 +700,7 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
 
         print('\t\t Average prediction loss: {avgPred}\n'.format(avgPred=torch.mean(exampleLosses)) )
 
-        if swa_model is not None and epochID >= swa_start_epoch:
+        if swa_model != None and epochID >= swa_start_epoch:
             for id in range(examplePrediction.shape[0]):
                     formatted_predictions = ['{:.5f}'.format(num) for num in swa_examplePrediction[id, :]]
                     formatted_loss = '{:.5f}'.format(swa_exampleLosses[id])
@@ -683,7 +722,7 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
     mlflow.end_run(status='FINISHED')
 
     if swa_model is not None:
-        bestModelData['swa_model'] = swa_model
+        bestModelData['swa_model'] = bestSWAmodel
 
     return bestModelData, trainLossHistory, validationLossHistory, inputSampleTensor
 
