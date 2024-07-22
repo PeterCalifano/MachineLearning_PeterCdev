@@ -74,7 +74,7 @@ class HorizonExtractionEnhancer_CNNv3maxDeeper(nn.Module):
         # Fully Connected predictor
         self.FlattenL3 = nn.Flatten()
 
-        self.dropoutL4 = nn.Dropout2d(alphaDropCoeff)
+        self.dropoutL4 = nn.Dropout(alphaDropCoeff)
         self.DenseL4 = nn.Linear(int(self.LinearInputSize), self.outChannelsSizes[2], bias=False)
         self.batchNormL4 = nn.BatchNorm1d(self.outChannelsSizes[2], eps=1E-5, momentum=0.1, affine=True) # affine=True set gamma and beta parameters as learnable
 
@@ -271,7 +271,7 @@ class HorizonExtractionEnhancer_ResCNNv5maxDeeper(nn.Module):
         #self.batchNormL3 = nn.BatchNorm1d(int(self.LinearInputSize), eps=1E-5, momentum=0.1, affine=True) # affine=True set gamma and beta parameters as learnable
         #self.batchNormL3 = nn.BatchNorm1d(41, eps=1E-5, momentum=0.1, affine=True) # affine=True set gamma and beta parameters as learnable
 
-        self.dropoutL4 = nn.Dropout2d(alphaDropCoeff)
+        self.dropoutL4 = nn.Dropout(alphaDropCoeff)
         self.DenseL4 = nn.Linear(int(self.LinearInputSize), self.outChannelsSizes[2], bias=False)
 
         self.batchNormL5 = nn.BatchNorm1d(self.outChannelsSizes[2], eps=1E-5, momentum=0.1, affine=True) # affine=True set gamma and beta parameters as learnable
@@ -396,7 +396,7 @@ class HorizonExtractionEnhancer_ShortCNNv6maxDeeper(nn.Module):
         # Fully Connected predictor
         self.FlattenL2 = nn.Flatten()
         
-        self.dropoutL3 = nn.Dropout2d(alphaDropCoeff)
+        self.dropoutL3 = nn.Dropout(alphaDropCoeff)
         self.DenseL3 = nn.Linear(int(self.LinearInputSize), self.outChannelsSizes[idLayer], bias=False)
         self.batchNormL3 = nn.BatchNorm1d(self.outChannelsSizes[idLayer], eps=1E-5, momentum=0.1, affine=True)
         self.preluL3 = nn.PReLU()
@@ -513,13 +513,13 @@ class HorizonExtractionEnhancer_deepNNv8(nn.Module):
         self.preluL1 = nn.PReLU(self.outChannelsSizes[idLayer])
         idLayer += 1
 
-        self.dropoutL2 = nn.Dropout2d(alphaDropCoeff)
+        self.dropoutL2 = nn.Dropout(alphaDropCoeff)
         self.DenseL2 = nn.Linear(self.outChannelsSizes[idLayer-1], self.outChannelsSizes[idLayer], bias=True) 
         self.batchNormL2 = nn.BatchNorm1d(self.outChannelsSizes[idLayer], eps=1E-5, momentum=0.1, affine=True)
         self.preluL2 = nn.PReLU(self.outChannelsSizes[idLayer])
         idLayer += 1
 
-        self.dropoutL3 = nn.Dropout2d(alphaDropCoeff)
+        self.dropoutL3 = nn.Dropout(alphaDropCoeff)
         self.DenseL3 = nn.Linear(self.outChannelsSizes[idLayer-1], self.outChannelsSizes[idLayer], bias=True)
         self.batchNormL3 = nn.BatchNorm1d(self.outChannelsSizes[idLayer], eps=1E-5, momentum=0.1, affine=True)
         self.preluL3 = nn.PReLU()
@@ -648,7 +648,7 @@ class HorizonExtractionEnhancer_deepNNv8_fullyParametric(nn.Module):
             # Fully Connected layers block
             self.layers.append(nn.Linear(input_size, self.outChannelsSizes[i], bias=True))
             self.layers.append(nn.PReLU(self.outChannelsSizes[i]))
-            self.layers.append(nn.Dropout2d(alphaDropCoeff))
+            self.layers.append(nn.Dropout(alphaDropCoeff))
 
             # Add batch normalization layer if required
             if self.useBatchNorm:
@@ -683,7 +683,7 @@ class HorizonExtractionEnhancer_deepNNv8_fullyParametric(nn.Module):
                 val = layer(val)
             elif isinstance(layer, nn.PReLU):
                 val = torchFunc.prelu(val, layer.weight)
-            elif isinstance(layer, nn.Dropout2d):
+            elif isinstance(layer, nn.Dropout):
                 val = layer(val)
             elif isinstance(layer, nn.BatchNorm1d):
                 val = layer(val)
@@ -712,8 +712,9 @@ class HorizonExtractionEnhancer_CNNv7(nn.Module):
 
         outChannelsSizes = parametersConfig.get('outChannelsSizes', [])
 
-        assert('LinearInputSkipSize' in parametersConfig.keys())
-        assert(len(kernelSizes) == len(poolkernelSizes), 'Kernel and pooling kernel sizes must have the same length')
+        #assert('LinearInputSkipSize' in parametersConfig.keys())
+        if len(kernelSizes) != len(poolkernelSizes):
+            raise ValueError('Kernel and pooling kernel sizes must have the same length')
 
         # Model parameters
         self.outChannelsSizes = outChannelsSizes
@@ -727,7 +728,7 @@ class HorizonExtractionEnhancer_CNNv7(nn.Module):
         #self.LinearInputFeaturesSize = (patchSize - self.numOfConvLayers * np.floor(float(kernelSizes[-1])/2.0)) * self.outChannelsSizes[-1] # Number of features arriving as input to FC layer
         self.LinearInputFeaturesSize = convBlockOutputSize[1] # convBlockOutputSize is tuple ((imgWidth, imgHeight), flattenedSize*nOutFeatures)
     
-        self.LinearInputSkipSize = parametersConfig['LinearInputSkipSize'] #11 # CHANGE TO 7 removing R_DEM and PosTF
+        self.LinearInputSkipSize = parametersConfig.get('LinearInputSkipSize') #11 # CHANGE TO 7 removing R_DEM and PosTF
         self.LinearInputSize = self.LinearInputSkipSize + self.LinearInputFeaturesSize
         
 
@@ -900,7 +901,7 @@ class HorizonExtractionEnhancer_deepNNv8_fullyParametricNoImg(nn.Module):
             # Fully Connected layers block
             self.layers.append(nn.Linear(input_size, self.outChannelsSizes[i], bias=True))
             self.layers.append(nn.PReLU(self.outChannelsSizes[i]))
-            self.layers.append(nn.Dropout2d(alphaDropCoeff))
+            self.layers.append(nn.Dropout(alphaDropCoeff))
 
             # Add batch normalization layer if required
             if self.useBatchNorm:
@@ -935,7 +936,7 @@ class HorizonExtractionEnhancer_deepNNv8_fullyParametricNoImg(nn.Module):
                 val = layer(val)
             elif isinstance(layer, nn.PReLU):
                 val = torchFunc.prelu(val, layer.weight)
-            elif isinstance(layer, nn.Dropout2d):
+            elif isinstance(layer, nn.Dropout):
                 val = layer(val)
             elif isinstance(layer, nn.BatchNorm1d):
                 val = layer(val)
@@ -965,9 +966,8 @@ class HorizonExtractionEnhancer_CNNvX_fullyParametric(nn.Module):
 
         outChannelsSizes = parametersConfig.get('outChannelsSizes', [])
 
-        assert ('LinearInputSkipSize' in parametersConfig.keys())
-        assert (len(kernelSizes) == len(poolkernelSizes),
-                'Kernel and pooling kernel sizes must have the same length')
+        if len(kernelSizes) != len(poolkernelSizes):
+            raise ValueError('Kernel and pooling kernel sizes must have the same length')
 
         # Model parameters
         self.outChannelsSizes = outChannelsSizes
@@ -985,7 +985,7 @@ class HorizonExtractionEnhancer_CNNvX_fullyParametric(nn.Module):
         self.LinearInputFeaturesSize = convBlockOutputSize[1]
 
         # 11 # CHANGE TO 7 removing R_DEM and PosTF
-        self.LinearInputSkipSize = parametersConfig['LinearInputSkipSize']
+        self.LinearInputSkipSize = parametersConfig.get('LinearInputSkipSize')
         self.LinearInputSize = self.LinearInputSkipSize + self.LinearInputFeaturesSize
 
         self.layers = nn.ModuleList()
@@ -1048,7 +1048,7 @@ class HorizonExtractionEnhancer_CNNvX_fullyParametric(nn.Module):
             # Fully Connected layers block
             self.layers.append(nn.Linear(input_size, self.outChannelsSizes[i], bias=True))
             self.layers.append(nn.PReLU(self.outChannelsSizes[i]))
-            self.layers.append(nn.Dropout2d(alphaDropCoeff))
+            self.layers.append(nn.Dropout(alphaDropCoeff))
 
             # Add batch normalization layer if required
             if self.useBatchNorm:
@@ -1095,13 +1095,20 @@ class HorizonExtractionEnhancer_CNNvX_fullyParametric(nn.Module):
         # ACHTUNG: transpose, reshape, transpose operation assumes that input vector was reshaped column-wise (FORTRAN style)
         # img2Dinput = (((inputSample[:, 0:self.imagePixSize]).T).reshape(int(np.sqrt(float(self.imagePixSize))), -1, 1, inputSample.size(0))).T # First portion of the input vector reshaped to 2D
 
-        assert (inputSample.size(1) == (
-            self.imagePixSize + self.LinearInputSkipSize))
+        # assert (inputSample.size(1) == ( self.imagePixSize + self.LinearInputSkipSize))
         # img2Dinput =  ( ( (inputSample[:, 0:self.imagePixSize]).T).reshape(int(torch.sqrt( torch.tensor(self.imagePixSize) )), -1, 1, inputSample.size(0) ) ).T # First portion of the input vector reshaped to 2D
 
         imgWidth = int(sqrt(self.imagePixSize))
-        img2Dinput = (((inputSample[:, 0:self.imagePixSize]).T).reshape(
-            imgWidth, -1, 1, inputSample.size(0))).T  # First portion of the input vector reshaped to 2D
+        #img2Dinput = (((inputSample[:, 0:self.imagePixSize]).T).reshape( imgWidth, -1, 1, inputSample.size(0))).T  # First portion of the input vector reshaped to 2D
+    
+        # Step 1: Select the first self.imagePixSize columns for all rows
+        # Step 2: Permute the dimensions to match the transposition (swap axes 0 and 1)
+        # Step 3: Reshape the permuted tensor to the specified dimensions
+        # Step 4: Permute again to match the final transposition (swap axes 0 and 1 again)
+
+        img2Dinput = (((inputSample[:, 0:self.imagePixSize]).permute(1, 0)).reshape(
+            imgWidth, -1, 1, inputSample.size(0))).permute(3, 2, 1, 0)
+
         contextualInfoInput = inputSample[:, self.imagePixSize:]
 
         # Perform forward pass iterating through all layers of CNN
@@ -1117,7 +1124,7 @@ class HorizonExtractionEnhancer_CNNvX_fullyParametric(nn.Module):
                 val = layer(val)
             elif isinstance(layer, nn.PReLU):
                 val = torchFunc.prelu(val, layer.weight)
-            elif isinstance(layer, nn.Dropout2d):
+            elif isinstance(layer, nn.Dropout):
                 val = layer(val)
             elif isinstance(layer, nn.BatchNorm1d):
                 val = layer(val)
