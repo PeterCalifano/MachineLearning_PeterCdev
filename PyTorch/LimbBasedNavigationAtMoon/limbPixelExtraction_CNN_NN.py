@@ -550,7 +550,7 @@ def MoonLimbPixConvEnhancer_NormalizedConicLossWithMSEandOutOfPatch_asTensor(pre
     # Step 3: Reshape the permuted tensor to the specified dimensions
     # Step 4: Permute again to match the final transposition (swap axes 0 and 2)
 
-    LimbConicMatrixImg = torch.tensor((labelVector[:, 0:9].permute(1, 0)).reshape(3, 3, labelVector.size()[0]).permute(2, 0, 1), dtype=torch.float32, device=device)
+    LimbConicMatrixImg = ((labelVector[:, 0:9].permute(1, 0)).reshape(3, 3, labelVector.size()[0]).permute(2, 0, 1)).clone().to(device)
 
     assert(LimbConicMatrixImg.shape[0] == batchSize)
 
