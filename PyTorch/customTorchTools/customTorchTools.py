@@ -633,15 +633,15 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
             swa_model.train()
             print(f"Current SWA model found at epoch: {epochID} with validation loss: {swa_validationLoss}")
 
-            if swa_validationLoss < bestSWAvalidationLoss:
+            #if swa_validationLoss < bestSWAvalidationLoss:
                 # Update best SWA model
-                bestSWAvalidationLoss = swa_validationLoss
-                bestSWAmodel = copy.deepcopy(swa_model).to('cpu')
-                swa_has_improved = True
-            else: 
-                # Reset to previous best model
-                swa_model = copy.deepcopy(bestSWAmodel).to(device)
-                swa_has_improved = False
+            bestSWAvalidationLoss = swa_validationLoss
+            bestSWAmodel = copy.deepcopy(swa_model).to('cpu')
+            swa_has_improved = True
+            #else: 
+            #    # Reset to previous best model
+            #    swa_model = copy.deepcopy(bestSWAmodel).to(device)
+            #    swa_has_improved = False
 
             # Log data to mlflow by opening children run 
 
