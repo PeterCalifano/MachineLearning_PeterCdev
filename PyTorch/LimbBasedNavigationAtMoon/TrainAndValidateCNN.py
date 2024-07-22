@@ -49,7 +49,7 @@ datasetID = [12, 13]  # NOTE: only matters for regeneration of dataset
 def main(idRun:int, idModelClass:int, idLossType:int):
 
     # SETTINGS and PARAMETERS 
-    batch_size = 74 # Defines batch size in dataset
+    batch_size = 256 # Defines batch size in dataset
     #outChannelsSizes = [16, 32, 75, 15] 
     
     if idModelClass < 2:
@@ -224,7 +224,7 @@ def main(idRun:int, idModelClass:int, idLossType:int):
         
         #inputSize = 58
         inputSize = parametersConfig.get('patchSize')**2 + 9
-        numOfEpochs = 100
+        numOfEpochs = 50
 
 
     EPOCH_START = 0
@@ -519,7 +519,7 @@ def main(idRun:int, idModelClass:int, idLossType:int):
 
     # START MLFLOW RUN LOGGING
 
-    with mlflow.start_run() as mlflow_run:
+    with mlflow.start_run(nested=False) as mlflow_run:
 
         mlflow.log_param('TrainingDatasetTag', TrainingDatasetTag)
         mlflow.log_param('ValidationDatasetTag', ValidationDatasetTag)
@@ -616,6 +616,7 @@ def main(idRun:int, idModelClass:int, idLossType:int):
             param_group['initial_lr'] = param_group['lr']
 
         if USE_SWA:
+            swa_start_epoch = 2
             swa_scheduler = torch.optim.swa_utils.SWALR(
                 optimizer, anneal_strategy='cos', anneal_epochs=10, swa_lr=0.05)  # SWA scheduler definition
             
@@ -624,6 +625,7 @@ def main(idRun:int, idModelClass:int, idLossType:int):
             # Add to configuration dictionary
             options['swa_model'] = swa_model
             options['swa_scheduler'] = swa_scheduler
+            options['swa_start_epoch'] = swa_start_epoch
 
         exponentialDecayGamma = 0.8
     
