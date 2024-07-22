@@ -616,9 +616,9 @@ def main(idRun:int, idModelClass:int, idLossType:int):
             param_group['initial_lr'] = param_group['lr']
 
         if USE_SWA:
-            swa_start_epoch = 2
-            swa_scheduler = torch.optim.swa_utils.SWALR(
-                optimizer, anneal_strategy='cos', anneal_epochs=10, swa_lr=0.05)  # SWA scheduler definition
+            swa_start_epoch = 10
+            # NOTE: swa_lr is the constant value where the learning rate is annealed to following a cosine curve, then it remains fixed there.
+            swa_scheduler = torch.optim.swa_utils.SWALR(optimizer, anneal_strategy='cos', anneal_epochs=20, swa_lr=1E-7)  # SWA scheduler definition
             
             swa_model = torch.optim.swa_utils.AveragedModel(modelCNN_NN).to(device) # SWA model definition
 
@@ -639,8 +639,7 @@ def main(idRun:int, idModelClass:int, idLossType:int):
             #lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=exponentialDecayGamma, last_epoch=options['epochStart']-1)
             #lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=4, T_mult=2, eta_min=1e-9, last_epoch=options['epochStart']-1)
             if USE_SWA:
-                lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-                    optimizer, T_max=300, last_epoch=options['epochStart']-1)
+                lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=300, last_epoch=options['epochStart']-1)
             else:
                 lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=exponentialDecayGamma, last_epoch=options['epochStart']-1)
                 # lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=4, T_mult=2, eta_min=1e-9, last_epoch=options['epochStart']-1)
