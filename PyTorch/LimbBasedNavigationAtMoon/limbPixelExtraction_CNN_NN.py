@@ -545,8 +545,15 @@ def MoonLimbPixConvEnhancer_NormalizedConicLossWithMSEandOutOfPatch_asTensor(pre
     batchSize = labelVector.size()[0]
     device = predictCorrection.device
     
-    LimbConicMatrixImg = torch.tensor((labelVector[:, 0:9].T).reshape(3, 3, labelVector.size()[0]).T, dtype=torch.float32, device=device)
+    # Step 1: Select the first 9 columns for all rows
+    # Step 2: Permute the dimensions to match the transposition (swap axes 0 and 1)
+    # Step 3: Reshape the permuted tensor to the specified dimensions
+    # Step 4: Permute again to match the final transposition (swap axes 0 and 2)
+
+    LimbConicMatrixImg = torch.tensor((labelVector[:, 0:9].permute(1, 0)).reshape(3, 3, labelVector.size()[0]).permute(2, 0, 1), dtype=torch.float32, device=device)
+
     assert(LimbConicMatrixImg.shape[0] == batchSize)
+
 
     patchCentre      = labelVector[:, 9:11]  # Patch centre coordinates (pixels)
     baseCost2        = labelVector[:, 11]    # Base cost for the conic constraint evaluated at patch centre
