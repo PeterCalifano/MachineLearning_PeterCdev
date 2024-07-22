@@ -46,7 +46,7 @@ def GetDevice():
 
 def TrainModel(dataloader:DataLoader, model:nn.Module, lossFcn:nn.Module, 
                optimizer, epochID:int, device=GetDevice(), taskType:str='classification', lr_scheduler=None,
-               swa_scheduler=None, swa_model=None, swa_start_epoch:int=10) -> Union[float, int]:
+               swa_scheduler=None, swa_model=None, swa_start_epoch:int=15) -> Union[float, int]:
 
     size=len(dataloader.dataset) # Get size of dataloader dataset object
     model.train() # Set model instance in training mode ("informing" backend that the training is going to start)
@@ -84,19 +84,18 @@ def TrainModel(dataloader:DataLoader, model:nn.Module, lossFcn:nn.Module,
 
         if batchCounter % counterForPrint == 0: # Print loss value 
             trainLoss, currentStep = trainLoss.item(), (batchCounter + 1) * len(X)
-            print(f"Training loss value: {trainLoss:>7f}  [{currentStep:>5d}/{size:>5d}]")
-            if keys != []:
-                print("\t",", ".join([f"{key}: {trainLossOut[key]:.4f}" for key in keys]))    # Update learning rate if scheduler is provided
+            #print(f"Training loss value: {trainLoss:>7f}  [{currentStep:>5d}/{size:>5d}]")
+            #if keys != []:
+            #    print("\t",", ".join([f"{key}: {trainLossOut[key]:.4f}" for key in keys]))    # Update learning rate if scheduler is provided
 
     # Perform step of SWA if enabled
     if swa_model is not None and epochID >= swa_start_epoch:
-
         # Update SWA model parameters
+        swa_model.train()
         swa_model.update_parameters(model)
         # Update SWA scheduler
         swa_scheduler.step()
         torch.optim.swa_utils.update_bn(dataloader, swa_model, device=device) # Update batch normalization layers for swa model
-
     else:
         if lr_scheduler is not None:
             lr_scheduler.step()
@@ -544,16 +543,6 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
     #early_stopper = options.get('early_stopper', early_stopping=EarlyStopping(monitor="lossValue", patience=5, verbose=True, mode="min"))
     early_stopper = options.get('early_stopper', None)
 
-    #if 'enableAddImageToTensorboard' in options.keys():
-    #    ADD_IMAGE_TO_TENSORBOARD = options['enableAddImageToTensorboard']
-    #else: 
-    #    ADD_IMAGE_TO_TENSORBOARD = True
-
-    #if ('tensorBoardPortNum' in options.keys()):
-    #    tensorBoardPortNum = options['tensorBoardPortNum']
-    #else:
-    #    tensorBoardPortNum = 6006
-
     # Get Torch dataloaders
     if ('TrainingDataLoader' in dataloaderIndex.keys() and 'ValidationDataLoader' in dataloaderIndex.keys()):
         trainingDataset   = dataloaderIndex['TrainingDataLoader']
@@ -625,19 +614,19 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
             
         print(f"\n\nCurrent best model found at epoch: {bestEpoch} with validation loss: {prevBestValidationLoss}")
 
-        # Update Tensorboard if enabled
-        #if enableTensorBoard:       
-            #tensorBoardWriter.add_scalar(lossLogName + "/train", trainLossHistory[epochID], epochID + epochStart)
-            #tensorBoardWriter.add_scalar(lossLogName + "/validation", validationLossHistory[epochID], epochID + epochStart)
-            #entriesTagDict = {'Training': trainLossHistory[epochID], 'Validation': validationLossHistory[epochID]}
-            #tensorBoardWriter.add_scalars(lossLogName, entriesTagDict, epochID)
-            
+        if swa_model is not None and epochID >= swa_start_epoch:
+            # Verify swa_model on the validation dataset
+            swa_model.eval()
+            swa_validationLoss, _ = ValidateModel(validationDataset, swa_model, lossFcn, device, taskType)
+            swa_model.train()
+            print(f"\n\nCurrent SWA model found at epoch: {bestEpoch} with validation loss: {swa_validationLoss}")
+
+
         mlflow.log_metric('Training loss - '+ lossLogName, trainLossHistory[epochID], step=epochID + epochStart)
         mlflow.log_metric('Validation loss - '+ lossLogName, validationLossHistory[epochID], step=epochID + epochStart)
 
         if 'WorstLossAcrossBatches' in validationData.keys():
             mlflow.log_metric('Validation Worst Loss across batches', validationData['WorstLossAcrossBatches'], step=epochID + epochStart)
-
 
         if enableSave:
             if not(os.path.isdir(checkpointDir)):
@@ -651,7 +640,6 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
         examplePrediction, exampleLosses, inputSampleTensor, labelsSampleTensor = EvaluateModel(validationDataset, model, lossFcn, device, 20)
 
         if swa_model is not None and epochID >= swa_start_epoch:
-
             # Test prediction of SWA model on the same input samples
             swa_model.eval()
             swa_examplePrediction, swa_exampleLosses, _, _ = EvaluateModel(
@@ -679,7 +667,8 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
                     formatted_loss = '{:.5f}'.format(swa_exampleLosses[id])
                     print(f'\tSWA Prediction: {formatted_predictions} --> Loss: {formatted_loss}')
 
-            print('\t\t SWA Average prediction loss: {avgPred}\n'.format(avgPred=torch.mean(exampleLosses)))
+            print('\t\t SWA Average prediction loss: {avgPred}\n'.format(
+                avgPred=torch.mean(swa_exampleLosses)))
 
         # Perform step of Early stopping if enabled
         if early_stopper is not None:
