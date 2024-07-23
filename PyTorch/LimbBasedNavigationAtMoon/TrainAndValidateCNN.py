@@ -20,6 +20,7 @@ from torch.utils.data import Dataset
 from torch.utils.data import DataLoader # Utils for dataset management, storing pairs of (sample, label)
 from torchvision import datasets # Import vision default datasets from torchvision
 from torchvision.transforms import ToTensor # Utils
+from torchsummary import summary
 
 import numpy as np
 
@@ -85,7 +86,8 @@ def main(idRun:int, idModelClass:int, idLossType:int):
 
     #kernelSizes = [3, 3]
     initialLearnRate = 1E-4
-    momentumValue = 0.6
+    momentumValue = 0.8
+
 
     #TODO: add log and printing of settings of optimizer for each epoch. Reduce the training loss value printings
 
@@ -224,7 +226,7 @@ def main(idRun:int, idModelClass:int, idLossType:int):
         
         #inputSize = 58
         inputSize = parametersConfig.get('patchSize')**2 + 9
-        numOfEpochs = 50
+        numOfEpochs = 100
 
 
     EPOCH_START = 0
@@ -485,14 +487,6 @@ def main(idRun:int, idModelClass:int, idLossType:int):
     
     ################################################################################################
 
-    # SUPERSEDED CODE --> move this to function for dataset splitting (add rng seed for reproducibility)
-    # Define the split ratio
-    #trainingSize = int(TRAINING_PERC * len(dataset))  
-    #validationSize = len(dataset) - trainingSize 
-
-    # Split the dataset
-    #trainingData, validationData = torch.utils.data.random_split(dataset, [trainingSize, validationSize])
-
     # Define dataloaders objects
     trainingDataset   = DataLoader(datasetTraining, batch_size, shuffle=True, num_workers=2, pin_memory=True)
     validationDataset = DataLoader(datasetValidation, batch_size, shuffle=True, num_workers=2, pin_memory=True)
@@ -589,8 +583,11 @@ def main(idRun:int, idModelClass:int, idLossType:int):
                 modelCNN_NN = modelClass(
                     parametersConfig).to(device=device)
 
-            
-    
+        # Print summary of model
+        try:
+            summary(modelCNN_NN, input_size=(1, inputSize), batch_size=batch_size, device=device)
+        except:
+            print('torchsummary summary() function failed')
     
         # ######### TEST DEBUG ############
         #testPrediction = modelCNN_NN(torch.tensor(inputDataArray[0:, 0]))
@@ -606,7 +603,7 @@ def main(idRun:int, idModelClass:int, idLossType:int):
     
         # Define optimizer object specifying model instance parameters and optimizer parameters
         if optimizerID == 0:
-            optimizer = torch.optim.SGD(modelCNN_NN.parameters(), lr=initialLearnRate, momentum=momentumValue) 
+            optimizer = torch.optim.SGD(modelCNN_NN.parameters(), lr=initialLearnRate, momentum=momentumValue, weight_decay=0.00087)
         
         elif optimizerID == 1:
             optimizer = torch.optim.Adam(modelCNN_NN.parameters(), lr=initialLearnRate, betas=(0.9, 0.999), 
@@ -616,9 +613,9 @@ def main(idRun:int, idModelClass:int, idLossType:int):
             param_group['initial_lr'] = param_group['lr']
 
         if USE_SWA:
-            swa_start_epoch = 10
+            swa_start_epoch = 15
             # NOTE: swa_lr is the constant value where the learning rate is annealed to following a cosine curve, then it remains fixed there.
-            swa_scheduler = torch.optim.swa_utils.SWALR(optimizer, anneal_strategy='cos', anneal_epochs=20, swa_lr=1E-7)  # SWA scheduler definition
+            swa_scheduler = torch.optim.swa_utils.SWALR(optimizer, anneal_strategy='cos', anneal_epochs=30, swa_lr=1E-7)  # SWA scheduler definition
             
             swa_model = torch.optim.swa_utils.AveragedModel(modelCNN_NN).to(device) # SWA model definition
 
@@ -639,7 +636,10 @@ def main(idRun:int, idModelClass:int, idLossType:int):
             #lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=exponentialDecayGamma, last_epoch=options['epochStart']-1)
             #lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=4, T_mult=2, eta_min=1e-9, last_epoch=options['epochStart']-1)
             if USE_SWA:
-                lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=300, last_epoch=options['epochStart']-1)
+                #lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=300, last_epoch=options['epochStart']-1)
+                #lr_scheduler = torch.optim.lr_scheduler.CyclicLR(optimizer, T_max=300, last_epoch=options['epochStart']-1)
+                lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=5, T_mult=2, eta_min=1e-8, last_epoch=options['epochStart']-1)
+
             else:
                 lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=exponentialDecayGamma, last_epoch=options['epochStart']-1)
                 # lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=4, T_mult=2, eta_min=1e-9, last_epoch=options['epochStart']-1)
@@ -692,7 +692,7 @@ if __name__ == '__main__':
     elif datasetID[0] == 9 and datasetID[1] == 10:
         mlflow.set_experiment("HorizonEnhancerCNNvX_TrainValidOnRandomCloud25x25")
     elif datasetID[0] == 12 and datasetID[1] == 13:
-        mlflow.set_experiment("HorizonEnhancerCNNvX_TrainValidOnRandomCloud7x7")
+        mlflow.set_experiment("HorizonEnhancerCNNvX_TrainValidOnRandomCloud7x7_SWA")
     else:
         raise ValueError('Check datasetID. Experiment not found.')
     
