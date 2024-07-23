@@ -48,11 +48,13 @@ def TrainModel(dataloader:DataLoader, model:nn.Module, lossFcn:nn.Module,
                optimizer, epochID:int, device=GetDevice(), taskType:str='classification', lr_scheduler=None,
                swa_scheduler=None, swa_model=None, swa_start_epoch:int=15) -> Union[float, int]:
 
-    size=len(dataloader.dataset) # Get size of dataloader dataset object
     model.train() # Set model instance in training mode ("informing" backend that the training is going to start)
 
     counterForPrint = np.round(len(dataloader)/75)
     numOfUpdates = 0
+
+    if swa_scheduler is not None or lr_scheduler is not None:
+        mlflow.log_metric('Learning rate', optimizer.param_groups[0]['lr'], step=epochID)
 
     print('Starting training loop using learning rate: {:.11f}'.format(optimizer.param_groups[0]['lr']))
 
@@ -87,21 +89,20 @@ def TrainModel(dataloader:DataLoader, model:nn.Module, lossFcn:nn.Module,
             #print(f"Training loss value: {trainLoss:>7f}  [{currentStep:>5d}/{size:>5d}]")
             #if keys != []:
             #    print("\t",", ".join([f"{key}: {trainLossOut[key]:.4f}" for key in keys]))    # Update learning rate if scheduler is provided
-
     # Perform step of SWA if enabled
     if swa_model is not None and epochID >= swa_start_epoch:
         # Update SWA model parameters
         swa_model.train()
         swa_model.update_parameters(model)
         # Update SWA scheduler
-        swa_scheduler.step()
+        #swa_scheduler.step()
         torch.optim.swa_utils.update_bn(dataloader, swa_model, device=device) # Update batch normalization layers for swa model
-    else:
-        if lr_scheduler is not None:
-            lr_scheduler.step()
-            print('\n')
-            print('Learning rate modified to: ', lr_scheduler.get_last_lr())
-            print('\n')
+    #else:
+    if lr_scheduler is not None:
+        lr_scheduler.step()
+        print('\n')
+        print('Learning rate modified to: ', lr_scheduler.get_last_lr())
+        print('\n')
 
     return trainLoss, numOfUpdates
     
@@ -718,7 +719,10 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
             #    print('Early stopping triggered at epoch: {epochID}'.format(epochID=epochID))
             #    break
             #earlyStopping(validationLossHistory[epochID], model, bestModelData, options)
-
+    if swa_model != None and epochID >= swa_start_epoch:
+        # End nested child run
+        mlflow.end_run(status='FINISHED')
+    # End parent run
     mlflow.end_run(status='FINISHED')
 
     if swa_model is not None:
