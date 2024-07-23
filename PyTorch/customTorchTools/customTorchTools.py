@@ -8,6 +8,7 @@ Created by PeterC - 04-05-2024. Current version: v0.1 (30-06-2024)
 
 
 # Import modules
+from typing import Optional
 import torch, mlflow, optuna
 from torch import nn
 from torch.utils.data import Dataset
@@ -500,10 +501,49 @@ def LoadModelAtCheckpoint(model:nn.Module, modelSavePath:str='./checkpoints', mo
         #modelName = sorted(modelNamesWithTime, key=lambda x: x[1])[-1][0]
 
     return loadedModel
+
+# %%  Data loader indexer class - PeterC - 23-07-2024
+class dataloaderIndex:
+    '''
+    Class to index dataloaders for training and validation datasets. Performs splitting if validation loader is not provided.
+    Created by PeterC, 23-07-2024
+    '''
+    def __init__(self, trainLoader:DataLoader, validLoader:Optional[DataLoader] = None) -> None:
+        
+        if not(isinstance(trainLoader, DataLoader)):
+            raise TypeError('Training dataloader is not of type "DataLoader"!')
+
+        if validLoader is None:
+            # Perform random splitting of training data to get validation dataset
+            print('No validation dataset provided: training dataset automatically split with ratio 80/20')
+            trainingSize = int(0.8 * len(trainLoader.dataset))
+            validationSize = len(trainLoader.dataset) - trainingSize
+
+            # Split the dataset
+            trainingData, validationData = torch.utils.data.random_split(trainLoader.dataset, [trainingSize, validationSize])
+
+            # Create dataloaders
+            self.TrainingDataLoader = DataLoader(trainingData, batch_size=trainLoader.batch_size, shuffle=True, 
+                                                 num_workers=trainLoader.num_workers, drop_last=trainLoader.drop_last)
+            self.ValidationDataLoader = DataLoader(validationData, batch_size=trainLoader.batch_size, shuffle=True,
+                                                   num_workers=trainLoader.num_workers, drop_last=False)
+        else:
+
+            self.TrainingDataLoader = trainLoader
+            
+            if not(isinstance(validLoader, DataLoader)):
+                raise TypeError('Validation dataloader is not of type "DataLoader"!')
+            
+            self.ValidationDataLoader = validLoader
+
+    def getTrainloader(self) -> DataLoader:
+        return self.TrainingDataLoader
     
+    def getValidationLoader(self) -> DataLoader:
+        return self.ValidationDataLoader
 
 # %% TRAINING and VALIDATION template function - 04-06-2024
-def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Module, optimizer, options:dict={}):
+def TrainAndValidateModel(dataloaderIndex:dataloaderIndex, model:nn.Module, lossFcn: nn.Module, optimizer, options:dict={}):
     # NOTE: is the default dictionary considered as "single" object or does python perform a merge of the fields?
 
     # TODO: For merging of options: https://stackoverflow.com/questions/38987/how-do-i-merge-two-dictionaries-in-a-single-expression-taking-union-of-dictiona
@@ -550,17 +590,8 @@ def TrainAndValidateModel(dataloaderIndex:dict, model:nn.Module, lossFcn: nn.Mod
     early_stopper = options.get('early_stopper', None)
 
     # Get Torch dataloaders
-    if ('TrainingDataLoader' in dataloaderIndex.keys() and 'ValidationDataLoader' in dataloaderIndex.keys()):
-        trainingDataset   = dataloaderIndex['TrainingDataLoader']
-        validationDataset = dataloaderIndex['ValidationDataLoader']
-
-        if not(isinstance(trainingDataset, DataLoader)):
-            raise TypeError('Training dataloader is not of type "DataLoader". Check configuration.')
-        if not(isinstance(validationDataset, DataLoader)):
-            raise TypeError('Validation dataloader is not of type "DataLoader". Check configuration.')
-            
-    else:
-        raise IndexError('Configuration error: either TrainingDataLoader or ValidationDataLoader is not a key of dataloaderIndex')
+    trainingDataset   = dataloaderIndex.getTrainloader()
+    validationDataset = dataloaderIndex.getValidationLoader()
 
     # Configure Tensorboard
     #if 'logDirectory' in options.keys():
