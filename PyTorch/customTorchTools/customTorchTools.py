@@ -509,7 +509,6 @@ class dataloaderIndex:
     Created by PeterC, 23-07-2024
     '''
     def __init__(self, trainLoader:DataLoader, validLoader:Optional[DataLoader] = None) -> None:
-        
         if not(isinstance(trainLoader, DataLoader)):
             raise TypeError('Training dataloader is not of type "DataLoader"!')
 
@@ -530,7 +529,7 @@ class dataloaderIndex:
         else:
 
             self.TrainingDataLoader = trainLoader
-            
+
             if not(isinstance(validLoader, DataLoader)):
                 raise TypeError('Validation dataloader is not of type "DataLoader"!')
             
@@ -563,7 +562,6 @@ def TrainAndValidateModel(dataloaderIndex:dataloaderIndex, model:nn.Module, loss
     # load_checkpoint = combined_options['loadCheckpoint']
     # loss_log_name = combined_options['lossLogName']
     # epoch_start = combined_options['epochStart']
-
 
     # Setup options from input dictionary
     taskType            = options.get('taskType', 'regression') # NOTE: Classification is not well developed (July, 2024)
@@ -1158,19 +1156,22 @@ def getNumOfTrainParams(model):
 # 3) Main training logbook to store all data to be used for model selection and hyperparameter tuning, this should be "per project"
 # 4) Training mode: k-fold cross validation leveraging scikit-learn    
 
-class ModelTrainingManager():
-    '''Class to manage training and validation of PyTorch models using specified datasets and loss functions.'''
+class ModelTrainingManagerConfig():
+    '''Configuration class for ModelTrainingManager class. Contains all parameters ModelTrainingManager accepts as configuration.'''
+    def __init__(self, initial_lr, lr_scheduler) -> None:
+        # Set configuration parameters for ModelTrainingManager
+        self.initial_lr = initial_lr
+        self.lr_scheduler = lr_scheduler
 
-    def __init__(self, model:nn.Module, lossFcn: nn.Module, optimizer, options:dict={'taskType': 'classification', 
-                                                                                     'device': GetDevice(), 
-                                                                                     'epochs': 10, 
-                                                                                     'Tensorboard':True,
-                                                                                     'saveCheckpoints':True,
-                                                                                     'checkpointsOutDir': './checkpoints',      
-                                                                                     'modelName': 'trainedModel',
-                                                                                     'loadCheckpoint': False,
-                                                                                     'lossLogName': 'Loss-value',
-                                                                                     'epochStart': 0}):
+    def getConfig(self):
+        # TBC: what does it return?
+        return self.__dict__
+
+# DEV NOTE: inheritance from config?
+
+class ModelTrainingManager(ModelTrainingManagerConfig):
+    '''Class to manage training and validation of PyTorch models using specified datasets and loss functions.'''
+    def __init__(self, model:nn.Module, lossFcn: nn.Module, optimizer, options):
         
         '''Constructor for TrainAndValidationManager class. Initializes model, loss function, optimizer and training/validation options.'''
 
@@ -1197,10 +1198,6 @@ class ModelTrainingManager():
     def LoadDatasets(self, dataloaderIndex:dict):
         '''Method to load datasets from dataloaderIndex and use them depending on the specified criterion (e.g. "order", "merge)'''
         # TODO: Load all datasets from dataloaderIndex and use them depending on the specified criterion (e.g. "order", "merge)
-        pass
-
-    def TrainAndValidateModel(self):
-        '''Method to train and validate model using loaded datasets and specified options'''
         pass
 
     def GetTracedModel(self):
