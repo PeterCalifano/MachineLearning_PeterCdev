@@ -8,7 +8,7 @@ Created by PeterC - 04-05-2024. Current version: v0.1 (30-06-2024)
 
 
 # Import modules
-from typing import Optional
+from typing import Optional, Any, Union
 import torch, mlflow, optuna
 from torch import nn
 from torch.utils.data import Dataset
@@ -16,6 +16,7 @@ from torchvision.transforms import ToTensor
 from torch.utils.data import DataLoader # Utils for dataset management, storing pairs of (sample, label)
 from torchvision import datasets # Import vision default datasets from torchvision
 from torchvision.transforms import ToTensor # Utils
+from dataclasses import dataclass, asdict
 
 # import datetime
 import numpy as np
@@ -424,56 +425,6 @@ class GenericSupervisedDataset(Dataset, metaclass=ABCMeta):
     def __getitem__(self, index):
         raise NotImplementedError()
         return inputVec, label
-
-
-# %% TENSORBOARD functions - 04-06-2024
-# Function to check if Tensorboard is running
-def IsTensorboardRunning() -> bool:
-    """Check if TensorBoard is already running"""
-    for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
-        if 'tensorboard' in proc.info['cmdline']:
-            #return proc.info['pid']
-            return True
-    return False
-
-# Function to start TensorBoard process
-def StartTensorboard(logDir:str, portNum:int=6006) -> None:
-    subprocess.Popen(['tensorboard', '--logdir', logDir, '--host', '0.0.0.0', '--port', str(portNum)])
-
-    #if not(IsTensorboardRunning):
-    #    try:
-    #        subprocess.Popen(['tensorboard', '--logdir', logDir, '--host', '0.0.0.0', '--port', str(portNum)])
-    #        print('Tensorboard session successfully started using logDir:', logDir)
-    #    except Exception as errMsg:
-    #        print('Failed due to:', errMsg, '. Continuing without opening session.')
-    #else:
-    #    print('Tensorboard seems to be running in this session! Restarting with new directory...')
-        #kill_tensorboard()
-        #subprocess.Popen(['tensorboard', '--logdir', logDir, '--host', '0.0.0.0', '--port', '6006'])
-        #print('Tensorboard session successfully started using logDir:', logDir)
-
-# Function to stop TensorBoard process
-def KillTensorboard():
-    """Kill all running TensorBoard instances."""
-    for process in psutil.process_iter(['pid', 'name', 'cmdline']):
-        if 'tensorboard' in process.info['name']:
-            if process.info['cmdline'] != None:
-                for cmd in process.info['cmdline']:
-                    if 'tensorboard' in cmd:
-                        print(f"Killing process {process.info['pid']}: {process.info['cmdline']}")
-                        os.kill(process.info['pid'], signal.SIGTERM)
-
-# Function to initialize Tensorboard session and writer
-def ConfigTensorboardSession(logDir:str='./tensorboardLogs', portNum:int=6006) -> SummaryWriter:
-
-    print('Tensorboard logging directory:', logDir, ' Port number:', portNum)
-    StartTensorboard(logDir, portNum) 
-    # Define writer # By default, this will write in a folder names "runs" in the directory of the main script. Else change providing path as first input.
-    tensorBoardWriter = SummaryWriter(log_dir=logDir, comment='', purge_step=None, max_queue=10, flush_secs=120, filename_suffix='') 
-
-    # Return initialized writer
-    return tensorBoardWriter
-
 
 
 # %% Function to get model checkpoint and load it into nn.Module for training restart - 09-06-2024
@@ -985,6 +936,7 @@ def EvaluateModel(dataloader:DataLoader, model:nn.Module, lossFcn: nn.Module, de
 
                 
 # %% Function to extract specified number of samples from dataloader - 06-06-2024
+# ACHTUNG: TO REWORK USING NEXT AND ITER!
 def GetSamplesFromDataset(dataloader: DataLoader, numOfSamples:int=10):
 
     samples = []
@@ -997,70 +949,7 @@ def GetSamplesFromDataset(dataloader: DataLoader, numOfSamples:int=10):
                    
     return samples
 
-
-# %% Torch to/from ONNx format exporter/loader based on TorchDynamo (PyTorch >2.0) - 09-06-2024
-def ExportTorchModelToONNx(model:nn.Module, dummyInputSample:torch.tensor, onnxExportPath:str='.', onnxSaveName:str='trainedModelONNx', modelID:int=0, onnx_version = None):
-
-    # Define filename of the exported model
-    if modelID > 999:
-        stringLength = modelID
-    else: 
-        stringLength = 3
-
-    modelSaveName = os.path.join(onnxExportPath, onnxSaveName + AddZerosPadding(modelID, stringLength))
-
-    # Export model to ONNx object
-    modelONNx = torch.onnx.dynamo_export(model, dummyInputSample) # NOTE: ONNx model is stored as a binary protobuf file!
-    #modelONNx = torch.onnx.export(model, dummyInputSample) # NOTE: ONNx model is stored as a binary protobuf file!
-
-    # Save ONNx model 
-    pathToModel = modelSaveName+'.onnx'
-    modelONNx.save(pathToModel) # NOTE: this is a torch utility, not onnx!
-
-    # Try to convert model to required version
-    if (onnx_version is not None) and type(onnx_version) is int:
-        convertedModel=None
-        print('Attempting conversion of ONNx model to version:', onnx_version)
-        try:
-            print(f"Model before conversion:\n{modelONNx}")
-            # Reload onnx object using onnx module
-            tmpModel = onnx.load(pathToModel)
-            # Convert model to get new model proto
-            convertedModelProto = version_converter.convert_version(tmpModel, onnx_version)
-
-            # TEST
-            #convertedModelProto.ir_version = 7
-
-            # Save model proto to .onnbx
-            onnx.save_model(convertedModelProto, modelSaveName + '_ver' + str(onnx_version) + '.onnx')
-
-        except Exception as errorMsg:
-            print('Conversion failed due to error:', errorMsg)
-    else: 
-        convertedModel=None
-
-    return modelONNx, convertedModel
-
-
-def LoadTorchModelFromONNx(dummyInputSample:torch.tensor, onnxExportPath:str='.', onnxSaveName:str='trainedModelONNx', modelID:int=0):
-    # Define filename of the exported model
-    if modelID > 999:
-        stringLength = modelID
-    else: 
-        stringLength = 3
-
-    modelSaveName = os.path.join(onnxExportPath, onnxSaveName + '_', AddZerosPadding(modelID, stringLength))
-
-    if os.path.isfile():
-            modelONNx = onnx.load(modelSaveName)
-            torchModel = None
-            return torchModel, modelONNx
-    else: 
-        raise ImportError('Specified input path to .onnx model not found.')
-
 # %% Model Graph visualization function based on Netron module # TODO
-
-
 
 # %% Other auxiliary functions - 09-06-2024
 def AddZerosPadding(intNum:int, stringLength:str=4):
@@ -1144,66 +1033,10 @@ class TorchModel_MATLABwrap():
 
         return Y.detach().cpu().numpy() # Move to cpu and convert to numpy
     
-# %% Function to get the number of trainable parameters in a model - 11-06-2024
-def getNumOfTrainParams(model):
-    return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
 
-# %% Training and validation manager class - 22-06-2024 (WIP)
-# TODO: Features to include: 
-# 1) Multi-process/multi-threading support for training and validation of multiple models in parallel
-# 2) Logging of all relevat options and results to file (either csv or text from std output)
-# 3) Main training logbook to store all data to be used for model selection and hyperparameter tuning, this should be "per project"
-# 4) Training mode: k-fold cross validation leveraging scikit-learn    
 
-class ModelTrainingManagerConfig():
-    '''Configuration class for ModelTrainingManager class. Contains all parameters ModelTrainingManager accepts as configuration.'''
-    def __init__(self, initial_lr, lr_scheduler) -> None:
-        # Set configuration parameters for ModelTrainingManager
-        self.initial_lr = initial_lr
-        self.lr_scheduler = lr_scheduler
-
-    def getConfig(self):
-        # TBC: what does it return?
-        return self.__dict__
-
-# DEV NOTE: inheritance from config?
-
-class ModelTrainingManager(ModelTrainingManagerConfig):
-    '''Class to manage training and validation of PyTorch models using specified datasets and loss functions.'''
-    def __init__(self, model:nn.Module, lossFcn: nn.Module, optimizer, options):
-        
-        '''Constructor for TrainAndValidationManager class. Initializes model, loss function, optimizer and training/validation options.'''
-
-        # Define manager parameters
-        self.model = model
-        self.lossFcn = lossFcn
-
-        # Optimizer --> # TODO: check how to modify learning rate and momentum while training
-        if isinstance(optimizer, optim.Optimizer):
-            self.optimizer = optimizer
-
-        elif isinstance(optimizer, int):
-                if optimizer == 0:
-                    optimizer = torch.optim.SGD(self.model.parameters(), lr=learnRate, momentum=momentumValue) 
-                elif optimizer == 1:
-                    optimizer = torch.optim.Adam(self.model.parameters(), lr=learnRate)
-                else:
-                    raise ValueError('Optimizer type not recognized. Use either 0 for SGD or 1 for Adam.')
-        else:
-            raise ValueError('Optimizer must be either an instance of torch.optim.Optimizer or an integer representing the optimizer type.')
-        
-        # Define training and validation options
-    
-    def LoadDatasets(self, dataloaderIndex:dict):
-        '''Method to load datasets from dataloaderIndex and use them depending on the specified criterion (e.g. "order", "merge)'''
-        # TODO: Load all datasets from dataloaderIndex and use them depending on the specified criterion (e.g. "order", "merge)
-        pass
-
-    def GetTracedModel(self):
-        pass
-    
-
+# TODO
 # %% EXPERIMENTAL: Network AutoBuilder class - 02-07-2024 (WIP)
 class ModelAutoBuilder():
     print('TODO')
