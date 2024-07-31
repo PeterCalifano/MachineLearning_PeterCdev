@@ -58,11 +58,15 @@ class ModelTrainingManagerConfig():
         print('ModelTrainingManager configuration parameters:\n\t', self.getConfig())
 
 # %% Function to get the number of trainable parameters in a model - 11-06-2024
+
+
 def getNumOfTrainParams(model):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
 # %% ModelTrainingManager class - 24-07-2024
 # DEV NOTE: inheritance from config?
+
+
 class ModelTrainingManager(ModelTrainingManagerConfig):
     '''Class to manage training and validation of PyTorch models using specified datasets and loss functions.'''
 
@@ -79,11 +83,9 @@ class ModelTrainingManager(ModelTrainingManagerConfig):
 
         elif isinstance(optimizer, int):
                if optimizer == 0:
-                    optimizer = torch.optim.SGD(
-                        self.model.parameters(), lr=learnRate, momentum=momentumValue)
+                    optimizer = torch.optim.SGD(self.model.parameters(), lr=learnRate, momentum=momentumValue)
                 elif optimizer == 1:
-                    optimizer = torch.optim.Adam(
-                        self.model.parameters(), lr=learnRate)
+                    optimizer = torch.optim.Adam(self.model.parameters(), lr=learnRate)
                 else:
                     raise ValueError(
                         'Optimizer type not recognized. Use either 0 for SGD or 1 for Adam.')
@@ -100,3 +102,5 @@ class ModelTrainingManager(ModelTrainingManagerConfig):
 
     def GetTracedModel(self):
         pass
+
+
