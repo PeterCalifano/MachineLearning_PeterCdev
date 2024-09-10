@@ -44,6 +44,7 @@ class ModelTrainingManagerConfig():
     # DATA fields
     initial_lr: float = 1e-4
     lr_scheduler: Any = None
+    optimizer: Any = None
 
     def __init__(self, initial_lr, lr_scheduler) -> None:
         # Set configuration parameters for ModelTrainingManager
@@ -66,9 +67,11 @@ def getNumOfTrainParams(model):
 class ModelTrainingManager(ModelTrainingManagerConfig):
     '''Class to manage training and validation of PyTorch models using specified datasets and loss functions.'''
 
-    def __init__(self, model: nn.Module, lossFcn: nn.Module, optimizer, options):
+    def __init__(self, model: nn.Module, lossFcn: nn.Module, 
+                 optimizer:Union[optim.Optimizer, int], options: Union[ModelTrainingManagerConfig, dict]) -> None:
         '''Constructor for TrainAndValidationManager class. Initializes model, loss function, optimizer and training/validation options.'''
-
+        super().__init__(options.initial_lr, options.lr_scheduler)
+        
         # Define manager parameters
         self.model = model
         self.lossFcn = lossFcn
@@ -78,15 +81,15 @@ class ModelTrainingManager(ModelTrainingManagerConfig):
             self.optimizer = optimizer
 
         elif isinstance(optimizer, int):
-               if optimizer == 0:
-                    optimizer = torch.optim.SGD(
-                        self.model.parameters(), lr=learnRate, momentum=momentumValue)
-                elif optimizer == 1:
-                    optimizer = torch.optim.Adam(
-                        self.model.parameters(), lr=learnRate)
-                else:
-                    raise ValueError(
-                        'Optimizer type not recognized. Use either 0 for SGD or 1 for Adam.')
+            if optimizer == 0:
+                optimizer = torch.optim.SGD(
+                     self.model.parameters(), lr=learnRate, momentum=momentumValue)
+            elif optimizer == 1:
+                optimizer = torch.optim.Adam(
+                     self.model.parameters(), lr=learnRate)
+            else:
+                raise ValueError(
+                     'Optimizer type not recognized. Use either 0 for SGD or 1 for Adam.')
         else:
             raise ValueError(
                 'Optimizer must be either an instance of torch.optim.Optimizer or an integer representing the optimizer type.')
