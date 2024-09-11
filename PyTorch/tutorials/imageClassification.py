@@ -12,6 +12,10 @@ import mlflow
 import numpy as np
 
 import sys, os
+
+import customTorchTools.optimization
+import customTorchTools.optimization.ModelTrainingManager as ModelTrainingManager
+
 sys.path.append(os.path.join('/home/peterc/devDir/MachineLearning_PeterCdev/PyTorch/customTorchTools'))
 import customTorchTools
 import torchvision.models as models
@@ -51,7 +55,8 @@ def main():
     lossFcn = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=initial_lr, fused=True)
 
-    options = {}    
+    trainerConfig = ModelTrainingManager.ModelTrainingManagerConfig(
+        initial_lr=initial_lr, lr_scheduler=None)
 
     dataloaderIndex = customTorchTools.dataloaderIndex(train_loader, validation_loader)
 
