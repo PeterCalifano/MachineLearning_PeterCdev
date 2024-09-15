@@ -1,4 +1,11 @@
 
+
+# TODO Add yaml interface for training, compatible with mlflow and optuna
+# The idea is to let the user specify all the parameters in a yaml file, which is then loaded and used
+# to set the configuration class. Default values are specified as the class defaults. 
+# Loading methods only modify the parameters the user has specified
+
+
 from typing import Optional, Any, Union
 import torch
 import mlflow
@@ -41,7 +48,8 @@ import torch.nn.functional as F
 @dataclass
 class ModelTrainingManagerConfig():
     '''Configuration dataclass for ModelTrainingManager class. Contains all parameters ModelTrainingManager accepts as configuration.'''
-    # DATA fields
+    
+    # DATA fields with default values
     initial_lr: float = 1e-4
     lr_scheduler: Any = None
     optimizer: Any = None
@@ -57,6 +65,14 @@ class ModelTrainingManagerConfig():
 
     def display(self) -> None:
         print('ModelTrainingManager configuration parameters:\n\t', self.getConfig())
+
+    def load_from_yaml(self, yamlFile: str) -> None:
+        '''Method to load configuration parameters from a yaml file'''
+        pass
+
+    def load_from_dict(self, configDict: dict) -> None:
+        '''Method to load configuration parameters from a dictionary'''
+        pass
 
 # %% Function to get the number of trainable parameters in a model - 11-06-2024
 

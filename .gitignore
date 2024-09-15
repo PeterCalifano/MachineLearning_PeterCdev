@@ -40,3 +40,5 @@ tensorboardLog*
 mlruns/*
 
 
+optuna_db/CIFAR10_CNN_OptimizationExample.db
+optuna_db/HorizonEnhancerCNN_HyperOptimization_deepNNv8_fullyParametric_RandomNoDropout_WithConicLoss_NEW.db
