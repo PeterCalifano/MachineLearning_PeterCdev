@@ -1,2 +1,2 @@
 # Import all scripts of the library
-from torchtools import *
+from torchTools import *

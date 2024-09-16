@@ -2,7 +2,7 @@
 
 # Import modules
 import torch
-import torchtools
+import torchTools
 import datetime
 from torch import nn
 

@@ -26,7 +26,7 @@ import sys
 sys.path.append(os.path.join(
     '/home/peterc/devDir/MachineLearning_PeterCdev/PyTorch/customTorchTools'))
 
-import torchtools
+import torchTools
 import torch
 import torchvision
 import mlflow
@@ -238,7 +238,7 @@ def main():
     #print(predictions[0])
 
     # Training test
-    device = torchtools.GetDevice()
+    device = torchTools.GetDevice()
     dataset = PennFudanDataset(
         '/home/peterc/devDir/MachineLearning_PeterCdev/PyTorch/tutorials/data/PennFudanPed', get_transform(train=True))
     dataset_test = PennFudanDataset(
