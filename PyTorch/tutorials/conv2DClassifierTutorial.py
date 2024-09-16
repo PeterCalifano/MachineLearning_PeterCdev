@@ -11,7 +11,7 @@ import datetime
 import torchvision
 import sys
 sys.path.insert(0, "/home/peterc/devDir/MachineLearning_PeterCdev/PyTorch")
-import pc_torchTools
+import pcTorchTools
 
 from torch.utils.tensorboard import SummaryWriter
 
@@ -86,7 +86,7 @@ class Conv2dNet(nn.Module):
 # NOTE: Number of input channels is 3 --> RGB; number of output channels is a hyperparameter that defines how many kernels (i.e. convolutions) 
 # the layer applies to the input channels 
 
-device = pc_torchTools.GetDevice()
+device = pcTorchTools.GetDevice()
 ConvNN = Conv2dNet(12, 3, 5).to(device)
 
 # %% TRAINING STEP
@@ -126,7 +126,7 @@ for epoch in range(numOfEpochs):
         
 print("TRAINING LOOP: COMPLETED")
 # Save model 
-pc_torchTools.SaveModelState(ConvNN, "exampleCNNclassifier")
+pcTorchTools.SaveModelState(ConvNN, "exampleCNNclassifier")
 
 # %% VALIDATION 
 correctOutput = 0
