@@ -54,6 +54,9 @@ class ModelTrainingManagerConfig():
     lr_scheduler: Any = None
     optimizer: Any = None
 
+    # DEVNOTE: dataclass generates __init__() automatically
+    # Same goes for __repr()__ and __eq()__ methods
+
     def __init__(self, initial_lr, lr_scheduler) -> None:
         # Set configuration parameters for ModelTrainingManager
         self.initial_lr = initial_lr
