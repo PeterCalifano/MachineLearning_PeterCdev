@@ -17,7 +17,7 @@ from torchvision.transforms import ToTensor
 from torch.utils.data import DataLoader
 from torchvision import datasets  # Import vision default datasets from torchvision
 from torchvision.transforms import ToTensor  # Utils
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, fields, Field, MISSING
 
 # import datetime
 import numpy as np
@@ -29,8 +29,9 @@ import inspect
 import subprocess
 import psutil
 import onnx
+import yaml
 from onnx import version_converter
-from typing import Union
+from typing import Union, IO
 
 # Key class to use tensorboard with PyTorch. VSCode will automatically ask if you want to load tensorboard in the current session.
 from torch.utils.tensorboard import SummaryWriter
@@ -45,37 +46,80 @@ import torch.nn.functional as F
 # 2) Logging of all relevat options and results to file (either csv or text from std output)
 # 3) Main training logbook to store all data to be used for model selection and hyperparameter tuning, this should be "per project"
 # 4) Training mode: k-fold cross validation leveraging scikit-learn
-@dataclass
+
+@dataclass(frozen=True)
 class ModelTrainingManagerConfig():
     '''Configuration dataclass for ModelTrainingManager class. Contains all parameters ModelTrainingManager accepts as configuration.'''
     
     # DATA fields with default values
     initial_lr: float = 1e-4
     lr_scheduler: Any = None
-    optimizer: Any = None
+    optim_momentum: float = 0.5  # Momentum value for SGD optimizer
+    
+    # Define default optimizer as Adam
+    optimizer: Any = torch.optim.Adam(lr=initial_lr)
 
     # DEVNOTE: dataclass generates __init__() automatically
-    # Same goes for __repr()__ and __eq()__ methods
+    # Same goes for __repr()__ for printing and __eq()__ for equality check methods
 
-    def __init__(self, initial_lr, lr_scheduler) -> None:
-        # Set configuration parameters for ModelTrainingManager
-        self.initial_lr = initial_lr
-        self.lr_scheduler = lr_scheduler
-
-    def getConfig(self) -> dict:
+    def getConfigDict(self) -> dict:
         '''Method to return the dataclass as dictionary'''
         return asdict(self)
 
-    def display(self) -> None:
-        print('ModelTrainingManager configuration parameters:\n\t', self.getConfig())
+    #def display(self) -> None:
+    #    print('ModelTrainingManager configuration parameters:\n\t', self.getConfig())
 
-    def load_from_yaml(self, yamlFile: str) -> None:
-        '''Method to load configuration parameters from a yaml file'''
-        pass
+    @classmethod
+    # DEVNOTE: classmethod is like static methods, but apply to the class itself and passes it implicitly as the first argument
+    def load_from_yaml(cls, yamlFile: Union[str | IO]) -> 'ModelTrainingManagerConfig':
+        '''Method to load configuration parameters from a yaml file containing configuration dictionary'''
 
-    def load_from_dict(self, configDict: dict) -> None:
+        if isinstance(yamlFile, str):
+            with open(yamlFile, 'r') as file:
+
+                # TODO: VALIDATE SCHEMA
+
+                # Parse yaml file to dictionary
+                configDict = yaml.safe_load(file)
+        else:
+
+            # TODO: VALIDATE SCHEMA
+
+            configDict = yaml.safe_load(yamlFile)
+
+        # Call load_from_dict() method
+        return cls.load_from_dict(configDict)
+
+    @classmethod
+    def load_from_dict(cls, configDict: dict) -> 'ModelTrainingManagerConfig':
         '''Method to load configuration parameters from a dictionary'''
-        pass
+
+        # Get all field names from the class
+        fieldNames = {f.name for f in fields(cls)}
+        # Get fields in configuration dictionary
+        missingFields = fieldNames - configDict.keys()
+
+        # Check if any required field is missing (those without default values)
+        requiredFields = {f.name for f in fields(
+            cls) if f.default is MISSING and f.default_factory is MISSING}
+        missingRequired = requiredFields & missingFields
+
+        if missingRequired:
+            raise ValueError(f"Config dict is missing required fields: {missingRequired}")
+        
+        # Build initialization arguments for class (using autogen __init__() method)
+        # All fields not specified by configDict are initialized as default from cls values
+        initArgs = {key: configDict.get( key, getattr(cls, key)) for key in fieldNames}
+        
+        # Return instance of class with attributes defined from dictionary
+        return cls(**initArgs)
+    
+    @staticmethod
+    def getConfigParamsNames(cls) -> list:
+        '''Method to return the names of all parameters in the configuration class'''
+        return [f.name for f in fields(cls)]
+    
+        
 
 # %% Function to get the number of trainable parameters in a model - 11-06-2024
 

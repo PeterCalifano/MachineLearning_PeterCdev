@@ -32,6 +32,20 @@ import torch.nn.functional as torchFunc # Module to apply activation functions i
 # For initialization
 import torch.nn.init as init
 
+#############################################################################################################################################
+class torchModel(torch.nn.Module):
+    '''Custom base class inheriting nn.Module to define a PyTorch NN model, augmented with saving/loading routines like Pytorch Lightning.'''
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+
+    def saveCheckpoint(self):
+        SaveTorchModel(model: nn.Module, modelName: str="trainedModel", saveAsTraced: bool=False, exampleInput=None, targetDevice: str='cpu')
+
+
+
+#############################################################################################################################################
+
 # %% Custom training function for Moon limb pixel extraction enhancer V3maxDeeper (with target average radius in pixels) - 30-06-2024
 '''
 Architecture characteristics: Conv. layers, max pooling, deeper fully connected layers, dropout, tanh and leaky ReLU activation
