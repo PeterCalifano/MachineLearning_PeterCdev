@@ -1,5 +1,8 @@
+import torch, onnx, os
+import torchTools.utils
+
 # %% Torch to/from ONNx format exporter/loader based on TorchDynamo (PyTorch >2.0) - 09-06-2024
-def ExportTorchModelToONNx(model: nn.Module, dummyInputSample: torch.tensor, onnxExportPath: str = '.', onnxSaveName: str = 'trainedModelONNx', modelID: int = 0, onnx_version=None):
+def ExportTorchModelToONNx(model: torch.nn.Module, dummyInputSample: torch.tensor, onnxExportPath: str = '.', onnxSaveName: str = 'trainedModelONNx', modelID: int = 0, onnx_version=None):
 
     # Define filename of the exported model
     if modelID > 999:

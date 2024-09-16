@@ -839,10 +839,6 @@ def GetSamplesFromDataset(dataloader: DataLoader, numOfSamples:int=10):
 
 # %% Model Graph visualization function based on Netron module # TODO
 
-# %% Other auxiliary functions - 09-06-2024
-def AddZerosPadding(intNum:int, stringLength:str=4):
-    return f"{intNum:0{stringLength}d}" # Return strings like 00010
-
 
 #inputImageSize:list, kernelSizes:list, OutputChannelsSizes:list, PoolingLayersSizes:list, inputChannelSize:int=1, withBiases=True
 
