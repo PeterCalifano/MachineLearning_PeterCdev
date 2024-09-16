@@ -1,8 +1,9 @@
 import torch, onnx, os
-import torchTools.utils
+from torchTools.utils.utils import AddZerosPadding
 
 # %% Torch to/from ONNx format exporter/loader based on TorchDynamo (PyTorch >2.0) - 09-06-2024
-def ExportTorchModelToONNx(model: torch.nn.Module, dummyInputSample: torch.tensor, onnxExportPath: str = '.', onnxSaveName: str = 'trainedModelONNx', modelID: int = 0, onnx_version=None):
+def ExportTorchModelToONNx(model: torch.nn.Module, dummyInputSample: torch.tensor, onnxExportPath: str = '.', 
+                           onnxSaveName: str = 'trainedModelONNx', modelID: int = 0, onnx_version=None):
 
     # Define filename of the exported model
     if modelID > 999:
@@ -31,7 +32,7 @@ def ExportTorchModelToONNx(model: torch.nn.Module, dummyInputSample: torch.tenso
             # Reload onnx object using onnx module
             tmpModel = onnx.load(pathToModel)
             # Convert model to get new model proto
-            convertedModelProto = version_converter.convert_version(
+            convertedModelProto = onnx.version_converter.convert_version(
                 tmpModel, onnx_version)
 
             # TEST
@@ -50,6 +51,7 @@ def ExportTorchModelToONNx(model: torch.nn.Module, dummyInputSample: torch.tenso
 
 
 def LoadTorchModelFromONNx(dummyInputSample: torch.tensor, onnxExportPath: str = '.', onnxSaveName: str = 'trainedModelONNx', modelID: int = 0):
+    
     # Define filename of the exported model
     if modelID > 999:
         stringLength = modelID
