@@ -2,7 +2,7 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='customTorchTools',
+    name='torchTools',
     version='0.1',
     packages=find_packages(),
     install_requires=[
@@ -18,6 +18,8 @@ setup(
         "psutil==5.9.8",
         "tensorboard==2.16.2",
         "tensorboard-data-server==0.7.2",
+        "optuna==3.6.1",
+        "mlflow==2.14.1",
     ],
     entry_points={
         'console_scripts': [
@@ -26,7 +28,7 @@ setup(
     },
     author='Pietro Califano',
     author_email='petercalifano.gs@gmail.com',
-    description='Custom utility codes based on PyTorch for management of DNN (including SNNs) training, validation, logging and conversion to ONNX. Dataset handling tools included.',
+    description='Custom utility codes based on ray PyTorch for management of DNN (including SNNs) training, validation, logging and conversion. mlflow and optuna are integrated',
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',
     url='',
