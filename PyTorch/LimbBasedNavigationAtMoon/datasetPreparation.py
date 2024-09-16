@@ -13,7 +13,7 @@ from scipy.spatial.transform import Rotation
 from sklearn import preprocessing
 
 # Torch modules
-import customTorchTools
+import torchtools
 
 
 def parse_args():
@@ -292,7 +292,7 @@ def BuildDataset(datasetInfo:dict, DatasetClass:callable):
         if not os.path.exists(datasetSavePath):
             os.makedirs(datasetSavePath)
 
-        customTorchTools.SaveTorchDataset(datasetTraining, datasetSavePath, datasetName=datasetName)
+        torchtools.SaveTorchDataset(datasetTraining, datasetSavePath, datasetName=datasetName)
     else:
         datasetTraining = None
 
