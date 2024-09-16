@@ -15,9 +15,12 @@ slprj
 *.sarif
 tracedModelsArchive
 multiprocessShellLog
+MNIST/*
 
 # PyTorch folders
 PyTorch/__pycache__
+lightning_logs/*
+
 #PyTorch/snntorch
 #PyTorch/norse
 norse_scripts/MNIST
