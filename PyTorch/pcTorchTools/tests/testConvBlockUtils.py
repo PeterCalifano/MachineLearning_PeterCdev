@@ -5,7 +5,7 @@ import sys, os
 sys.path.append(os.path.join('/home/peterc/devDir/MachineLearning_PeterCdev/PyTorch/customTorchTools'))
 sys.path.append(os.path.join('/home/peterc/devDir/MachineLearning_PeterCdev/PyTorch/LimbBasedNavigationAtMoon'))
 
-import PyTorch.pc_torchTools.pc_torchTools as pc_torchTools  # Custom torch tools
+import PyTorch.pcTorchTools as pcTorchTools  # Custom torch tools
 
 import torch
 import datetime
@@ -32,18 +32,18 @@ def main():
     convKernelSize = 3
     convStrideSize = 1
     convPaddingSize = 0
-    conv2dOutputSize = pc_torchTools.ComputeConv2dOutputSize(patchSize, convKernelSize, convStrideSize, convPaddingSize)
+    conv2dOutputSize = pcTorchTools.ComputeConv2dOutputSize(patchSize, convKernelSize, convStrideSize, convPaddingSize)
 
     # %% Test computation of output size of Pooling2d using default settings
     poolingkernelSize = 2
     poolingStrideSize = 1
-    poolingOutputSize = pc_torchTools.ComputePooling2dOutputSize([5,5], poolingkernelSize, poolingStrideSize)
+    poolingOutputSize = pcTorchTools.ComputePooling2dOutputSize([5,5], poolingkernelSize, poolingStrideSize)
 
     print('Output size of Conv2d:', conv2dOutputSize)
     print('Output size of Pooling2d:', poolingOutputSize)
 
     # %% Test computation of number of features after ConvBlock using default settings
-    convBlockOutputSize = pc_torchTools.ComputeConvBlockOutputSize([7,7], outChannelsSizes[0])
+    convBlockOutputSize = pcTorchTools.ComputeConvBlockOutputSize([7,7], outChannelsSizes[0])
 
     print('Output size of ConvBlock:', convBlockOutputSize)
 
@@ -60,7 +60,7 @@ def main():
     # Test recursive computation for all defined ConvBlocks (PASSED)
     for idBlock in range(2):
 
-        convBlockOutputSize = pc_torchTools.ComputeConvBlockOutputSize(outputMapSize, outChannelsSizes[idBlock], 
+        convBlockOutputSize = pcTorchTools.ComputeConvBlockOutputSize(outputMapSize, outChannelsSizes[idBlock], 
                                                                           convkernelSizes[idBlock], poolingkernelSize[idBlock], 
                                                                           convStrideSize[idBlock], poolingStrideSize[idBlock], 
                                                                           convPaddingSize[idBlock], poolingPaddingSize[idBlock])

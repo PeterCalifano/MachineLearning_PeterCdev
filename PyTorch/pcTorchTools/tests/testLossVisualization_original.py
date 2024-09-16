@@ -8,7 +8,7 @@ import sys, os
 sys.path.append(os.path.join('/home/peterc/devDir/MachineLearning_PeterCdev/PyTorch/customTorchTools'))
 sys.path.append(os.path.join('/home/peterc/devDir/MachineLearning_PeterCdev/PyTorch/LimbBasedNavigationAtMoon'))
 
-import PyTorch.pc_torchTools.pc_torchTools as pc_torchTools # Custom torch tools
+import PyTorch.pcTorchTools.pcTorchTools as pcTorchTools # Custom torch tools
 import limbPixelExtraction_CNN_NN  # Custom model classes
 import datasetPreparation
 from sklearn import preprocessing # Import scikit-learn for dataset preparation
@@ -72,7 +72,7 @@ def main():
     # Loss function parameters
     params = {'ConicLossWeightCoeff': 0, 'RectExpWeightCoeff': 0}
 
-    lossFcn = pc_torchTools.CustomLossFcn(limbPixelExtraction_CNN_NN.MoonLimbPixConvEnhancer_NormalizedConicLossWithMSEandOutOfPatch_asTensor, params)
+    lossFcn = pcTorchTools.CustomLossFcn(limbPixelExtraction_CNN_NN.MoonLimbPixConvEnhancer_NormalizedConicLossWithMSEandOutOfPatch_asTensor, params)
     #model = ModelClasses.HorizonExtractionEnhancerCNNv3maxDeeper
 
     tracedModelSavePath = '/home/peterc/devDir/MachineLearning_PeterCdev/checkpoints/HorizonPixCorrector_CNNv3max_largerCNNdeeperNN_run0003'
@@ -80,7 +80,7 @@ def main():
 
 
     # Load torch traced model from file
-    torchWrapper = pc_torchTools.TorchModel_MATLABwrap(tracedModelName, tracedModelSavePath)
+    torchWrapper = pcTorchTools.TorchModel_MATLABwrap(tracedModelName, tracedModelSavePath)
 
     modelParams = torchWrapper.trainedModel.parameters()
 

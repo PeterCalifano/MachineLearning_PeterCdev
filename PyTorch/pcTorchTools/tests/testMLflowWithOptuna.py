@@ -22,7 +22,7 @@ logger.setLevel(logging.INFO)
 sys.path.append(os.path.join('/home/peterc/devDir/MachineLearning_PeterCdev/PyTorch/customTorchTools'))
 sys.path.append(os.path.join('/home/peterc/devDir/MachineLearning_PeterCdev/PyTorch/LimbBasedNavigationAtMoon'))
 
-import PyTorch.pc_torchTools.pc_torchTools as pc_torchTools # Custom torch tools
+import PyTorch.pcTorchTools.pcTorchTools as pcTorchTools # Custom torch tools
 import numpy as np
 
 def StartMLflowUI(port:int=5000):
