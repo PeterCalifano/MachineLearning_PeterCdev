@@ -5,7 +5,7 @@ import sys, os
 sys.path.append(os.path.join('/home/peterc/devDir/MachineLearning_PeterCdev/PyTorch/customTorchTools'))
 sys.path.append(os.path.join('/home/peterc/devDir/MachineLearning_PeterCdev/PyTorch/LimbBasedNavigationAtMoon'))
 
-import customTorchTools  # Custom torch tools
+import PyTorch.torchTools.torchTools as torchTools  # Custom torch tools
 
 import torch
 import datetime
@@ -32,18 +32,18 @@ def main():
     convKernelSize = 3
     convStrideSize = 1
     convPaddingSize = 0
-    conv2dOutputSize = customTorchTools.ComputeConv2dOutputSize(patchSize, convKernelSize, convStrideSize, convPaddingSize)
+    conv2dOutputSize = torchTools.ComputeConv2dOutputSize(patchSize, convKernelSize, convStrideSize, convPaddingSize)
 
     # %% Test computation of output size of Pooling2d using default settings
     poolingkernelSize = 2
     poolingStrideSize = 1
-    poolingOutputSize = customTorchTools.ComputePooling2dOutputSize([5,5], poolingkernelSize, poolingStrideSize)
+    poolingOutputSize = torchTools.ComputePooling2dOutputSize([5,5], poolingkernelSize, poolingStrideSize)
 
     print('Output size of Conv2d:', conv2dOutputSize)
     print('Output size of Pooling2d:', poolingOutputSize)
 
     # %% Test computation of number of features after ConvBlock using default settings
-    convBlockOutputSize = customTorchTools.ComputeConvBlockOutputSize([7,7], outChannelsSizes[0])
+    convBlockOutputSize = torchTools.ComputeConvBlockOutputSize([7,7], outChannelsSizes[0])
 
     print('Output size of ConvBlock:', convBlockOutputSize)
 
@@ -60,7 +60,7 @@ def main():
     # Test recursive computation for all defined ConvBlocks (PASSED)
     for idBlock in range(2):
 
-        convBlockOutputSize = customTorchTools.ComputeConvBlockOutputSize(outputMapSize, outChannelsSizes[idBlock], 
+        convBlockOutputSize = torchTools.ComputeConvBlockOutputSize(outputMapSize, outChannelsSizes[idBlock], 
                                                                           convkernelSizes[idBlock], poolingkernelSize[idBlock], 
                                                                           convStrideSize[idBlock], poolingStrideSize[idBlock], 
                                                                           convPaddingSize[idBlock], poolingPaddingSize[idBlock])

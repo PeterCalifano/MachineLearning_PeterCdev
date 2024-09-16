@@ -13,7 +13,7 @@ sys.path.append(os.path.join('/home/peterc/devDir/MachineLearning_PeterCdev/PyTo
 import numpy as np
 
 # Custom imports
-import customTorchTools
+import PyTorch.torchTools.torchTools as torchTools
 import tcpServerPy
 
 from torch.utils.tensorboard import SummaryWriter 
@@ -38,7 +38,7 @@ def main():
     # ACHTUNG: check which model is being loaded!
 
     # Load torch traced model from file
-    torchWrapper = customTorchTools.TorchModel_MATLABwrap(tracedModelName, tracedModelSavePath)
+    torchWrapper = torchTools.TorchModel_MATLABwrap(tracedModelName, tracedModelSavePath)
 
     # %% TCP SERVER INITIALIZATION
     HOST, PORT = "127.0.0.1", 50000 # Define host and port (random is ok)
