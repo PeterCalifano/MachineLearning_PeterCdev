@@ -1,2 +1,3 @@
 customTorchTools.egg-info/*
 build/*
+*.egg-info/*
