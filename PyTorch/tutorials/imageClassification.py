@@ -13,11 +13,11 @@ import numpy as np
 
 import sys, os
 
-import torchTools.optimization
-import torchTools.optimization.ModelTrainingManager as ModelTrainingManager
+import pc_torchTools.optimization
+import pc_torchTools.optimization.ModelTrainingManager as ModelTrainingManager
 
-sys.path.append(os.path.join('/home/peterc/devDir/MachineLearning_PeterCdev/PyTorch/torchtools'))
-import torchTools
+sys.path.append(os.path.join('/home/peterc/devDir/MachineLearning_PeterCdev/PyTorch/pc_torchTools'))
+import pc_torchTools
 import torchvision.models as models
 
 wsDir = '/home/peterc/devDir/MachineLearning_PeterCdev/PyTorch/tutorials'
@@ -58,10 +58,10 @@ def main():
     trainerConfig = ModelTrainingManager.ModelTrainingManagerConfig(
         initial_lr=initial_lr, lr_scheduler=None)
 
-    dataloaderIndex = torchTools.dataloaderIndex(train_loader, validation_loader)
+    dataloaderIndex = pc_torchTools.dataloaderIndex(train_loader, validation_loader)
 
     # Perform training and validation of model
-    torchTools.TrainAndValidateModel(dataloaderIndex, model, lossFcn, optimizer, options)
+    pc_torchTools.TrainAndValidateModel(dataloaderIndex, model, lossFcn, optimizer, options)
     
     # TODO: Update customTorchTool to support training of models for classification
 

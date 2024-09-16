@@ -20,7 +20,7 @@ import os
 import matplotlib.pyplot as plt
 import torch, sys, os
 sys.path.append(os.path.join('/home/peterc/devDir/MachineLearning_PeterCdev/PyTorch/customTorchTools'))
-import torchTools
+import pc_torchTools
 
 import datetime
 from torch import nn
@@ -153,7 +153,7 @@ def MoonLimbPixConvEnhancer_LossFcn(predictCorrection, labelVector, paramsTrain:
     for idBatch in range(labelVector.size()[0]):
 
         # Compute corrected pixel
-        correctedPix = torch.tensor([0,0,1], dtype=torch.float32, device=torchTools.GetDevice()).reshape(3,1)
+        correctedPix = torch.tensor([0,0,1], dtype=torch.float32, device=pc_torchTools.GetDevice()).reshape(3,1)
         correctedPix[0:2] = patchCentre[idBatch, :].reshape(2,1) + predictCorrection[idBatch, :].reshape(2,1)
 
         conicLoss += torch.matmul(correctedPix.T, torch.matmul(LimbConicMatrixImg[idBatch, :, :].reshape(3,3), correctedPix))
@@ -200,7 +200,7 @@ def MoonLimbPixConvEnhancer_LossFcnWithOutOfPatchTerm(predictCorrection, labelVe
     for idBatch in range(labelVector.size()[0]):
 
         # Compute corrected pixel and conic loss
-        correctedPix = torch.tensor([0,0,1], dtype=torch.float32, device=torchTools.GetDevice()).reshape(3,1)
+        correctedPix = torch.tensor([0,0,1], dtype=torch.float32, device=pc_torchTools.GetDevice()).reshape(3,1)
         correctedPix[0:2] = patchCentre[idBatch, :].reshape(2,1) + predictCorrection[idBatch, :].reshape(2,1)
 
         conicLoss += torch.matmul(correctedPix.T, torch.matmul(LimbConicMatrixImg[idBatch, :, :].reshape(3,3), correctedPix))
@@ -330,7 +330,7 @@ def MoonLimbPixConvEnhancer_NormalizedLossFcnWithOutOfPatchTerm(predictCorrectio
     for idBatch in range(labelVector.size()[0]):
 
         # Compute corrected pixel
-        correctedPix = torch.tensor([0,0,1], dtype=torch.float32, device=torchTools.GetDevice()).reshape(3,1)
+        correctedPix = torch.tensor([0,0,1], dtype=torch.float32, device=pc_torchTools.GetDevice()).reshape(3,1)
         correctedPix[0:2] = patchCentre[idBatch, :].reshape(2,1) + predictCorrection[idBatch, :].reshape(2,1)
 
         normalizedConicLoss += ((torch.matmul(correctedPix.T, torch.matmul(LimbConicMatrixImg[idBatch, :, :].reshape(3,3), correctedPix)))**2/baseCost2[idBatch])
@@ -608,7 +608,7 @@ def AutoComputeConvBlocksOutput(self, kernelSizes:list, poolingKernelSize:list=N
 
         for idL in range(self.numOfConvLayers):
 
-            convBlockOutputSize = torchTools.ComputeConvBlockOutputSize(outputMapSize, self.outChannelsSizes[idL], kernelSizes[idL], poolingKernelSize[idL], 
+            convBlockOutputSize = pc_torchTools.ComputeConvBlockOutputSize(outputMapSize, self.outChannelsSizes[idL], kernelSizes[idL], poolingKernelSize[idL], 
                                                                               convStrideSize=1, poolingStrideSize=poolingKernelSize[idL],
                                                                             convPaddingSize=0, poolingPaddingSize=0)
             

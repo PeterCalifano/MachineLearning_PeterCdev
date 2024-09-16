@@ -2,7 +2,7 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='torchTools',
+    name='pc_torchTools',
     version='0.1',
     packages=find_packages(),
     install_requires=[

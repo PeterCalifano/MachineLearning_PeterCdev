@@ -20,7 +20,7 @@ from scipy.spatial.transform import Rotation
 from torch import nn
 from sklearn import preprocessing  # Import scikit-learn for dataset preparation
 import datasetPreparation
-import torchTools  # Custom torch tools
+import pc_torchTools  # Custom torch tools
 import sys
 import os
 import multiprocessing
@@ -64,7 +64,7 @@ momentumValue = 0.6
 optimizerID = 1  # 0: SGD, 1: Adam
 UseMaxPooling = True
 
-device = torchTools.GetDevice()
+device = pc_torchTools.GetDevice()
 
 exportTracedModel = True
 tracedModelSavePath = 'tracedModelsArchive'
@@ -307,9 +307,9 @@ if REGEN_DATASET == True or datasetNotFound:
         if not os.path.exists(datasetSavePath):
             os.makedirs(datasetSavePath)
 
-        torchTools.SaveTorchDataset(
+        pc_torchTools.SaveTorchDataset(
             datasetTraining, datasetSavePath, datasetName='TrainingDataset_'+TrainingDatasetTag)
-        torchTools.SaveTorchDataset(
+        pc_torchTools.SaveTorchDataset(
             datasetValidation, datasetSavePath, datasetName='ValidationDataset_'+ValidationDatasetTag)
 else:
     if not (os.path.isfile(os.path.join(datasetSavePath, 'TrainingDataset_'+TrainingDatasetTag+'.pt'))) or not ((os.path.isfile(os.path.join(datasetSavePath, 'ValidationDataset_'+ValidationDatasetTag+'.pt')))):
@@ -324,9 +324,9 @@ else:
 
     print('Loading training and validation datasets from: \n\t',
           trainingDatasetPath, '\n\t', validationDatasetPath)
-    datasetTraining = torchTools.LoadTorchDataset(
+    datasetTraining = pc_torchTools.LoadTorchDataset(
         datasetSavePath, datasetName='TrainingDataset_'+TrainingDatasetTag)
-    datasetValidation = torchTools.LoadTorchDataset(
+    datasetValidation = pc_torchTools.LoadTorchDataset(
         datasetSavePath, datasetName='ValidationDataset_'+ValidationDatasetTag)
 
 ################################################################################################
@@ -349,23 +349,23 @@ lossParams['paramsEval'] = {'ConicLossWeightCoeff': 1000, 'RectExpWeightCoeff': 
 
 
 if LOSS_TYPE == 0:
-    lossFcn = torchTools.CustomLossFcn(
+    lossFcn = pc_torchTools.CustomLossFcn(
         limbPixelExtraction_CNN_NN.MoonLimbPixConvEnhancer_LossFcn, lossParams)
 elif LOSS_TYPE == 1:
-    lossFcn = torchTools.CustomLossFcn(
+    lossFcn = pc_torchTools.CustomLossFcn(
         limbPixelExtraction_CNN_NN.MoonLimbPixConvEnhancer_LossFcnWithOutOfPatchTerm, lossParams)
 elif LOSS_TYPE == 2:
     if USE_TENSOR_LOSS_EVAL:
-        lossFcn = torchTools.CustomLossFcn(
+        lossFcn = pc_torchTools.CustomLossFcn(
             limbPixelExtraction_CNN_NN.MoonLimbPixConvEnhancer_NormalizedLossFcnWithOutOfPatchTerm_asTensor, lossParams)
     else:
-        lossFcn = torchTools.CustomLossFcn(
+        lossFcn = pc_torchTools.CustomLossFcn(
             limbPixelExtraction_CNN_NN.MoonLimbPixConvEnhancer_NormalizedLossFcnWithOutOfPatchTerm, lossParams)
 elif LOSS_TYPE == 3:
-    lossFcn = torchTools.CustomLossFcn(
+    lossFcn = pc_torchTools.CustomLossFcn(
         limbPixelExtraction_CNN_NN.MoonLimbPixConvEnhancer_PolarNdirectionDistanceWithOutOfPatch_asTensor, lossParams)
 elif LOSS_TYPE == 4:
-    lossFcn = torchTools.CustomLossFcn(
+    lossFcn = pc_torchTools.CustomLossFcn(
         limbPixelExtraction_CNN_NN.MoonLimbPixConvEnhancer_NormalizedConicLossWithMSEandOutOfPatch_asTensor, lossParams)
 else:
     raise ValueError('Loss function ID not found.')
@@ -376,7 +376,7 @@ else:
 
 def objective(trial):
 
-    device = torchTools.GetDevice()
+    device = pc_torchTools.GetDevice()
 
 
     # START MLFLOW RUN LOGGING
@@ -481,10 +481,10 @@ def objective(trial):
         mlflow.log_param('learning_rate', initialLearnRate)
         #mlflow.log_param('ExponentialDecayGamma', exponentialDecayGamma)
 
-        numOfParameters = torchTools.getNumOfTrainParams(model)
+        numOfParameters = pc_torchTools.getNumOfTrainParams(model)
         mlflow.log_param('NumOfTrainParams', numOfParameters)
         # %% TRAIN and VALIDATE MODEL
-        bestTrainedModelData = torchTools.TrainAndValidateModelForOptunaOptim(
+        bestTrainedModelData = pc_torchTools.TrainAndValidateModelForOptunaOptim(
             trial, dataloaderIndex, model, lossFcn, optimizer, options)
 
         # Return last validation loss value

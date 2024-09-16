@@ -5,7 +5,7 @@ import sys, os
 sys.path.append(os.path.join('/home/peterc/devDir/MachineLearning_PeterCdev/PyTorch/customTorchTools'))
 sys.path.append(os.path.join('/home/peterc/devDir/MachineLearning_PeterCdev/PyTorch/LimbBasedNavigationAtMoon'))
 
-import PyTorch.torchTools.torchTools as torchTools  # Custom torch tools
+import PyTorch.pc_torchTools.pc_torchTools as pc_torchTools  # Custom torch tools
 import limbPixelExtraction_CNN_NN
 
 import torch
@@ -35,7 +35,7 @@ def main():
     learnRate = 1E-10
     momentumValue = 0.001
     optimizerID = 1 # 0
-    device = torchTools.GetDevice()
+    device = pc_torchTools.GetDevice()
     exportTracedModel = True
 
     # MODEL CLASS TYPE

@@ -11,7 +11,7 @@ sys.path.append(os.path.join('/home/peterc/devDir/MachineLearning_PeterCdev/PyTo
 
 # Import the required modules
 import torch
-import PyTorch.torchTools.torchTools as torchTools
+import PyTorch.pc_torchTools.pc_torchTools as pc_torchTools
 import numpy as np
 
 import matplotlib
@@ -147,8 +147,8 @@ def main():
 
     # TEST: Tensor evaluation version
 
-    X = torch.tensor(X, dtype=torch.float32, device=torchTools.GetDevice())
-    Y = torch.tensor(Y, dtype=torch.float32, device=torchTools.GetDevice())
+    X = torch.tensor(X, dtype=torch.float32, device=pc_torchTools.GetDevice())
+    Y = torch.tensor(Y, dtype=torch.float32, device=pc_torchTools.GetDevice())
 
     pixelCoords = torch.stack((X.flatten(), Y.flatten()), dim=1)
 
