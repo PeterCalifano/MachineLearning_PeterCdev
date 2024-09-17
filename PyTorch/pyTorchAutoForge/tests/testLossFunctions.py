@@ -1,12 +1,12 @@
 # Import modules
 import sys, os
 
-import PyTorch.pcTorchTools.pcTorchTools
+import PyTorch.pyTorchAutoForge.pcTorchTools
 # Append paths of custom modules
 sys.path.append(os.path.join('/home/peterc/devDir/MachineLearning_PeterCdev/PyTorch/LimbBasedNavigationAtMoon'))
 sys.path.append(os.path.join('/home/peterc/devDir/MachineLearning_PeterCdev/PyTorch/customTorchTools'))
 
-import PyTorch.pcTorchTools.pcTorchTools as pcTorchTools # Custom torch tools
+import PyTorch.pyTorchAutoForge.pcTorchTools as pcTorchTools # Custom torch tools
 from sklearn import preprocessing # Import scikit-learn for dataset preparation
 
 import torch

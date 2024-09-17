@@ -11,7 +11,7 @@ sys.path.append(os.path.join('/home/peterc/devDir/MachineLearning_PeterCdev/PyTo
 
 # Import the required modules
 import torch
-import PyTorch.pcTorchTools.pcTorchTools as pcTorchTools
+import PyTorch.pyTorchAutoForge.pcTorchTools as pcTorchTools
 import numpy as np
 
 import matplotlib

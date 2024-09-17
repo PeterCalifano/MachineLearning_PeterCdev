@@ -1,5 +1,5 @@
 import torch, onnx, os
-from pcTorchTools.utils.utils import AddZerosPadding
+from pyTorchAutoForge.utils.utils import AddZerosPadding
 
 # %% Torch to/from ONNx format exporter/loader based on TorchDynamo (PyTorch >2.0) - 09-06-2024
 def ExportTorchModelToONNx(model: torch.nn.Module, dummyInputSample: torch.tensor, onnxExportPath: str = '.', 

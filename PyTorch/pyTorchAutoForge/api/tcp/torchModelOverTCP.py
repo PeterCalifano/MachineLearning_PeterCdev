@@ -13,7 +13,7 @@ sys.path.append(os.path.join('/home/peterc/devDir/MachineLearning_PeterCdev/PyTo
 import numpy as np
 
 # Custom imports
-import PyTorch.pcTorchTools.pcTorchTools as pcTorchTools
+import PyTorch.pyTorchAutoForge.pcTorchTools as pcTorchTools
 import tcpServerPy
 
 from torch.utils.tensorboard import SummaryWriter 

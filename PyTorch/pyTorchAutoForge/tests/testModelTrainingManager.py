@@ -9,7 +9,7 @@ from torchvision.transforms import ToTensor # Utils
 import numpy as np
 from typing import Union
 
-import PyTorch.pcTorchTools.pcTorchTools as pcTorchTools
+import PyTorch.pyTorchAutoForge.pcTorchTools as pcTorchTools
 
 from torch.utils.tensorboard import SummaryWriter # Key class to use tensorboard with PyTorch. VSCode will automatically ask if you want to load tensorboard in the current session.
 import torch.optim as optim

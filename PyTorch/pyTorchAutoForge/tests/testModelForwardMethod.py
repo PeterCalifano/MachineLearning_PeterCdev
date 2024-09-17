@@ -8,7 +8,7 @@ import sys, os
 sys.path.append(os.path.join('/home/peterc/devDir/MachineLearning_PeterCdev/PyTorch/customTorchTools'))
 sys.path.append(os.path.join('/home/peterc/devDir/MachineLearning_PeterCdev/PyTorch/LimbBasedNavigationAtMoon'))
 
-import PyTorch.pcTorchTools.pcTorchTools as pcTorchTools  # Custom torch tools
+import PyTorch.pyTorchAutoForge.pcTorchTools as pcTorchTools  # Custom torch tools
 
 import torch
 import datetime
