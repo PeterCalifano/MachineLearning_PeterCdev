@@ -12,9 +12,6 @@ import mlflow
 import numpy as np
 
 import sys, os
-
-sys.path.append(os.path.join('/home/peterc/devDir/pyTorchAutoForge/pyTorchAutoForge'))
-
 import pyTorchAutoForge
 import torchvision.models as models
 
