@@ -13,10 +13,8 @@ import numpy as np
 
 import sys, os
 
-import pyTorchAutoForge.optimization
-import pyTorchAutoForge.optimization.ModelTrainingManager as ModelTrainingManager
+sys.path.append(os.path.join('/home/peterc/devDir/pyTorchAutoForge/pyTorchAutoForge'))
 
-sys.path.append(os.path.join('/home/peterc/devDir/MachineLearning_PeterCdev/PyTorch/pc_torchTools'))
 import pyTorchAutoForge
 import torchvision.models as models
 
