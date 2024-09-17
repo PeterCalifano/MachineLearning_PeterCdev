@@ -1,10 +1,11 @@
-'''Module setup file created by PeterC - 30/06/2024'''
+'''Module setup file created by PeterC - 06/30/2024.
+Major update for release version: 09/17/2024'''
 from setuptools import setup, find_packages
 
 setup(
     name='pcTorchTools',
     version='0.1',
-    packages=find_packages([]),
+    packages=find_packages(['pyTorchAutoForge', 'pytorchAutoForge*']),
     install_requires=[
         "torch==2.2.1",
         "torch-tb-profiler==0.4.3",
@@ -26,9 +27,9 @@ setup(
             # Define command-line executables here if needed
         ],
     },
-    author='Pietro Califano',
-    author_email='petercalifano.gs@gmail.com',
-    description='Custom utility codes based on ray PyTorch for management of DNN (including SNNs) training, validation, logging and conversion. mlflow and optuna are integrated',
+    author='Pietro Califano (PeterC)',
+    author_email='petercalifano.gs@gmail.com, pietro.califano@polimi.it',
+    description='Custom library based on raw PyTorch to automate DNN development, tracking and deployment, tightly integrated with MLflow and Optuna.',
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',
     url='',
@@ -39,5 +40,5 @@ setup(
         'License :: OSI Approved :: MIT License',
         'Operating System :: OS Independent',
     ],
-    python_requires='>=3.9',
+    python_requires='>=3.10',
 )
