@@ -13,11 +13,11 @@ import numpy as np
 
 import sys, os
 
-import pcTorchTools.optimization
-import pcTorchTools.optimization.ModelTrainingManager as ModelTrainingManager
+import pyTorchAutoForge.optimization
+import pyTorchAutoForge.optimization.ModelTrainingManager as ModelTrainingManager
 
 sys.path.append(os.path.join('/home/peterc/devDir/MachineLearning_PeterCdev/PyTorch/pc_torchTools'))
-import pcTorchTools
+import pyTorchAutoForge
 import torchvision.models as models
 
 wsDir = '/home/peterc/devDir/MachineLearning_PeterCdev/PyTorch/tutorials'
@@ -58,10 +58,10 @@ def main():
     trainerConfig = ModelTrainingManager.ModelTrainingManagerConfig(
         initial_lr=initial_lr, lr_scheduler=None)
 
-    dataloaderIndex = pcTorchTools.dataloaderIndex(train_loader, validation_loader)
+    dataloaderIndex = pyTorchAutoForge.dataloaderIndex(train_loader, validation_loader)
 
     # Perform training and validation of model
-    pcTorchTools.TrainAndValidateModel(dataloaderIndex, model, lossFcn, optimizer, options)
+    pyTorchAutoForge.TrainAndValidateModel(dataloaderIndex, model, lossFcn, optimizer, options)
     
     # TODO: Update customTorchTool to support training of models for classification
 

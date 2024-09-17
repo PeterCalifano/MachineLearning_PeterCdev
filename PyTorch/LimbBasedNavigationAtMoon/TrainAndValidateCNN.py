@@ -7,7 +7,7 @@ import sys, os, multiprocessing
 sys.path.append(os.path.join('/home/peterc/devDir/MachineLearning_PeterCdev/PyTorch/customTorchTools'))
 sys.path.append(os.path.join('/home/peterc/devDir/MachineLearning_PeterCdev/PyTorch/LimbBasedNavigationAtMoon'))
 
-import pcTorchTools # Custom torch tools
+import pyTorchAutoForge # Custom torch tools
 import limbPixelExtraction_CNN_NN, ModelClasses # Custom model classes
 import datasetPreparation
 from sklearn import preprocessing # Import scikit-learn for dataset preparation
@@ -100,7 +100,7 @@ def main(idRun:int, idModelClass:int, idLossType:int):
     optimizerID = 1 # 0: SGD, 1: Adam
     UseMaxPooling = True
 
-    device = pcTorchTools.GetDevice()
+    device = pyTorchAutoForge.GetDevice()
 
     exportTracedModel = True    
     tracedModelSavePath = 'tracedModelsArchive' 
@@ -467,8 +467,8 @@ def main(idRun:int, idModelClass:int, idLossType:int):
         if sizeInBytes < limitSize:
             if not os.path.exists(datasetSavePath):
                 os.makedirs(datasetSavePath)
-                pcTorchTools.SaveTorchDataset(datasetTraining, datasetSavePath, datasetName='TrainingDataset_'+TrainingDatasetTag)
-                pcTorchTools.SaveTorchDataset(datasetValidation, datasetSavePath, datasetName='ValidationDataset_'+ValidationDatasetTag)
+                pyTorchAutoForge.SaveTorchDataset(datasetTraining, datasetSavePath, datasetName='TrainingDataset_'+TrainingDatasetTag)
+                pyTorchAutoForge.SaveTorchDataset(datasetValidation, datasetSavePath, datasetName='ValidationDataset_'+ValidationDatasetTag)
         else:
             print('Dataset size exceeds 4 Gbits. Saving is skipped due to pickle limitation.')
     else:
@@ -482,8 +482,8 @@ def main(idRun:int, idModelClass:int, idLossType:int):
         
         print('Loading training and validation datasets from: \n\t', trainingDatasetPath, '\n\t', validationDatasetPath)
 
-        datasetTraining = pcTorchTools.LoadTorchDataset(datasetSavePath, datasetName='TrainingDataset_'+TrainingDatasetTag)
-        datasetValidation = pcTorchTools.LoadTorchDataset(datasetSavePath, datasetName='ValidationDataset_'+ValidationDatasetTag)
+        datasetTraining = pyTorchAutoForge.LoadTorchDataset(datasetSavePath, datasetName='TrainingDataset_'+TrainingDatasetTag)
+        datasetValidation = pyTorchAutoForge.LoadTorchDataset(datasetSavePath, datasetName='ValidationDataset_'+ValidationDatasetTag)
     
     ################################################################################################
 
@@ -496,18 +496,18 @@ def main(idRun:int, idModelClass:int, idLossType:int):
     # LOSS FUNCTION DEFINITION
 
     if LOSS_TYPE == 0:
-        lossFcn = pcTorchTools.CustomLossFcn(limbPixelExtraction_CNN_NN.MoonLimbPixConvEnhancer_LossFcn, lossParams)
+        lossFcn = pyTorchAutoForge.CustomLossFcn(limbPixelExtraction_CNN_NN.MoonLimbPixConvEnhancer_LossFcn, lossParams)
     elif LOSS_TYPE == 1:
-        lossFcn = pcTorchTools.CustomLossFcn(limbPixelExtraction_CNN_NN.MoonLimbPixConvEnhancer_LossFcnWithOutOfPatchTerm, lossParams)
+        lossFcn = pyTorchAutoForge.CustomLossFcn(limbPixelExtraction_CNN_NN.MoonLimbPixConvEnhancer_LossFcnWithOutOfPatchTerm, lossParams)
     elif LOSS_TYPE == 2:
         if USE_TENSOR_LOSS_EVAL:
-            lossFcn = pcTorchTools.CustomLossFcn(limbPixelExtraction_CNN_NN.MoonLimbPixConvEnhancer_NormalizedLossFcnWithOutOfPatchTerm_asTensor, lossParams)
+            lossFcn = pyTorchAutoForge.CustomLossFcn(limbPixelExtraction_CNN_NN.MoonLimbPixConvEnhancer_NormalizedLossFcnWithOutOfPatchTerm_asTensor, lossParams)
         else:
-            lossFcn = pcTorchTools.CustomLossFcn(limbPixelExtraction_CNN_NN.MoonLimbPixConvEnhancer_NormalizedLossFcnWithOutOfPatchTerm, lossParams)
+            lossFcn = pyTorchAutoForge.CustomLossFcn(limbPixelExtraction_CNN_NN.MoonLimbPixConvEnhancer_NormalizedLossFcnWithOutOfPatchTerm, lossParams)
     elif LOSS_TYPE == 3:
-        lossFcn = pcTorchTools.CustomLossFcn(limbPixelExtraction_CNN_NN.MoonLimbPixConvEnhancer_PolarNdirectionDistanceWithOutOfPatch_asTensor, lossParams)
+        lossFcn = pyTorchAutoForge.CustomLossFcn(limbPixelExtraction_CNN_NN.MoonLimbPixConvEnhancer_PolarNdirectionDistanceWithOutOfPatch_asTensor, lossParams)
     elif LOSS_TYPE == 4:
-        lossFcn = pcTorchTools.CustomLossFcn(limbPixelExtraction_CNN_NN.MoonLimbPixConvEnhancer_NormalizedConicLossWithMSEandOutOfPatch_asTensor, lossParams)
+        lossFcn = pyTorchAutoForge.CustomLossFcn(limbPixelExtraction_CNN_NN.MoonLimbPixConvEnhancer_NormalizedConicLossWithMSEandOutOfPatch_asTensor, lossParams)
     else:
         raise ValueError('Loss function ID not found.')
 
@@ -559,7 +559,7 @@ def main(idRun:int, idModelClass:int, idLossType:int):
             
                 print('RESTART training from checkpoint: ', checkPointPath)
                 #modelEmpty = modelClass(outChannelsSizes, kernelSizes)
-                modelCNN_NN = pcTorchTools.LoadTorchModel(None, modelName, modelSavePath, loadAsTraced=True).to(device=device)
+                modelCNN_NN = pyTorchAutoForge.LoadTorchModel(None, modelName, modelSavePath, loadAsTraced=True).to(device=device)
                 #modelCNN_NN = customTorchTools.LoadTorchModel(modelCNN_NN, modelName)
     
             else:
@@ -651,7 +651,7 @@ def main(idRun:int, idModelClass:int, idLossType:int):
         mlflow.log_param('learning_rate', initialLearnRate)
         #mlflow.log_param('ExponentialDecayGamma', exponentialDecayGamma)
 
-        numOfParameters = pcTorchTools.getNumOfTrainParams(modelCNN_NN)
+        numOfParameters = pyTorchAutoForge.getNumOfTrainParams(modelCNN_NN)
         mlflow.log_param('NumOfTrainParams', numOfParameters)
 
         # %% TRAIN and VALIDATE MODEL
@@ -666,15 +666,15 @@ def main(idRun:int, idModelClass:int, idLossType:int):
                                                                                                                   'loadCheckpoint': False,
                                                                                                                   'epochStart': 150}):
         '''
-        (bestTrainedModelData, trainingLosses, validationLosses, inputSample) = pcTorchTools.TrainAndValidateModel(dataloaderIndex, modelCNN_NN, lossFcn, optimizer, options)
+        (bestTrainedModelData, trainingLosses, validationLosses, inputSample) = pyTorchAutoForge.TrainAndValidateModel(dataloaderIndex, modelCNN_NN, lossFcn, optimizer, options)
 
     try:
     # %% Export trained model to ONNx and traced Pytorch format 
         if exportTracedModel:
            #customTorchTools.ExportTorchModelToONNx(trainedModel, inputSample, onnxExportPath='./checkpoints',
            #                                    onnxSaveName='trainedModelONNx', modelID=options['epochStart']+options['epochs'], onnx_version=14)
-            tracedModelSaveName = os.path.join(tracedModelSavePath, modelArchName+'_'+str(pcTorchTools.AddZerosPadding(bestTrainedModelData['epoch'], 3)))                     
-            pcTorchTools.SaveTorchModel(bestTrainedModelData['model'].to(device), modelName= tracedModelSaveName, saveAsTraced=True, 
+            tracedModelSaveName = os.path.join(tracedModelSavePath, modelArchName+'_'+str(pyTorchAutoForge.AddZerosPadding(bestTrainedModelData['epoch'], 3)))                     
+            pyTorchAutoForge.SaveTorchModel(bestTrainedModelData['model'].to(device), modelName= tracedModelSaveName, saveAsTraced=True, 
                                             exampleInput=inputSample, targetDevice=device)
     except:
         print('Export of trained model failed.')
@@ -698,7 +698,7 @@ if __name__ == '__main__':
     
     #mlflow.set_experiment("HorizonEnhancerCNN_Optimization_CNNv7_randomCloud")
     # Stop any running tensorboard session before starting a new one
-    pcTorchTools.KillTensorboard()
+    pyTorchAutoForge.KillTensorboard()
 
     # Setup multiprocessing for training the two models in parallel
     if USE_MULTIPROCESS == True:
