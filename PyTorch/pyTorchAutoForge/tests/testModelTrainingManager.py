@@ -9,7 +9,7 @@ from torchvision.transforms import ToTensor # Utils
 import numpy as np
 from typing import Union
 
-import PyTorch.pyTorchAutoForge.pcTorchTools as pcTorchTools
+import PyTorch.pyTorchAutoForge.pyTorchAutoForge.pyTorchAutoForge as pyTorchAutoForge
 
 from torch.utils.tensorboard import SummaryWriter # Key class to use tensorboard with PyTorch. VSCode will automatically ask if you want to load tensorboard in the current session.
 import torch.optim as optim
@@ -25,7 +25,7 @@ def main():
     # Loss function parameters
     params = {'ConicLossWeightCoeff': 0, 'RectExpWeightCoeff': 0}
 
-    lossFcn = pcTorchTools.CustomLossFcn(limbPixelExtraction_CNN_NN.MoonLimbPixConvEnhancer_NormalizedConicLossWithMSEandOutOfPatch_asTensor, params)
+    lossFcn = pyTorchAutoForge.CustomLossFcn(limbPixelExtraction_CNN_NN.MoonLimbPixConvEnhancer_NormalizedConicLossWithMSEandOutOfPatch_asTensor, params)
     model = ModelClasses.HorizonExtractionEnhancerCNNv3maxDeeper
 
 

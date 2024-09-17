@@ -1,12 +1,12 @@
 # Import modules
 import sys, os
 
-import PyTorch.pyTorchAutoForge.pcTorchTools
+import PyTorch.pyTorchAutoForge.pyTorchAutoForge.pyTorchAutoForge
 # Append paths of custom modules
 sys.path.append(os.path.join('/home/peterc/devDir/MachineLearning_PeterCdev/PyTorch/LimbBasedNavigationAtMoon'))
 sys.path.append(os.path.join('/home/peterc/devDir/MachineLearning_PeterCdev/PyTorch/customTorchTools'))
 
-import PyTorch.pyTorchAutoForge.pcTorchTools as pcTorchTools # Custom torch tools
+import PyTorch.pyTorchAutoForge.pyTorchAutoForge.pyTorchAutoForge as pyTorchAutoForge # Custom torch tools
 from sklearn import preprocessing # Import scikit-learn for dataset preparation
 
 import torch
@@ -30,7 +30,7 @@ import matplotlib.pyplot as plt
 from torch import nn
 
 class LossLandscapePlotter():
-    def __init__(self, model:nn.Module, lossFcn:nn.Module, dataloader:DataLoader, device=pcTorchTools.GetDevice()):
+    def __init__(self, model:nn.Module, lossFcn:nn.Module, dataloader:DataLoader, device=pyTorchAutoForge.GetDevice()):
 
         self.model = model
         self.lossFcn = lossFcn    
@@ -144,7 +144,7 @@ def main():
     # Loss function parameters
     params = {'ConicLossWeightCoeff': 0, 'RectExpWeightCoeff': 0}
 
-    lossFcn = pcTorchTools.CustomLossFcn(limbPixelExtraction_CNN_NN.MoonLimbPixConvEnhancer_NormalizedConicLossWithMSEandOutOfPatch_asTensor, params)
+    lossFcn = pyTorchAutoForge.CustomLossFcn(limbPixelExtraction_CNN_NN.MoonLimbPixConvEnhancer_NormalizedConicLossWithMSEandOutOfPatch_asTensor, params)
     model = ModelClasses.HorizonExtractionEnhancerCNNv3maxDeeper
 
 

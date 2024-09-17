@@ -11,7 +11,7 @@ from typing import Union
 
 sys.path.append(os.path.join('/home/peterc/devDir/MachineLearning_PeterCdev/PyTorch/customTorchTools'))
 
-import PyTorch.pyTorchAutoForge.pcTorchTools as pcTorchTools
+import PyTorch.pyTorchAutoForge.pyTorchAutoForge.pyTorchAutoForge as pyTorchAutoForge
 
 from torch.utils.tensorboard import SummaryWriter # Key class to use tensorboard with PyTorch. VSCode will automatically ask if you want to load tensorboard in the current session.
 import torch.optim as optim
@@ -19,7 +19,7 @@ import torch.nn.functional as F # Module to apply activation functions in forwar
 
 
 class GenericNN(nn.Module):
-    def __init__(self, config, device=pcTorchTools.GetDevice()):
+    def __init__(self, config, device=pyTorchAutoForge.GetDevice()):
         super(GenericNN, self).__init__()
 
         self.config = config

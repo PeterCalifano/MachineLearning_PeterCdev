@@ -8,7 +8,7 @@ import sys, os
 sys.path.append(os.path.join('/home/peterc/devDir/MachineLearning_PeterCdev/PyTorch/customTorchTools'))
 sys.path.append(os.path.join('/home/peterc/devDir/MachineLearning_PeterCdev/PyTorch/LimbBasedNavigationAtMoon'))
 
-import PyTorch.pyTorchAutoForge.pcTorchTools as pcTorchTools  # Custom torch tools
+import PyTorch.pyTorchAutoForge.pyTorchAutoForge.pyTorchAutoForge as pyTorchAutoForge  # Custom torch tools
 
 import torch
 import datetime
@@ -43,7 +43,7 @@ def main():
 
     # %% TORCH DATASET LOADING
     pathToDataset = '/home/peterc/devDir/MachineLearning_PeterCdev/checkpoints/HorizonPixCorrector_CNNv1max_largerCNN_run3sampleDatasetToONNx'
-    dataset = pcTorchTools.LoadTorchDataset(pathToDataset)
+    dataset = pyTorchAutoForge.LoadTorchDataset(pathToDataset)
 
     datasetSize = len(dataset)
     datasetLoader  = DataLoader(dataset, 2, shuffle=True)
@@ -57,12 +57,12 @@ def main():
 
 
     # %% MODEL FORWARD METHOD TESTING
-    inputSamples = pcTorchTools.GetSamplesFromDataset(datasetLoader, numOfSamples=1)    
+    inputSamples = pyTorchAutoForge.GetSamplesFromDataset(datasetLoader, numOfSamples=1)    
 
-    lossFcn = pcTorchTools.CustomLossFcn(limbPixelExtraction_CNN_NN.MoonLimbPixConvEnhancer_NormalizedLossFcnWithOutOfPatchTerm)
+    lossFcn = pyTorchAutoForge.CustomLossFcn(limbPixelExtraction_CNN_NN.MoonLimbPixConvEnhancer_NormalizedLossFcnWithOutOfPatchTerm)
 
     
-    examplePrediction, exampleLosses, inputSampleList = pcTorchTools.EvaluateModel(datasetLoader, modelCNN_test.to(pcTorchTools.GetDevice()), lossFcn)
+    examplePrediction, exampleLosses, inputSampleList = pyTorchAutoForge.EvaluateModel(datasetLoader, modelCNN_test.to(pyTorchAutoForge.GetDevice()), lossFcn)
 
     print('Example prediction:', examplePrediction)
     print('Example input list:', inputSampleList)

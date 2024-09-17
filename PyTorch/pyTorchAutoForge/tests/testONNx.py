@@ -9,7 +9,7 @@ import sys, os
 sys.path.append(os.path.join('/home/peterc/devDir/MachineLearning_PeterCdev/PyTorch/customTorchTools'))
 sys.path.append(os.path.join('/home/peterc/devDir/MachineLearning_PeterCdev/PyTorch/LimbBasedNavigationAtMoon'))
 
-import PyTorch.pyTorchAutoForge.pcTorchTools as pcTorchTools # Custom torch tools
+import PyTorch.pyTorchAutoForge.pyTorchAutoForge.pyTorchAutoForge as pyTorchAutoForge # Custom torch tools
 
 import datetime
 import numpy as np
@@ -24,7 +24,7 @@ def main():
     # Define inputs
     exportPath = './ExportedModelsToONNx'
     modelSavePath = './checkpoints/HorizonPixCorrector_CNN_run8'
-    modelName = 'trainedModel_' + pcTorchTools.AddZerosPadding(0, 4)
+    modelName = 'trainedModel_' + pyTorchAutoForge.AddZerosPadding(0, 4)
     datasetSavePath = modelSavePath + 'sampleDatasetToONNx'
     batch_size = 16
 
@@ -35,19 +35,19 @@ def main():
     modelEmpty = limbPixelExtraction_CNN_NN.HorizonExtractionEnhancerCNN(outChannelsSizes, kernelSizes)
 
     # Load torch model and define loss function
-    trainedModel = pcTorchTools.LoadModelState(modelEmpty, modelName, modelSavePath)
+    trainedModel = pyTorchAutoForge.LoadModelState(modelEmpty, modelName, modelSavePath)
 
-    lossFcn = pcTorchTools.CustomLossFcn(pcTorchTools.MoonLimbPixConvEnhancer_LossFcn)
+    lossFcn = pyTorchAutoForge.CustomLossFcn(pyTorchAutoForge.MoonLimbPixConvEnhancer_LossFcn)
 
     # Load sample dataset
-    sampleData = pcTorchTools.LoadTorchDataset(datasetSavePath)
+    sampleData = pyTorchAutoForge.LoadTorchDataset(datasetSavePath)
     sampleDataset  = DataLoader(sampleData, batch_size, shuffle=True)
 
     # Test model and get sample inputs
-    examplePrediction, exampleLosses, inputSampleList = pcTorchTools.EvaluateModel(sampleDataset, trainedModel, lossFcn)
+    examplePrediction, exampleLosses, inputSampleList = pyTorchAutoForge.EvaluateModel(sampleDataset, trainedModel, lossFcn)
 
     # Convert to ONNx format and save
-    modelONNx = pcTorchTools.ExportTorchModelToONNx(trainedModel, inputSampleList[0], exportPath, modelName, 0)
+    modelONNx = pyTorchAutoForge.ExportTorchModelToONNx(trainedModel, inputSampleList[0], exportPath, modelName, 0)
 
 if __name__ == '__main__':
     main()
