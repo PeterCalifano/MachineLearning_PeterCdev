@@ -4,7 +4,6 @@
 # Import modules
 import sys, os, multiprocessing
 # Append paths of custom modules
-sys.path.append(os.path.join('/home/peterc/devDir/MachineLearning_PeterCdev/PyTorch/customTorchTools'))
 sys.path.append(os.path.join('/home/peterc/devDir/MachineLearning_PeterCdev/PyTorch/LimbBasedNavigationAtMoon'))
 
 import pyTorchAutoForge # Custom torch tools
@@ -20,7 +19,6 @@ from torch.utils.data import Dataset
 from torch.utils.data import DataLoader # Utils for dataset management, storing pairs of (sample, label)
 from torchvision import datasets # Import vision default datasets from torchvision
 from torchvision.transforms import ToTensor # Utils
-from torchsummary import summary
 
 import numpy as np
 
