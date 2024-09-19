@@ -12,7 +12,6 @@ Variants using fully connected layers only, without 2D patch information are inc
 '''
 
 import torch, sys, os
-sys.path.append(os.path.join('/home/peterc/devDir/MachineLearning_PeterCdev/PyTorch/customTorchTools'))
 from limbPixelExtraction_CNN_NN import *
 
 import datetime
