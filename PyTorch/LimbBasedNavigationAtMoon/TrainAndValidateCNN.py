@@ -6,7 +6,7 @@ import sys, os, multiprocessing
 # Append paths of custom modules
 sys.path.append(os.path.join('/home/peterc/devDir/MachineLearning_PeterCdev/PyTorch/LimbBasedNavigationAtMoon'))
 
-import pyTorchAutoForge # Custom torch tools
+import pyTorchAutoForge 
 import limbPixelExtraction_CNN_NN, ModelClasses # Custom model classes
 import datasetPreparation
 from sklearn import preprocessing # Import scikit-learn for dataset preparation
@@ -92,14 +92,16 @@ def main(idRun:int, idModelClass:int, idLossType:int):
     # Loss function parameters
     lossParams = {'ConicLossWeightCoeff': 0, 'RectExpWeightCoeff': 1}
 
+    # DEVNOTE: this could go into yaml/dataclass 
     lossParams['paramsTrain'] = {'ConicLossWeightCoeff': 1000, 'RectExpWeightCoeff': 0}
     lossParams['paramsEval'] = {'ConicLossWeightCoeff': 0, 'RectExpWeightCoeff': 0} # Not currently used
 
     optimizerID = 1 # 0: SGD, 1: Adam
-    UseMaxPooling = True
+    #UseMaxPooling = True
 
     device = pyTorchAutoForge.GetDevice()
 
+    # DEVNOTE: to add to config file: path definitions to save models and name
     exportTracedModel = True    
     tracedModelSavePath = 'tracedModelsArchive' 
 
@@ -114,7 +116,8 @@ def main(idRun:int, idModelClass:int, idLossType:int):
         #tensorBoardPortNum = 6008
         
         modelArchName = 'HorizonPixCorrector_CNNv1max_largerCNN_run' 
-        inputSize = 56 # TODO: update this according to new model
+        # DEVNOTE: input size should be taken from the dataset object
+        inputSize = 56 # TODO: update this according to new model 
         numOfEpochs = 15
 
 
@@ -198,6 +201,8 @@ def main(idRun:int, idModelClass:int, idLossType:int):
         #tensorboardLogDir = './tensorboardLogs/tensorboardLog_ShortCNNv6maxDeeper_run'   + runID
         #tensorBoardPortNum = 6012
 
+        # DEVNOTE: this could be an example of a configuration dictionary for NN 
+        # Note that the yaml could be parsed as dataclass instead of being used directly
         parametersConfig = {'useBatchNorm': True, 'alphaDropCoeff': 0, 
                             'LinearInputSkipSize': 9,'outChannelsSizes': outChannelsSizes,
                             'kernelSizes': kernelSizes, 'poolkernelSizes': poolKernelSizes,
@@ -228,7 +233,7 @@ def main(idRun:int, idModelClass:int, idLossType:int):
 
 
     EPOCH_START = 0
-
+    
     options = {'taskType': 'regression', 
                'device': device, 
                'epochs': numOfEpochs, 
@@ -243,6 +248,7 @@ def main(idRun:int, idModelClass:int, idLossType:int):
                #'tensorBoardPortNum': tensorBoardPortNum
                }
 
+    # DEVNOTE: restart training should become easier. Carry information of epoch with the model?
     if options['epochStart'] == 0:
         restartTraining = False
     else:
