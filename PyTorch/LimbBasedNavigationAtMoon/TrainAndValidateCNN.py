@@ -2,7 +2,7 @@
 # Reference works:
 
 # Import modules
-import sys, os, multiprocessing
+import sys, os
 # Append paths of custom modules
 sys.path.append(os.path.join('/home/peterc/devDir/MachineLearning_PeterCdev/PyTorch/LimbBasedNavigationAtMoon'))
 
@@ -492,8 +492,8 @@ def main(idRun:int, idModelClass:int, idLossType:int):
     ################################################################################################
 
     # Define dataloaders objects
-    trainingDataset   = DataLoader(datasetTraining, batch_size, shuffle=True, num_workers=2, pin_memory=True)
-    validationDataset = DataLoader(datasetValidation, batch_size, shuffle=True, num_workers=2, pin_memory=True)
+    trainingDataset   = DataLoader(datasetTraining, batch_size, shuffle=True, num_workers=1, pin_memory=True)
+    validationDataset = DataLoader(datasetValidation, batch_size, shuffle=True, num_workers=1, pin_memory=True)
 
     dataloaderIndex = {'TrainingDataLoader' : trainingDataset, 'ValidationDataLoader': validationDataset}
     
@@ -588,10 +588,10 @@ def main(idRun:int, idModelClass:int, idLossType:int):
                     parametersConfig).to(device=device)
 
         # Print summary of model
-        try:
-            summary(modelCNN_NN, input_size=(1, inputSize), batch_size=batch_size, device=device)
-        except:
-            print('torchsummary summary() function failed')
+        #try:
+        #    summary(modelCNN_NN, input_size=(1, inputSize), batch_size=batch_size, device=device)
+        #except:
+        #    print('torchsummary summary() function failed')
     
         # ######### TEST DEBUG ############
         #testPrediction = modelCNN_NN(torch.tensor(inputDataArray[0:, 0]))
