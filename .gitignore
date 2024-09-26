@@ -1,3 +1,8 @@
+# Custom
+mlruns
+MNIST
+lightning_logs
+
 # Configuration and environment files
 /.venvPyTorchML
 /.venvTensorFlowML
